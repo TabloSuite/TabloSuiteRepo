@@ -116,6 +116,14 @@ public sealed class RegistrierungService(
             .Select(s => new SchulTreffer(s.Id, s.Name, s.Ort)).ToListAsync(ct);
     }
 
+    /// <summary>Eine aktive Schule für die Schülerregistrierung (Wiederherstellen der Auswahl nach « ?erreur= »).</summary>
+    public async Task<SchulTreffer?> SchuleAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.Schulen.AsNoTracking().Where(s => s.Id == id && s.Status == SchulStatus.Active)
+            .Select(s => new SchulTreffer(s.Id, s.Name, s.Ort)).FirstOrDefaultAsync(ct);
+    }
+
     /// <summary>Freies Identifiant « prenom.nom » vorschlagen.</summary>
     public async Task<string> IdentifiantVorschlagAsync(string? vorname, string? nachname, CancellationToken ct = default)
     {

@@ -28,8 +28,8 @@ public static class InscriptionEndpunkt
             }
             catch (FachFehler f)
             {
-                var code = f.Message == RegistrierungsBremse.Meldung ? "bremse" : f.Feld == "agb" ? "agb" : "saisie";
-                return Results.LocalRedirect(zurueck + "&erreur=" + code);
+                // Konkreter Code statt nur « saisie »; die Eingaben (ohne Passwörter) setzt die Seite aus dem Browser wieder ein.
+                return Results.LocalRedirect(zurueck + "&erreur=" + InscriptionFehler.Code(f));
             }
         }).RequireRateLimiting(RateLimits.Registrierung);
         return app;

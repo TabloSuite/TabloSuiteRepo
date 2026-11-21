@@ -45,19 +45,58 @@ public partial class Inscription
     private bool Gesperrt => RendererInfo.IsInteractive && !(Feld.Ausgefuellt(vorname, nachname, passwort, bestaetigung)
         && (art == RegistrierungsArt.Direction ? Feld.Ausgefuellt(schulName, ort, email, telefon) : schule is not null));
 
+    /// <summary>Schlüssel der gemerkten Eingaben im Browser (sessionStorage, skoulou.js « data-sk-merken »).</summary>
+    internal const string MerkSchluessel = "inscription";
+
     protected override void OnParametersSet()
     {
         if (Envoye is "direction" or "eleve") gesendet = Envoye == "eleve" ? RegistrierungsArt.Eleve : RegistrierungsArt.Direction;
         art = Typ is "eleve" or "student" or "schueler" or "élève" ? RegistrierungsArt.Eleve : RegistrierungsArt.Direction;
-        meldung = Erreur switch
+        // Konkrete Meldung oben und am Feld (21.11.2026); die Passwörter werden nie gemerkt.
+        var m = InscriptionFehler.Meldung(Erreur);
+        meldung = m is null ? null : Erreur is "limite" or "bremse" ? m.Text : $"{m.Text} Saisissez à nouveau le mot de passe et sa confirmation.";
+        (fehler, fehlerFeld) = m?.Feld is { } feld ? (m.Text, feld) : (null, null);
+    }
+
+    /// <summary>
+    /// Nach « ?erreur= » die beim Absenden im Browser gemerkten Eingaben (ohne Passwörter) wieder einsetzen – nur in leere
+    /// Felder; die sichtbaren Textfelder hat skoulou.js schon in der vorab gezeichneten Seite gefüllt. Nach dem Erfolg vergessen.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
         {
-            null => null,
-            "limite" => "Trop de tentatives en peu de temps. Patientez quelques minutes, puis réessayez.",
-            "bremse" => RegistrierungsBremse.Meldung,
-            "session" => "La page a expiré. Veuillez vérifier vos informations et réessayer.",
-            "agb" => RegistrierungService.MeldungAgb,
-            _ => "L'inscription n'a pas pu être enregistrée. Vérifiez vos informations et réessayez."
-        };
+            if (gesendet is not null)
+            {
+                await JS.InvokeVoidAsync("skFormularVergessen", MerkSchluessel);
+                return;
+            }
+            if (Erreur is null) return;
+            var werte = await JS.InvokeAsync<Dictionary<string, string>?>("skFormularGemerkt", MerkSchluessel);
+            if (werte is null || werte.Count == 0) return;
+            if (werte.TryGetValue("type", out var typ) && typ != (art == RegistrierungsArt.Eleve ? "eleve" : "direction")) return;
+            string? W(string name) => werte.TryGetValue(name, out var w) && !string.IsNullOrWhiteSpace(w) ? w : null;
+            schulName ??= W("ecole-nom");
+            ort ??= W("ville");
+            if (W("pays") is { } p) land = p;
+            vorname ??= W("prenom");
+            nachname ??= W("nom");
+            email ??= W("email");
+            telefon ??= W("telephone");
+            identifiant ??= W("identifiant");
+            elternTelefon ??= W("parent-tel");
+            elternEmail ??= W("parent-email");
+            if (geburtsdatum is null && DateOnly.TryParseExact(W("naissance"), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var g)) geburtsdatum = g;
+            if (W("agb") == "oui" && Erreur != "agb") agb = true;
+            if (schule is null && Guid.TryParse(W("ecole"), out var schuleId)) schule = await Registrierung.SchuleAsync(schuleId);
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            // Verbindung beim Laden schon wieder weg – nichts wiederherzustellen.
+        }
     }
 
     private void Waehlen(RegistrierungsArt neu)

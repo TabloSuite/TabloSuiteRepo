@@ -38,7 +38,7 @@
             <Hinweis Art="fehler">@meldung</Hinweis>
         }
 
-        <form id="@formId" method="post" action="/auth/inscription/envoyer" class="sk-formular" novalidate data-ladeanzeige="Création du compte…"
+        <form id="@formId" method="post" action="/auth/inscription/envoyer" class="sk-formular" novalidate data-ladeanzeige="Création du compte…" data-sk-merken="@MerkSchluessel"
               @onsubmit="WeiterAsync" @onsubmit:preventDefault>
             <AntiforgeryToken />
             <input type="hidden" name="type" value="@(art == RegistrierungsArt.Eleve ? "eleve" : "direction")" />

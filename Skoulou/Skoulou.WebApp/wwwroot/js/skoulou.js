@@ -84,6 +84,7 @@
         if (!form || form.dataset.skGesendet === '1') return;
         if (form.hasAttribute('data-ladeanzeige') && form.dataset.skSendet !== '1') sperren(form, null);
         form.dataset.skGesendet = '1';
+        if (window.skFormularMerken) window.skFormularMerken(form);   // form.submit() löst kein « submit » aus
         form.submit();
     };
 
@@ -202,6 +203,61 @@
     beobachter.observe(document.body, { childList: true, subtree: true });
     // Die Verbindung steht spätestens nach dieser Zeit (sonst zeigt Blazor ohnehin sein Fenster « Reconnexion »).
     setTimeout(function () { beobachter.disconnect(); stand = []; fokus = null; }, 30000);
+})();
+
+// Eingaben klassischer Formulare <form data-sk-merken="schlüssel"> beim Absenden merken (21.11.2026, Registrierung bei
+// langsamem Netz): lehnt der Server ab und leitet mit « ?erreur= » zurück, setzt die Seite sie wieder ein – sofort in die
+// vorab gezeichneten Felder (der Block oben trägt sie in die interaktive Seite), Auswahl und Datum setzt Blazor selbst.
+// Nie gemerkt: Passwörter, Antiforgery-Token, Honigtopf. Nur sessionStorage (Reiter); nach « ?envoye= » gelöscht.
+(function () {
+    var PRAEFIX = 'sk-formular:';
+    var NIE = { motdepasse: 1, confirmation: 1, site: 1, __RequestVerificationToken: 1 };
+
+    function lesen(schluessel) {
+        try { var t = sessionStorage.getItem(PRAEFIX + schluessel); return t ? JSON.parse(t) : null; } catch (fehler) { return null; }
+    }
+
+    window.skFormularMerken = function (form) {
+        var schluessel = form && form.getAttribute ? form.getAttribute('data-sk-merken') : null;
+        if (!schluessel) return;
+        var werte = {};
+        Array.prototype.forEach.call(form.elements, function (f) {
+            if (!f.name || NIE[f.name] || f.type === 'password' || f.type === 'file' || f.type === 'submit' || f.type === 'button') return;
+            if (f.type === 'checkbox' || f.type === 'radio') { if (f.checked) werte[f.name] = f.value; return; }
+            if (f.value) werte[f.name] = f.value;
+        });
+        try { sessionStorage.setItem(PRAEFIX + schluessel, JSON.stringify(werte)); } catch (fehler) { /* privat/voll: dann eben nicht */ }
+    };
+    window.skFormularGemerkt = lesen;
+    window.skFormularVergessen = function (schluessel) {
+        try { sessionStorage.removeItem(PRAEFIX + schluessel); } catch (fehler) { /* ohne Speicher nichts zu tun */ }
+    };
+
+    document.addEventListener('submit', function (e) { window.skFormularMerken(e.target); }, true);
+
+    var adresse = new URLSearchParams(location.search);
+    if (adresse.has('envoye')) {
+        try {
+            Object.keys(sessionStorage).forEach(function (k) { if (k.indexOf(PRAEFIX) === 0) sessionStorage.removeItem(k); });
+        } catch (fehler) { /* ohne Speicher nichts zu tun */ }
+        return;
+    }
+    if (!adresse.has('erreur')) return;
+    document.querySelectorAll('form[data-sk-merken]').forEach(function (form) {
+        var werte = lesen(form.getAttribute('data-sk-merken'));
+        if (!werte) return;
+        if (werte.type && form.elements.type && form.elements.type.value !== werte.type) return;
+        Array.prototype.forEach.call(form.elements, function (f) {
+            if (!f.name || !Object.prototype.hasOwnProperty.call(werte, f.name) || NIE[f.name] || f.type === 'hidden' || f.type === 'password') return;
+            if (f.type === 'checkbox') {
+                if (!f.checked && adresse.get('erreur') !== 'agb') { f.checked = true; f.dispatchEvent(new Event('change', { bubbles: true })); }
+                return;
+            }
+            if (f.value && f.value !== f.defaultValue) return;
+            f.value = werte[f.name];
+            f.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
 })();
 
 // Fenster « Connexion interrompue » (VerbindungsFenster.razor): Blazor zeigt und verbirgt es über Klassen; hier nur die
