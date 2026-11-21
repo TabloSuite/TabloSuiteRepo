@@ -70,7 +70,7 @@ public sealed class JournalService(
             if (k.SchuleId != a.SchuleId) throw new FachFehler("Seules les catégories créées par l'établissement peuvent être supprimées.");
             if (await db.Buchungen.AnyAsync(b => b.KategorieId == kategorieId, ct)) throw new FachFehler("Cette catégorie est utilisée par des écritures.");
             db.Kategorien.Remove(k);
-            await db.SaveChangesAsync(ct);
+            await db.LoeschenSpeichernAsync(ct);
         }, ct);
     }
 

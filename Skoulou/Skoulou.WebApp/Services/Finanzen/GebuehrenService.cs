@@ -258,9 +258,11 @@ public sealed class GebuehrenService(IDbContextFactory<SkoulouDbContext> dbFacto
             var e = await db.Ermaessigungen.FirstOrDefaultAsync(x => x.Id == ermaessigungId, ct) ?? throw new FachFehler("Cette réduction est introuvable.");
             a.PruefeSchule(e.SchuleId);
             OrgAbfragen.PruefeOffen(await OrgAbfragen.SchuljahrAsync(db, a, e.SchuljahrId, ct));
-            audit.Erfasse(db, a.Id, a.SchuleId, FinanzAudit.ErmaessigungGeloescht, nameof(Ermaessigung), e.Id,
-                $"Réduction retirée ({(e.Art == ErmaessigungsArt.Pourcentage ? $"{e.Wert:0.##} %" : SkoulouKultur.Fcfa((long)e.Wert))}, {e.Grund}).");
+            var text = $"Réduction retirée ({(e.Art == ErmaessigungsArt.Pourcentage ? $"{e.Wert:0.##} %" : SkoulouKultur.Fcfa((long)e.Wert))}, {e.Grund}).";
             db.Ermaessigungen.Remove(e);
+            // Doppeltipp/zweites Gerät: schon entfernt → kein Fehler und kein zweiter Journaleintrag.
+            if (!await db.LoeschenSpeichernAsync(ct)) return;
+            audit.Erfasse(db, a.Id, a.SchuleId, FinanzAudit.ErmaessigungGeloescht, nameof(Ermaessigung), e.Id, text);
             await db.SaveChangesAsync(ct);
         }, ct);
     }

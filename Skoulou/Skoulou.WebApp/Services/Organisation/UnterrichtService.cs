@@ -440,7 +440,7 @@ public sealed class UnterrichtService(IDbContextFactory<SkoulouDbContext> dbFact
         if (await db.StundenplanEintraege.AnyAsync(e => e.LehrauftragId == auftrag.Id, ct))
             throw new FachFehler("Cette affectation figure dans un emploi du temps : retirez d'abord ces cours.");
         db.Lehrauftraege.Remove(auftrag);
-        await db.SaveChangesAsync(ct);
+        await db.LoeschenSpeichernAsync(ct);
     }
 
     /// <summary>Lehraufträge einer Lehrkraft in einem Schuljahr.</summary>

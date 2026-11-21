@@ -27,7 +27,7 @@ public sealed class FehlerProtokollSink(FehlerProtokollPuffer puffer, IHttpConte
 {
     public void Emit(LogEvent logEvent)
     {
-        if (logEvent.Exception is null || logEvent.Level < LogEventLevel.Error) return;
+        if (logEvent.Exception is null || !Relevant(logEvent)) return;
         if (IstVerlasseneVerbindung(logEvent.Exception)) return;
         try
         {
@@ -50,6 +50,16 @@ public sealed class FehlerProtokollSink(FehlerProtokollPuffer puffer, IHttpConte
             // Logging darf den ursprünglichen Fehler nie verdecken.
         }
     }
+
+    /// <summary>
+    /// Ab « Error » – und die Warnung, mit der Blazors ErrorBoundary einen Seitenabsturz meldet (« Une erreur inattendue
+    /// s'est produite. L'erreur a été enregistrée. »). Klicktest 21.11.2026: diese Abstürze fehlten im Fehlerjournal,
+    /// weil Blazor sie nur als Warning protokolliert.
+    /// </summary>
+    public static bool Relevant(LogEvent e)
+        => e.Level >= LogEventLevel.Error
+           || (e.Level == LogEventLevel.Warning && e.Properties.TryGetValue("SourceContext", out var quelle)
+               && quelle is ScalarValue { Value: string name } && name.EndsWith(".ErrorBoundary", StringComparison.Ordinal));
 
     private static string Kuerze(string? text, int max) => text is null ? string.Empty : text.Length > max ? text[..max] : text;
 

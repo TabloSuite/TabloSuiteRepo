@@ -166,6 +166,25 @@ internal static class DbArbeit
         Func<SkoulouDbContext, Task> arbeit, CancellationToken ct = default, int versuche = 1)
         => fabrik.TransaktionAsync<bool>(async db => { await arbeit(db); return true; }, ct, versuche);
 
+    /// <summary>
+    /// Speichert ein reines Löschen; hat ein gleichzeitiger Aufruf (Doppeltipp, zweites Gerät) die Zeile schon entfernt,
+    /// gilt das Ziel als erreicht (false) – statt DbUpdateConcurrencyException und « Une erreur inattendue »
+    /// (Klicktest 21.11.2026: Doppeltipp auf « Retirer l'affectation »).
+    /// </summary>
+    public static async Task<bool> LoeschenSpeichernAsync(this SkoulouDbContext db, CancellationToken ct = default)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException ex) when (ex.Entries.Count > 0 && ex.Entries.All(e => e.State == EntityState.Deleted))
+        {
+            db.ChangeTracker.Clear();
+            return false;
+        }
+    }
+
     /// <summary>Verletzung eines Unique-Index (SQL Server 2601/2627)?</summary>
     public static bool IstEindeutigkeitsFehler(DbUpdateException ex)
         => ex.InnerException is Microsoft.Data.SqlClient.SqlException sql && sql.Number is 2601 or 2627;
