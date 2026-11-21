@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 21.11.2026 nachmittags (Anmelde-Regeln SKOULOU + 2 Fehler aus den Simulationen behoben; im Branch gepusht – master und Deploy offen)
+# TabloSuite – Arbeitsstand 21.11.2026 nachmittags (Anmelde-Regeln SKOULOU + 2 Fehler aus den Simulationen behoben; gepusht, master übernommen – Deploy beim Nutzer)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -8,8 +8,8 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachmittags
 
 **>>> JETZT (21.11. nachmittags) – Nutzer: « 1 und 2 umsetzen. Aber Test gründlich machen am Ende. Wir pushen alles am Ende »:**
-- Commits nur in `Etse.TabloSuite.Muster` (gepusht): c0ce632, 88a83da, f192b93, cd3c105 + dieser STAND. **Offen: `master` übernehmen (nur mit OK),
-  dann SKOULOU und eNOTE deployen.** Keine Migration nötig (Azure-DBs bleiben, wie sie sind).
+- Commits c0ce632, 88a83da, f192b93, cd3c105 + STAND c8a737b – gepusht, **`master` übernommen** (Fast-Forward auf c8a737b, mit OK
+  « Sado hat noch nicht angefangen … OK »). **Beim Nutzer: SKOULOU und eNOTE deployen** (Home unverändert). Keine Migration nötig.
 - **SKOULOU (1) Anmeldeperiode anteilig** (c0ce632): Periode, in der sich die Schule anmeldet, zählt erst ab dem 1. des Anmeldemonats
   (`PlattformAnteil.AbrechnungsBeginn`; Beispiel 1er trimestre 01.09.–31.12., Anmeldung 21.11. → 2 statt 4 Monate). Rechnung, Vorschau
   « Facturer maintenant », PDF, Journal, `/admin/tarifs`, Formation zeigen es. Perioden, die vor der Anmeldung endeten: nie berechnet (bleibt).
