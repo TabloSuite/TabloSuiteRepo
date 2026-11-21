@@ -20,7 +20,9 @@ public partial class Login
     {
         errorMessage = Error switch
         {
-            "invalid-credentials" => "Pseudonyme ou mot de passe incorrect, ou compte bloqué.",
+            // Klicktest 20.11.2026: nach 5 Fehlversuchen sperrt Identity 5 Minuten (Standard) – vorher kein Hinweis, dass man nur
+            // warten muss. Gleicher Text für alle (verrät nicht, ob das Pseudonyme existiert oder gesperrt ist).
+            "invalid-credentials" => "Pseudonyme ou mot de passe incorrect. Après 5 essais erronés, la connexion est bloquée 5 minutes : patientez puis réessayez.",
             "employe-sans-connexion" => Services.LadenZugriff.AnmeldungNurAmGeraetText,
             "limite" => Services.Sicherheit.Schutzgrenzen.MeldungLimite,
             _ => null

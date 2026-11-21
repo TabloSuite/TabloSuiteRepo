@@ -10,7 +10,13 @@
 
 <Reiter Beschriftung="Frais de scolarité" Eintraege="reiter" />
 
-@if (JahrId is not { } jahr)
+@if (!DarfFinanzen)
+{
+    @* Klicktest 20.11.2026: Koordinator ohne Finanzrecht sah per Adresse « Aucun frais » – als gäbe es keine Frais. *@
+    <Leerzustand Icon="lock" Titel="Accès réservé"
+                 Text="Les finances de l'établissement sont réservées à la direction et aux coordinateurs qui ont un droit sur les finances. Demandez ce droit au directeur." />
+}
+else if (JahrId is not { } jahr)
 {
     <Leerzustand Icon="calendar" Titel="Aucune année scolaire" Text="Créez d'abord une année scolaire dans « Année scolaire »." />
 }
@@ -29,6 +35,10 @@ else
 }
 
 @code {
+    /// <summary>Direktor immer; Koordinator mit irgendeinem Finanzrecht (wie das Menü « Finances »).</summary>
+    private bool DarfFinanzen => Kontext.HatRecht(KoordinatorRechte.FinanzenEinsehen) || Kontext.HatRecht(KoordinatorRechte.ZahlungenErfassen)
+                                 || Kontext.HatRecht(KoordinatorRechte.BuchhaltungErfassen) || Kontext.HatRecht(KoordinatorRechte.RechnungSkoulou);
+
     private static readonly IReadOnlyList<Reiter.Eintrag> reiter =
     [
         new("/finances/frais", "Frais et tranches", "tag"),
