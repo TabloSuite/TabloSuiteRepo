@@ -49,6 +49,64 @@ public class PlattformRechnungTests
         Assert.Contains(liste, p => p.PeriodeId == w.Org.P2 && !p.VorAnmeldung);
     }
 
+    /// <summary>
+    /// Nutzer 21.11.2026: meldet sich die Schule mitten in einer Periode an, wird diese Periode erst ab dem Anmeldemonat
+    /// berechnet – automatische Rechnung, Vorschau « Facturer maintenant », Rechnungsdetail/PDF und Journal stimmen überein.
+    /// </summary>
+    [Fact]
+    public async Task Periode_der_Anmeldung_wird_erst_ab_dem_Anmeldemonat_berechnet()
+    {
+        // P1 01.09.–18.12. (sonst 4 Monate), Anmeldung 21.11. → ab 01.11. = 01.11.–18.12. (48 Tage) = 2 Monate × 1.250; P2 voll 3 Monate.
+        var w = await FinanzWelt.ErstelleAsync();
+        await w.MitDbAsync(async db =>
+        {
+            (await db.Schulen.SingleAsync(s => s.Id == w.Org.SchuleA)).ErstelltAmUtc = new DateTime(2026, 11, 21, 9, 30, 0, DateTimeKind.Utc);
+            return await db.SaveChangesAsync();
+        });
+
+        w.Heute(NachP1);
+        var vorschau = await w.Rechnungen.AbrechenbareAsync(w.Org.Admin, w.Org.SchuleA);
+        var v1 = vorschau.Single(p => p.PeriodeId == w.Org.P1);
+        Assert.Equal((2, (DateOnly?)new DateOnly(2026, 11, 1), 2_500L, false), (v1.Monate, v1.Ab, v1.ProSchueler, v1.VorAnmeldung));
+        var v2 = vorschau.Single(p => p.PeriodeId == w.Org.P2);
+        Assert.Equal((3, (DateOnly?)new DateOnly(2027, 1, 4), 3_750L), (v2.Monate, v2.Ab, v2.ProSchueler));
+
+        Assert.Equal(1, await w.Abrechnung.FaelligeAbrechnenAsync());
+        var r = await EinzigeAsync(w);
+        Assert.Equal(w.Org.P1, r.PeriodeId);
+        Assert.All(r.Positionen, p => Assert.Equal(2 * 1_250, p.Betrag));
+        Assert.Equal(r.Positionen.Count * 2_500L, r.Betrag);
+
+        var detail = await w.Rechnungen.DetailAsync(w.D, r.Id);
+        Assert.Equal((2_500L, 2, 1_250L), (detail.ProSchueler, detail.Monate, detail.Monatspreis));
+        Assert.Equal("(2 mois × 1.250 FCFA)", detail.Aufschluesselung);
+        Assert.Contains(await w.MitDbAsync(db => db.AuditEintraege.Select(a => a.Text).ToListAsync()),
+            t => t.Contains("(2 mois × 1.250 FCFA, à partir du 01/11/2026 – mois d'inscription de l'établissement)"));
+        Assert.Equal("%PDF"u8.ToArray(), (await w.Rechnungen.PdfAsync(w.D, r.Id)).Inhalt[..4]);
+
+        // Das 2e trimestre danach ganz normal (3 Monate).
+        w.Heute(new(2027, 3, 27));
+        Assert.Equal(1, await w.Abrechnung.FaelligeAbrechnenAsync());
+        var p2 = await w.MitDbAsync(db => db.Plattformrechnungen.Include(x => x.Positionen).SingleAsync(x => x.PeriodeId == w.Org.P2));
+        Assert.All(p2.Positionen, p => Assert.Equal(3 * 1_250, p.Betrag));
+    }
+
+    [Fact]
+    public async Task Anmeldung_im_ersten_Monat_der_Periode_berechnet_die_ganze_Periode()
+    {
+        // Anmeldung 15.09. (P1 beginnt 01.09.) → keine Kürzung: 4 Monate wie bisher.
+        var w = await FinanzWelt.ErstelleAsync();
+        await w.MitDbAsync(async db =>
+        {
+            (await db.Schulen.SingleAsync(s => s.Id == w.Org.SchuleA)).ErstelltAmUtc = new DateTime(2026, 9, 15, 0, 0, 0, DateTimeKind.Utc);
+            return await db.SaveChangesAsync();
+        });
+        w.Heute(NachP1);
+        Assert.Equal(1, await w.Abrechnung.FaelligeAbrechnenAsync());
+        Assert.All((await EinzigeAsync(w)).Positionen, p => Assert.Equal(4 * 1_250, p.Betrag));
+        Assert.DoesNotContain(await w.MitDbAsync(db => db.AuditEintraege.Select(a => a.Text).ToListAsync()), t => t.Contains("mois d'inscription"));
+    }
+
     [Fact]
     public async Task Anteil_ist_Monatspreis_mal_Monate_der_Periode()
     {

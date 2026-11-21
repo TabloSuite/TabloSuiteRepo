@@ -29,6 +29,19 @@ public static class PlattformAnteil
         if (monatspreis < 0) throw new ArgumentOutOfRangeException(nameof(monatspreis));
         return monatspreis * Monate(beginn, ende);
     }
+
+    /// <summary>
+    /// Erster berechneter Tag einer Periode (Nutzer 21.11.2026, « nur ab Anmeldung »): meldet sich die Schule während der
+    /// Periode bei SKOULOU an, zählt die Periode erst ab dem 1. des Anmeldemonats – nie vor dem Periodenbeginn. Beispiel:
+    /// 1er trimestre 01.09.–31.12., Anmeldung 21.11. → ab 01.11. = 2 Monate statt 4. Anmeldung vor der Periode → ganze Periode;
+    /// endete die Periode vor der Anmeldung, wird sie gar nicht berechnet (PlattformAbrechnung.VorAnmeldung).
+    /// </summary>
+    public static DateOnly AbrechnungsBeginn(DateOnly beginn, DateOnly ende, DateOnly anmeldung)
+    {
+        if (anmeldung <= beginn || anmeldung > ende) return beginn;
+        var monatsErster = new DateOnly(anmeldung.Year, anmeldung.Month, 1);
+        return monatsErster > beginn ? monatsErster : beginn;
+    }
 }
 
 /// <summary>

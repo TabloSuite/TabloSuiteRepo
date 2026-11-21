@@ -50,7 +50,7 @@ public sealed class PlattformAbrechnung(
             }
             var einstellung = await db.PlattformEinstellungen.AsNoTracking().FirstOrDefaultAsync(ct) ?? new PlattformEinstellung();
 
-            var (anteil, monate, monatspreis) = Anteil(jahr, p, schule, einstellung);
+            var (anteil, monate, monatspreis, ab) = Anteil(jahr, p, schule, einstellung);
             var kandidaten = await KandidatenAsync(db, p, mitStornierten: !manuell, ct);
             if (kandidaten.Count == 0) return null;
 
@@ -67,7 +67,7 @@ public sealed class PlattformAbrechnung(
             foreach (var k in kandidaten)
                 db.Rechnungspositionen.Add(new Rechnungsposition { RechnungId = rechnung.Id, PeriodeId = p.Id, SchuelerId = k.SchuelerId, EinschreibungId = k.EinschreibungId, Betrag = anteil });
             audit.Erfasse(db, akteurId, schule.Id, FinanzAudit.RechnungErstellt, nameof(Plattformrechnung), rechnung.Id,
-                $"Facture {rechnung.Nummer}{(haupt is null ? "" : " (complément)")} : {p.Titel} {jahr.Bezeichnung}, {kandidaten.Count} élève(s) × {SkoulouKultur.Fcfa(anteil)} ({monate} mois × {SkoulouKultur.Fcfa(monatspreis)}) = {SkoulouKultur.Fcfa(rechnung.Betrag)}{(manuell ? " – facturée par l'administrateur" : "")}.");
+                $"Facture {rechnung.Nummer}{(haupt is null ? "" : " (complément)")} : {p.Titel} {jahr.Bezeichnung}, {kandidaten.Count} élève(s) × {SkoulouKultur.Fcfa(anteil)} ({monate} mois × {SkoulouKultur.Fcfa(monatspreis)}{(ab > p.Beginn ? $", à partir du {SkoulouKultur.Datum(ab)} – mois d'inscription de l'établissement" : "")}) = {SkoulouKultur.Fcfa(rechnung.Betrag)}{(manuell ? " – facturée par l'administrateur" : "")}.");
             await db.SaveChangesAsync(ct);
             return new NeueRechnung(rechnung.Id, rechnung.Nummer, schule.Name, rechnung.SchuleId, $"{p.Titel} {jahr.Bezeichnung}", rechnung.Anzahl, rechnung.Betrag, rechnung.Faellig);
         }, ct);
@@ -84,16 +84,21 @@ public sealed class PlattformAbrechnung(
     /// Probezeit). Seit 21.11.2026 beginnen Einschreibungen standardmäßig am Beginn des Schuljahres – eine Schule, die
     /// mitten im Jahr startet, zahlt dadurch nicht rückwirkend für Perioden, in denen sie SKOULOU noch nicht nutzte.
     /// </summary>
-    internal static bool VorAnmeldung(Periode p, Schule schule) => p.Ende < DateOnly.FromDateTime(schule.ErstelltAmUtc);
+    internal static bool VorAnmeldung(Periode p, Schule schule) => p.Ende < Anmeldung(schule);
+
+    /// <summary>Tag der Anmeldung der Schule bei SKOULOU.</summary>
+    internal static DateOnly Anmeldung(Schule schule) => DateOnly.FromDateTime(schule.ErstelltAmUtc);
 
     /// <summary>
     /// Anteil je Schüler für die Periode (Regel 7, seit 19.11.2026): eingefrorener Monatspreis × Monate der Periode,
-    /// sowie die Monate und der Monatspreis (für Audit, Rechnung und PDF).
+    /// sowie die Monate, der Monatspreis und der erste berechnete Tag (für Audit, Rechnung, PDF und Dialog). Seit 21.11.2026
+    /// zählt die Periode der Anmeldung erst ab dem Anmeldemonat (<see cref="PlattformAnteil.AbrechnungsBeginn"/>).
     /// </summary>
-    internal static (long Anteil, int Monate, long Monatspreis) Anteil(Schuljahr jahr, Periode p, Schule schule, PlattformEinstellung einstellung)
+    internal static (long Anteil, int Monate, long Monatspreis, DateOnly Ab) Anteil(Schuljahr jahr, Periode p, Schule schule, PlattformEinstellung einstellung)
     {
         var preis = jahr.PlattformMonatspreis ?? schule.MonatspreisOverride ?? einstellung.MonatspreisProSchueler;
-        return (PlattformAnteil.Anteil(preis, p.Beginn, p.Ende), PlattformAnteil.Monate(p.Beginn, p.Ende), preis);
+        var ab = PlattformAnteil.AbrechnungsBeginn(p.Beginn, p.Ende, Anmeldung(schule));
+        return (PlattformAnteil.Anteil(preis, ab, p.Ende), PlattformAnteil.Monate(ab, p.Ende), preis, ab);
     }
 
     /// <summary>Abrechnungspflichtige, noch nicht abgerechnete Schüler der Periode.</summary>

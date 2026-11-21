@@ -19,7 +19,7 @@
                     {
                         <li>
                             <span><strong>@p.Titel @p.Schuljahr</strong> <small class="sk-leise">@Geld.Datum(p.Beginn) – @Geld.Datum(p.Ende)@(p.Beendet ? " · terminée" : p.Begonnen(Heute) ? " · en cours" : " · à venir")</small><br />
-                                <small>@(p.Essai ? "Période d'essai : pas de facture SKOULOU." : p.VorAnmeldung ? "Terminée avant l'inscription de l'établissement : pas de facture SKOULOU." : p.Abrechenbar == 0 ? "Tous les élèves sont déjà facturés." : $"{p.Abrechenbar} élève(s) à facturer × {Geld.F(p.ProSchueler)} ({Skoulou.Core.Finanzen.PlattformAnteil.Monate(p.Beginn, p.Ende)} mois) = {Geld.F(p.Abrechenbar * p.ProSchueler)}")</small></span>
+                                <small>@(p.Essai ? "Période d'essai : pas de facture SKOULOU." : p.VorAnmeldung ? "Terminée avant l'inscription de l'établissement : pas de facture SKOULOU." : p.Abrechenbar == 0 ? "Tous les élèves sont déjà facturés." : $"{p.Abrechenbar} élève(s) à facturer × {Geld.F(p.ProSchueler)} ({p.Monate} mois{(p.Ab is { } ab && ab > p.Beginn ? $", à partir du {Geld.Datum(ab)}, mois d'inscription de l'établissement" : "")}) = {Geld.F(p.Abrechenbar * p.ProSchueler)}")</small></span>
                             <AsyncKnopf Text="Facturer" Icon="receipt" CssClass="sk-btn-primaer sk-btn-klein" Disabled="@(p.Essai || p.VorAnmeldung || p.Abrechenbar == 0 || !p.Begonnen(Heute))" OnClick="() => AbrechnenAsync(p)" />
                         </li>
                     }

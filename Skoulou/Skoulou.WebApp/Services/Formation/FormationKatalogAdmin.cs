@@ -119,7 +119,7 @@ public static partial class FormationKatalog
                     "Chaque changement est inscrit dans l'audit."),
                 L("Les factures",
                     "Une facture par école et par période terminée, créée automatiquement chaque nuit (écoles actives ou suspendues).",
-                    "Montant par élève = prix mensuel × mois de la période (jours ÷ 30,44, arrondi, au moins 1) : trimestre de 3 mois à 500 F = 1 500 F ; les vacances entre les périodes ne sont pas facturées.",
+                    "Montant par élève = prix mensuel × mois de la période (jours ÷ 30,44, arrondi, au moins 1) : trimestre de 3 mois à 500 F = 1 500 F ; les vacances entre les périodes ne sont pas facturées. Une école qui s'inscrit en cours d'année ne paie pas les périodes déjà terminées, et la période de son inscription seulement à partir du mois d'inscription (ex. inscription le 21 novembre, trimestre de septembre à décembre : 2 mois au lieu de 4).",
                     "Chaque élève inscrit est facturé une seule fois par période ; un élève inscrit plus tard donne un « Complément ».",
                     "« Facturer maintenant » : une période déjà commencée, sans attendre la nuit."),
                 S("Le paiement",

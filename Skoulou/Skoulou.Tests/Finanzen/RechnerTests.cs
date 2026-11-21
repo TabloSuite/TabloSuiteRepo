@@ -44,6 +44,32 @@ public class PlattformAnteilTests
         Assert.Equal(4_500, trimester.Sum(t => PlattformAnteil.Anteil(500, t.Item1, t.Item2)));
     }
 
+    /// <summary>Nutzer 21.11.2026: in der Periode der Anmeldung erst ab dem 1. des Anmeldemonats, nie vor dem Periodenbeginn.</summary>
+    [Theory]
+    [InlineData("2026-11-21", "2026-11-01")] // Beispiel des Nutzers: Anmeldung mitten im 1er trimestre → ab November
+    [InlineData("2026-11-01", "2026-11-01")] // Anmeldung am Monatsersten
+    [InlineData("2026-12-31", "2026-12-01")] // Anmeldung am letzten Tag der Periode → ab Dezember
+    [InlineData("2026-09-15", "2026-09-01")] // Anmeldung im ersten Monat der Periode → ganze Periode
+    [InlineData("2026-09-01", "2026-09-01")] // Anmeldung am ersten Tag → ganze Periode
+    [InlineData("2026-08-01", "2026-09-01")] // Anmeldung vor der Periode → ganze Periode
+    [InlineData("2027-01-10", "2026-09-01")] // Anmeldung nach der Periode → unverändert (wird gar nicht berechnet: VorAnmeldung)
+    public void Abrechnung_beginnt_in_der_Periode_der_Anmeldung_mit_dem_Anmeldemonat(string anmeldung, string erwartet)
+    {
+        Assert.Equal(DateOnly.Parse(erwartet), PlattformAnteil.AbrechnungsBeginn(new(2026, 9, 1), new(2026, 12, 31), DateOnly.Parse(anmeldung)));
+    }
+
+    [Fact]
+    public void Periode_beginnt_mitten_im_Monat_der_Anmeldung_zaehlt_ab_Periodenbeginn()
+    {
+        // Periode 15.10.–20.12., Anmeldung 20.10. → nicht vor dem Periodenbeginn (15.10.), also ganze Periode.
+        Assert.Equal(new DateOnly(2026, 10, 15), PlattformAnteil.AbrechnungsBeginn(new(2026, 10, 15), new(2026, 12, 20), new(2026, 10, 20)));
+        // Beispiel des Nutzers in Francs: 100 Schüler, 500 F/Monat, 1er trimestre 01.09.–31.12., Anmeldung 21.11. → 2 statt 4 Monate.
+        var ab = PlattformAnteil.AbrechnungsBeginn(new(2026, 9, 1), new(2026, 12, 31), new(2026, 11, 21));
+        Assert.Equal(2, PlattformAnteil.Monate(ab, new(2026, 12, 31)));
+        Assert.Equal(100_000, 100 * PlattformAnteil.Anteil(500, ab, new(2026, 12, 31)));
+        Assert.Equal(200_000, 100 * PlattformAnteil.Anteil(500, new(2026, 9, 1), new(2026, 12, 31)));
+    }
+
     [Fact]
     public void Ungueltige_Angaben_werden_abgelehnt()
     {

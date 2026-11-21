@@ -77,6 +77,7 @@ else if (standard is not null)
         {
             var p = preis is > 0 ? preis.Value : 500;
             return $"Facturé à la fin de chaque période : prix mensuel × nombre de mois de la période (ex. trimestre de 3 mois : {Geld.F(3 * p)} ; environ {Geld.F(Skoulou.Core.Finanzen.PlattformAnteil.MonateJeSchuljahr * p)} pour une année scolaire complète). "
+                   + "Une école qui s'inscrit en cours d'année ne paie rien pour les périodes déjà terminées, et la période de son inscription à partir du mois d'inscription seulement. "
                    + "C'est le prix standard : il peut être adapté de façon juste à chaque école dans « Tarifs par établissement ».";
         }
     }

@@ -164,6 +164,13 @@ public class EinschreibungTests
         Assert.Equal(1, await w.MitDbAsync(db => db.AuditEintraege.CountAsync(a => a.Aktion == OrgAudit.EinschreibungsBeginnKorrigiert)));
         await Assert.ThrowsAsync<FachFehler>(() => w.D.Einschreibung.BeginnKorrigierenAsync(w.Direktor, e.Id, new(2026, 8, 31)));
 
+        // Nutzer 21.11.2026 (« 2 gut »): wie alle Einschreibungsaktionen darf auch der Koordinator korrigieren
+        // (KontenVerwalten hat in der Rechte-Matrix jeder Koordinator, kein Zusatzrecht); Schüler und Eltern nie.
+        await w.D.Einschreibung.BeginnKorrigierenAsync(w.Koordinator, e.Id, new(2026, 9, 2));
+        await w.D.Einschreibung.BeginnKorrigierenAsync(w.Koordinator, e.Id, new(2026, 9, 1));
+        Assert.Equal(3, await w.MitDbAsync(db => db.AuditEintraege.CountAsync(a => a.Aktion == OrgAudit.EinschreibungsBeginnKorrigiert)));
+        await Assert.ThrowsAnyAsync<Exception>(() => w.D.Einschreibung.BeginnKorrigierenAsync(w.SchuelerZiel, e.Id, new(2026, 9, 2)));
+
         // Später setzen: nicht hinter Noten, die schon vor dem neuen Datum liegen.
         await w.MitDbAsync(async db =>
         {

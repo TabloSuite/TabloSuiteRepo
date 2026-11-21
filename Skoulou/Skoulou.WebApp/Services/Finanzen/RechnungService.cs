@@ -33,7 +33,7 @@ public sealed record RechnungDetail(RechnungZeile Kopf, long ProSchueler, IReadO
 public sealed record RechnungsZaehler(int Alle, int Ouvertes, int Declarees, int Contestees, int Payees, int Annulees, int EnRetard, long ResteAPayer);
 public sealed record MeldungEingabe(long? Betrag, DateOnly? Datum, string? Referenz);
 public sealed record AbrechenbarePeriode(Guid PeriodeId, string Titel, string Schuljahr, DateOnly Beginn, DateOnly Ende, bool Beendet, int Abrechenbar, long ProSchueler,
-    bool Essai = false, bool VorAnmeldung = false)
+    bool Essai = false, bool VorAnmeldung = false, int Monate = 0, DateOnly? Ab = null)
 {
     public bool Begonnen(DateOnly heute) => Beginn <= heute;
 }
@@ -170,8 +170,10 @@ public sealed class RechnungService(
         // « 3 mois × 500 F » nur, wenn der Betrag zum eingefrorenen Monatspreis passt (ältere Rechnungen nach Jahrespreis ohne Aufschlüsselung).
         var basis = await (from p in db.Perioden where p.Id == r.PeriodeId
                            join j in db.Schuljahre on p.SchuljahrId equals j.Id
-                           select new { p.Beginn, p.Ende, j.PlattformMonatspreis }).FirstAsync(ct);
-        var monate = PlattformAnteil.Monate(basis.Beginn, basis.Ende);
+                           join s in db.Schulen on p.SchuleId equals s.Id
+                           select new { p.Beginn, p.Ende, j.PlattformMonatspreis, s.ErstelltAmUtc }).FirstAsync(ct);
+        // Wie bei der Abrechnung: in der Periode der Anmeldung erst ab dem Anmeldemonat (21.11.2026).
+        var monate = PlattformAnteil.Monate(PlattformAnteil.AbrechnungsBeginn(basis.Beginn, basis.Ende, DateOnly.FromDateTime(basis.ErstelltAmUtc)), basis.Ende);
         var monatspreis = basis.PlattformMonatspreis is { } preis && preis * monate == proSchueler ? preis : (long?)null;
         return new RechnungDetail(kopf, proSchueler, positionen, meldungen, anteile, bestaetigt, r.BestaetigtAmUtc, ergaenzt,
             SchuelerVerborgen: ohneSchueler, Monate: monate, Monatspreis: monatspreis);
@@ -353,10 +355,10 @@ public sealed class RechnungService(
         foreach (var jahr in jahre)
             foreach (var p in await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr).OrderBy(p => p.Beginn).ToListAsync(ct))
             {
-                var (anteil, _, _) = PlattformAbrechnung.Anteil(jahr, p, schule, einstellung);
+                var (anteil, monate, _, ab) = PlattformAbrechnung.Anteil(jahr, p, schule, einstellung);
                 var kandidaten = await PlattformAbrechnung.KandidatenAsync(db, p, mitStornierten: false, ct);
                 liste.Add(new AbrechenbarePeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende, p.Ende < heute, kandidaten.Count, anteil, probe.Contains(p.Id),
-                    PlattformAbrechnung.VorAnmeldung(p, schule)));
+                    PlattformAbrechnung.VorAnmeldung(p, schule), monate, ab));
             }
         return liste;
     }
