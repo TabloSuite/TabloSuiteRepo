@@ -7,6 +7,16 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachmittags
 
+**>>> NEU (21.11. später) – Startseiten animiert wie eNOTE (Nutzerwunsch mit Bild der eNOTE-Startseite):**
+- SKOULOU (1bbbbb1): Einstieg = Direktions-Karte + Handy einer Schülerin (Devoir, Date limite, Frage, Leçon en vidéo) + « Corrigé
+  automatiquement »; spielt erst wenn sichtbar (Handy: beim Hinscrollen) und nur einmal – Blazor ersetzt beim Verbinden das
+  vorgerenderte HTML, Skript im Kopf von App.razor setzt --lp-schon (negative Verzögerung). Texte Funktionen/Élèves angepasst.
+- TabloSuiteHome (2d64b41): Einstieg animiert (nur CSS), App-Karten beim Scrollen (animation-timeline); SKOULOU-Punkte neu:
+  Cours écrits et en vidéo, Devoirs/Examens am Handy (corrigés automatiquement), Parents am Telefon.
+- Nur im Branch gepusht. **Offen: master (nur mit OK), dann Deploy SKOULOU + TabloSuiteHome** (eNOTE unverändert).
+- Gefunden (eNOTE live, nur gelesen): bei langsamem Netz bleibt das Tablet-Bild unsichtbar, bis blazor.web.js + enote.js geladen
+  sind (Test: ~3,5 s), dann kurzes Doppel-Einblenden – Vorschlag: gleiche Lösung wie SKOULOU (Skript im Kopf). Nutzer fragen.
+
 **>>> JETZT (21.11. nachmittags) – Nutzer: « 1 und 2 umsetzen. Aber Test gründlich machen am Ende. Wir pushen alles am Ende »:**
 - Commits c0ce632, 88a83da, f192b93, cd3c105 + STAND c8a737b – gepusht, **`master` übernommen** (Fast-Forward auf c8a737b, mit OK
   « Sado hat noch nicht angefangen … OK »). **Deploy erledigt** (eNOTE 13:12, SKOULOU 13:15 UTC, beide erfolgreich); danach lesend geprüft:
