@@ -258,8 +258,11 @@ public partial class Caisse(
         await LadeWartendeAsync();
     }
 
-    /// <summary>Übernommenes Ticket an die Kasse legen (Preise wie im Katalog, Remise erneut geprüft).</summary>
-    private async Task WendeUebernahmeAnAsync(TicketParkService.Uebernahme u)
+    /// <summary>
+    /// Übernommenes Ticket an die Kasse legen (Preise wie im Katalog, Remise erneut geprüft). <paramref name="ausDiesemGeraet"/>:
+    /// im Browser gemerktes Ticket nach F5 (<see cref="TicketMerker"/>).
+    /// </summary>
+    private async Task WendeUebernahmeAnAsync(TicketParkService.Uebernahme u, bool ausDiesemGeraet = false, bool preiseGeaendert = false)
     {
         SetzeTicketZurueck();
         letzterVerkauf = null;
@@ -286,6 +289,13 @@ public partial class Caisse(
         }
 
         _ = SendeTicketAnDisplayAsync();
+        if (ausDiesemGeraet)
+        {
+            toast.ZeigeInfo("Ticket en cours repris sur cet appareil."
+                + (fehlend > 0 ? $" {fehlend} prestation(s) ne sont plus en vente et ont été retirées." : "")
+                + (preiseGeaendert ? " Prix mis à jour selon le catalogue." : ""));
+            return;
+        }
         toast.ZeigeInfo(fehlend > 0
             ? $"Ticket repris. {fehlend} prestation(s) ne sont plus en vente et ont été retirées."
             : u.Notiz is { } n ? $"Ticket repris · « {n} »" : "Ticket repris.");
@@ -652,7 +662,8 @@ public partial class Caisse(
 
     // ================= Lebenszyklus =================
 
-    protected override async Task OnInitializedAsync()
+    /// <summary>Kasse laden (aufgerufen aus OnInitializedAsync in Caisse.TicketMerker.cs).</summary>
+    private async Task InitialisiereKasseAsync()
     {
         anzeigeState.OnChange += HandleAnzeigeStateChanged;
         anwesenheitsSignal.Geaendert += AnwesenheitGeaendert;
@@ -909,6 +920,8 @@ public partial class Caisse(
             finally { geraetPruefungLaeuft = false; }
             StateHasChanged();
         }
+        // F5: angefangenes Ticket wiederherstellen bzw. merken (erst wenn die Kasse an diesem Gerät läuft).
+        await TicketMerkerNachRenderAsync();
         if (!firstRender) return;
         await LadeGeraetSchluesselAsync();
         scannerRef = DotNetObjectReference.Create(this);
