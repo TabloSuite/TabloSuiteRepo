@@ -6,17 +6,17 @@
 <section class="ts-held">
     <div class="ts-breite ts-held-innen">
         <div class="ts-held-text">
-            <p class="ts-kicker"><Zeichen Name="ort" Groesse="16" /> Conçu à Lomé, Togo</p>
-            <h1>Des applications simples pour gérer <em>votre activité</em> au quotidien.</h1>
-            <p class="ts-held-lead">
+            <p class="ts-kicker ts-ein"><Zeichen Name="ort" Groesse="16" /> Conçu à Lomé, Togo</p>
+            <h1 class="ts-ein" style="--ts-verz: 90ms">Des applications simples pour gérer <em>votre activité</em> au quotidien.</h1>
+            <p class="ts-held-lead ts-ein" style="--ts-verz: 180ms">
                 TabloSuite conçoit des logiciels en ligne pour les commerces, les salons, les cabinets et les écoles :
                 faciles à prendre en main, en français, sur téléphone, tablette et ordinateur.
             </p>
-            <div class="ts-held-wege">
+            <div class="ts-held-wege ts-ein" style="--ts-verz: 270ms">
                 <a class="ts-btn ts-btn-hell" href="#applications">Découvrir nos applications <Zeichen Name="pfeil" Groesse="18" /></a>
                 <a class="ts-btn ts-btn-glas" href="#contact">Nous contacter</a>
             </div>
-            <ul class="ts-held-chips" aria-label="Points forts">
+            <ul class="ts-held-chips ts-ein" style="--ts-verz: 360ms" aria-label="Points forts">
                 <li><Zeichen Name="geld" Groesse="16" /> Espèces et Mobile Money</li>
                 <li><Zeichen Name="geraete" Groesse="16" /> Rien à installer</li>
                 <li><Zeichen Name="schild" Groesse="16" /> Données protégées</li>
@@ -25,9 +25,10 @@
         <div class="ts-held-bilder" aria-hidden="true">
             @foreach (var (a, i) in Verfuegbar.Take(2).Select((a, i) => (a, i)))
             {
-                <div class="ts-held-bild ts-held-bild-@i">
+                @* Einstieg wie bei eNOTE/SKOULOU (21.11.2026): erstes Bild von rechts, zweites von unten, dann die App-Namen. *@
+                <div class="ts-held-bild ts-held-bild-@i ts-ein @(i == 0 ? "ts-von-rechts" : "ts-von-unten")" style="--ts-verz: @(200 + i * 300)ms">
                     <img src="@Assets[a.Bild]" alt="" width="1280" height="800" />
-                    <span class="ts-held-app"><img src="@Assets[a.Logo]" alt="" width="28" height="28" />@a.Name</span>
+                    <span class="ts-held-app ts-ein ts-aufploppen" style="--ts-verz: @(900 + i * 250)ms"><img src="@Assets[a.Logo]" alt="" width="28" height="28" />@a.Name</span>
                 </div>
             }
         </div>
