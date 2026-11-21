@@ -1,11 +1,27 @@
-# TabloSuite – Arbeitsstand 20.11.2026 mittags (KI läuft mit Workspace-Header – Einstellung + Deploy beim Nutzer)
+# TabloSuite – Arbeitsstand 21.11.2026 nachts (alles fertig und getestet – master nach OK, dann Deploy eNOTE → SKOULOU → Home)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 20.11.2026 mittags
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachts
+
+**>>> JETZT ZUERST (Reihenfolge):**
+1. **`master` übernehmen – nur nach ausdrücklichem OK des Nutzers** (CLAUDE.md). Stand: `Etse.TabloSuite.Muster` ist auf GitHub
+   (bis 368cdfb + dieser STAND), `master` steht noch auf 1086441. Vorgehen: `git fetch`, `master` per Fast-Forward auf
+   `Etse.TabloSuite.Muster`, pushen, zurück in `Etse.TabloSuite.Muster`.
+2. **Nutzer deployt (begonnen 21.11. nachts): eNOTE, dann SKOULOU, dann TabloSuiteHome** (Home zeigt den eNOTE-Preis erst, wenn eNOTE `/tarifs/public` live hat).
+   **Keine Migration** in Azure nötig.
+3. **Nacht-Test Chris + Sado** auf Azure; danach Fehlerprotokolle lesen (`%TEMP%\enote-lesen\lesen.ps1`, eNOTE `ExceptionLogs`,
+   SKOULOU `FehlerProtokolle`) und Befunde abarbeiten.
+4. **Danach (Empfehlungen, mit dem Nutzer):** siehe Block « 21.11. nachts » – Koeffizient-Korrektur über Rectification, Rectification
+   nur geänderte Bulletins, Registrierung langsames Netz, Schulstart mitten im Jahr, Mailversand über Warteschlange, Gerät sofort
+   aussperren, F5 in der Kasse; KI später « nach unten » + Schalter im Admin-Bereich.
+5. **Aufräumen:** Test-DBs `ENOTE_E2E_2011`, `SKOULOU_E2E_2011` und Ordner `%TEMP%\e2e-2011` nach dem Deploy in den Papierkorb bzw. löschen
+   (Berichte vorher bei Bedarf sichern); Prüfskript-Ordner `%TEMP%\ki-pruefen` ist leer.
+
+Team seit 20.11.: Chris arbeitet nur in `Etse.TabloSuite.Muster`, Sado in seinem Branch; Regeln für alle in `CLAUDE.md`.
 
 **>>> 20.11. NACHMITTAGS – Team-Einrichtung (erledigt, alles in master):**
 - Partner **Sado** (`sado.tablosuite@outlook.de`): Azure **Owner** (Gast, angenommen); GitHub-Organisation **TabloSuite** angelegt, Repo dorthin
@@ -56,7 +72,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   Élève, Parent) – vorher mit dem Nutzer festlegen. Statt `Ki__AlleRollen` ein **Schalter im Admin-Bereich** (Nutzerwunsch,
   braucht Migration: SKOULOU Spalte in `PlattformEinstellung`, eNOTE neue Einstellung/Tabelle).
 
-**>>> ZUERST – beim Nutzer offen (Reihenfolge):**
+**>>> (20.11. mittags – ERLEDIGT: Deploy 10:04/10:06, KI vom Nutzer getestet « Es läuft », iPhone « War OK »; nur noch Info Gerätekauf):**
 1. **KI-Hilfe:** ~~`Ki__WorkspaceId` setzen~~ erledigt (Nutzer 20.11., in beiden Apps geprüft: mit Schlüssel + Workspace HTTP 200).
    Offen: **beide Apps deployen** (Code bf3caf5 schickt dann den Header
    `anthropic-workspace-id`). Danach prüfen: `%TEMP%\ki-pruefen\ki-pruefen.ps1 -App enote|skoulou` (liest `Ki__WorkspaceId` mit) und
@@ -90,7 +106,7 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   Aufnahme-App gestoppt; lokale DB zurückgesetzt (Prüfzeile: Code/Bestand wie vorher, keine Kasse offen).
 - Tests: eNOTE 544, SKOULOU 707 grün. Keine Migration.
 
-**>>> MORGEN (20.11.) ZUERST – Reihenfolge:**
+**>>> (ERLEDIGT 20.11.) MORGEN (20.11.) ZUERST – Reihenfolge:**
 1. **KI-Hilfe « Poser une question »**: Nutzer nach seinem Test als Admin fragen (beide Apps, Aide › « Poser une question »; nur Admin +
    Responsable/PO sichtbar, `Ki__AlleRollen=false`). Testfragen aus dem Chat: SKOULOU Wahlfach anlegen/Schüler wählen, Note nach der
    Veröffentlichung korrigieren, Preis für 300 Schüler (500 F/Monat, ≈ 5.000 F/an); eNOTE Mobile Money kassieren, Kasse auf anderem Gerät
