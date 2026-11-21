@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 21.11.2026 nachts (alles fertig und getestet – master nach OK, dann Deploy eNOTE → SKOULOU → Home)
+# TabloSuite – Arbeitsstand 21.11.2026 nachts (alles deployt und live geprüft, master übernommen)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -7,19 +7,32 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachts
 
-**>>> JETZT ZUERST (Reihenfolge):**
-1. **`master` übernehmen – nur nach ausdrücklichem OK des Nutzers** (CLAUDE.md). Stand: `Etse.TabloSuite.Muster` ist auf GitHub
-   (bis 368cdfb + dieser STAND), `master` steht noch auf 1086441. Vorgehen: `git fetch`, `master` per Fast-Forward auf
-   `Etse.TabloSuite.Muster`, pushen, zurück in `Etse.TabloSuite.Muster`.
-2. **Nutzer deployt (begonnen 21.11. nachts): eNOTE, dann SKOULOU, dann TabloSuiteHome** (Home zeigt den eNOTE-Preis erst, wenn eNOTE `/tarifs/public` live hat).
-   **Keine Migration** in Azure nötig.
-3. **Nacht-Test Chris + Sado** auf Azure; danach Fehlerprotokolle lesen (`%TEMP%\enote-lesen\lesen.ps1`, eNOTE `ExceptionLogs`,
-   SKOULOU `FehlerProtokolle`) und Befunde abarbeiten.
-4. **Danach (Empfehlungen, mit dem Nutzer):** siehe Block « 21.11. nachts » – Koeffizient-Korrektur über Rectification, Rectification
-   nur geänderte Bulletins, Registrierung langsames Netz, Schulstart mitten im Jahr, Mailversand über Warteschlange, Gerät sofort
-   aussperren, F5 in der Kasse; KI später « nach unten » + Schalter im Admin-Bereich.
-5. **Aufräumen:** Test-DBs `ENOTE_E2E_2011`, `SKOULOU_E2E_2011` und Ordner `%TEMP%\e2e-2011` nach dem Deploy in den Papierkorb bzw. löschen
-   (Berichte vorher bei Bedarf sichern); Prüfskript-Ordner `%TEMP%\ki-pruefen` ist leer.
+**>>> STAND JETZT (21.11. nachts) – nichts Dringendes offen:**
+- **Deploy erledigt** (eNOTE, SKOULOU, TabloSuiteHome) und live geprüft: eNOTE `/tarifs/public` → 2.500 F, tablosuite.com zeigt
+  « 2.500 FCFA / établissement / mois » (eNOTE) und « Emplois du temps des classes et des enseignants » (SKOULOU). Keine Migration.
+- **`master` übernommen** (mit OK des Nutzers, Fast-Forward auf c704fe0). Danach nur noch STAND-Einträge in `Etse.TabloSuite.Muster`.
+- **Aufgeräumt:** Test-DBs `ENOTE_E2E_2011`/`SKOULOU_E2E_2011` gelöscht, `%TEMP%\e2e-2011` im Papierkorb (Berichte waren dort).
+  Noch vorhanden (nur auf Wunsch löschen): ältere Test-DBs `eNOTE_E2E`, `ENOTE_E2E_ABEND`, `ENOTEDB_SIM`, `SkoulouDB_SIM`,
+  `SKOULOUAPP_BROWSER_TEST_2026`; alte App-DBs `SKOULOUAPPDB`, `HALLOAPPDb`. `SkoulouDB_VIDEO` wird für Lernvideos gebraucht.
+- **Test-Befunde des Nutzers/Sado:** meldet der Nutzer selbst, falls nötig – dann Fehlerprotokolle lesen (`%TEMP%\enote-lesen\lesen.ps1`,
+  eNOTE `ExceptionLogs`, SKOULOU `FehlerProtokolle`).
+
+**>>> MÖGLICHE NÄCHSTE VERBESSERUNGEN (aus dem Klicktest 20.11.; nur nach Absprache, Nutzer entscheidet je Punkt):**
+1. SKOULOU: Koeffizient ist nach der ersten Veröffentlichung fürs ganze Jahr fest – ein falscher Koeffizient wäre bis Jahresende
+   nicht korrigierbar. Vorschlag: Änderung während einer « Rectification » erlauben (Bulletins werden dabei neu ausgegeben).
+2. SKOULOU: Eine « Rectification » gibt alle Bulletins der Klasse neu aus; Eltern unbeteiligter Schüler sehen « Rectifié ».
+   Vorschlag: nur Bulletins neu ausgeben, bei denen sich etwas geändert hat.
+3. SKOULOU: Registrierung bei sehr langsamem Netz – wird in den ersten Sekunden abgeschickt und der Server lehnt ab (z. B. Identifiant
+   vergeben), sind alle Eingaben weg. Vorschlag: Eingaben (ohne Passwort) im Browser merken.
+4. SKOULOU: Schule startet mitten im Jahr → alle Schüler « Arrivé(e) le … », frühere Noten grau (Zahlen richtig). Vorschlag:
+   Einschreibung dann ab Schuljahresbeginn.
+5. eNOTE: Mails (z. B. « J'ai payé ») werden im Klick verschickt – der Knopf dreht 2–8 s, bei Postmark-Ausfall bis 20 s.
+   Vorschlag: über die vorhandene Warteschlange im Hintergrund senden.
+6. eNOTE: « Déconnecter » unter « Appareils connectés » wirkt bei einem Gerät mit offener Seite erst beim nächsten Neuladen.
+   Vorschlag: regelmäßige Prüfung in der offenen Verbindung (größerer Umbau).
+7. eNOTE: Nach F5 in der Kasse ist das angefangene Ticket leer. Vorschlag: vorher warnen oder Ticket automatisch « en attente » parken.
+8. KI-Hilfe später für alle: Prinzip « nach unten » (jede Rolle kennt sich und die Rollen darunter) + Schalter im Admin-Bereich (Migration).
+Bewusst NICHT: PO öffnet keine Reçus der Läden (Regel « PO nie in Kasse/Kundendaten »).
 
 Team seit 20.11.: Chris arbeitet nur in `Etse.TabloSuite.Muster`, Sado in seinem Branch; Regeln für alle in `CLAUDE.md`.
 
