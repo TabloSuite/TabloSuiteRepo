@@ -12,7 +12,10 @@ namespace ENote.Tests.Simulation;
 /// </summary>
 public class IsolationsRuecksetzerSqlTests
 {
-    private static async Task<short> StufeNachSerializableAsync(string verbindung, bool mitRuecksetzer)
+    /// <summary>Wie die Transaktion endet: Commit, Rollback oder verworfen ohne beides (« return » mitten in der Transaktion).</summary>
+    public enum Ende { Commit, Rollback, Verworfen }
+
+    private static async Task<short> StufeNachSerializableAsync(string verbindung, bool mitRuecksetzer, Ende ende = Ende.Commit)
     {
         var b = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(verbindung);
         if (mitRuecksetzer) b.AddInterceptors(new IsolationsRuecksetzer());
@@ -21,7 +24,8 @@ public class IsolationsRuecksetzerSqlTests
         {
             await using var t = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             _ = await db.Salons.CountAsync();
-            await t.CommitAsync();
+            if (ende == Ende.Commit) await t.CommitAsync();
+            else if (ende == Ende.Rollback) await t.RollbackAsync();
         }
         await using var db2 = new ApplicationDbContext(optionen);
         return await db2.Database.SqlQueryRaw<short>("SELECT transaction_isolation_level AS Value FROM sys.dm_exec_sessions WHERE session_id = @@SPID").SingleAsync();
@@ -39,6 +43,11 @@ public class IsolationsRuecksetzerSqlTests
             var mit = new SqlConnectionStringBuilder(datenbank.Verbindung) { ApplicationName = "iso-mit", MaxPoolSize = 1 }.ConnectionString;
             Assert.Equal((short)4, await StufeNachSerializableAsync(ohne, mitRuecksetzer: false)); // Nachweis des Problems
             Assert.Equal((short)2, await StufeNachSerializableAsync(mit, mitRuecksetzer: true));   // READ COMMITTED
+            // 21.11.2026: auch nach Rollback und nach einer ohne Commit/Rollback verworfenen Transaktion (VertragsService: « nichts zu tun »).
+            Assert.Equal((short)2, await StufeNachSerializableAsync(mit, mitRuecksetzer: true, Ende.Rollback));
+            Assert.Equal((short)2, await StufeNachSerializableAsync(mit, mitRuecksetzer: true, Ende.Verworfen));
+            var ohneVerworfen = new SqlConnectionStringBuilder(datenbank.Verbindung) { ApplicationName = "iso-ohne-verworfen", MaxPoolSize = 1 }.ConnectionString;
+            Assert.Equal((short)4, await StufeNachSerializableAsync(ohneVerworfen, mitRuecksetzer: false, Ende.Verworfen)); // Nachweis
         }
         finally
         {
