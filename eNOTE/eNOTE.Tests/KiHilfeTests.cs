@@ -275,17 +275,59 @@ public class KiHilfeTests
         Assert.DoesNotContain("Journaux", po);
         Assert.DoesNotContain("Propriétaires plateforme", po);
 
-        // Rollen im Laden: Regel 3 unverändert, kein fremdes Menü und keine fremden Hinweise
-        foreach (var r in new[] { Besitzer, Employe })
+        // Employé (unterste Rolle): Regel 3 unverändert, kein fremdes Menü und keine fremden Hinweise.
+        // Der Propriétaire kennt seit 21.11.2026 auch seine Employés (« nach unten », eigener Test).
+        var employe = KiWissensbasis.SystemText(Employe);
+        Assert.Contains(KiWissensbasis.Regel3Laden, employe);
+        Assert.DoesNotContain(KiWissensbasis.Regel3Plattform, employe);
+        Assert.DoesNotContain(KiWissensbasis.Regel3Besitzer, employe);
+        Assert.DoesNotContain("### Menu : ", employe);
+        Assert.DoesNotContain("Équipe de la plateforme", employe);
+        Assert.DoesNotContain("Zone propriétaire :", employe);
+        Assert.Equal([Employe], KiWissensbasis.BekannteRollen(Employe));
+    }
+
+    /// <summary>
+    /// Nutzer 21.11.2026, Regel « nach unten »: jede Rolle kennt sich und die Rollen darunter, nie die darüber – der Propriétaire
+    /// kennt das Menü seiner Employés (Mitarbeiterkonto mit allen Rechten), aber nichts vom Administrateur oder Responsable.
+    /// </summary>
+    [Fact]
+    public void Proprietaire_kennt_seine_Employes_aber_nichts_von_der_Plattform()
+    {
+        static List<string> Zeilen(KiRolle r) => [.. KiWissensbasis.Menue(r).SelectMany(g => g.Punkte.Select(p => "- " + (g.Titel is null ? p.Label : g.Titel + " › " + p.Label) + " : " + p.Erklaerung))];
+        var text = KiWissensbasis.SystemText(Besitzer);
+
+        // Eigene Rolle zuerst, dann das Mitarbeiterkonto mit allen Rechten (« selon les droits accordés »).
+        Assert.Equal([Besitzer, KiWissensbasis.MitarbeiterAlleRechte], KiWissensbasis.BekannteRollen(Besitzer));
+        Assert.Contains("### Menu : Propriétaire (votre rôle)", text);
+        Assert.Contains("### Menu : Employé (connexion personnelle)", text);
+        Assert.True(text.IndexOf("### Menu : Propriétaire (votre rôle)", StringComparison.Ordinal)
+            < text.IndexOf("### Menu : Employé (connexion personnelle)", StringComparison.Ordinal));
+        Assert.Contains("selon les droits accordés", text);
+        Assert.Contains(KiWissensbasis.MitarbeiterHinweisBesitzer, text);
+        foreach (var z in Zeilen(Besitzer).Concat(Zeilen(KiWissensbasis.MitarbeiterAlleRechte))) Assert.Contains(z, text);
+
+        // Hinweise beider Rollen mit Rollenname; Regel 3 für den Propriétaire.
+        Assert.Contains("Propriétaire (votre rôle) – Zone propriétaire :", text);
+        Assert.Contains("Employé (connexion personnelle) – Votre compte personnel ne donne jamais accès à la caisse", text);
+        Assert.Contains(KiWissensbasis.Regel3Besitzer, text);
+        Assert.Contains("comment font ses employés", text);
+        Assert.Contains("Ne décris jamais les rôles de la plateforme", text);
+        Assert.DoesNotContain(KiWissensbasis.Regel3Laden, text);
+        Assert.DoesNotContain(KiWissensbasis.Regel3Plattform, text);
+
+        // Nichts von Administrateur oder Responsable: keine Menüs, Seiten, Lektionen oder Hinweise der Plattform.
+        foreach (var verboten in new[]
         {
-            var text = KiWissensbasis.SystemText(r);
-            Assert.Contains(KiWissensbasis.Regel3Laden, text);
-            Assert.DoesNotContain(KiWissensbasis.Regel3Plattform, text);
-            Assert.DoesNotContain("### Menu : ", text);
-            Assert.DoesNotContain("Équipe de la plateforme", text);
-        }
-        Assert.DoesNotContain("Votre compte personnel ne donne jamais accès", KiWissensbasis.SystemText(Besitzer));
-        Assert.DoesNotContain("Zone propriétaire :", KiWissensbasis.SystemText(Employe));
+            "### Menu : Administrateur", "### Menu : Responsable", "Équipe de la plateforme", "Plateforme ›", "Administration",
+            "Journaux", "Mes établissements", "Propriétaires plateforme", "Facturation", "Annonces", "Formation ›", "Mes commissions",
+            "Vous accompagnez vos établissements"
+        })
+            Assert.DoesNotContain(verboten, text);
+        foreach (var plattform in new[] { new KiRolle(AppRollen.SuperAdmin), new KiRolle(AppRollen.ProduktOwner) })
+            foreach (var z in Zeilen(plattform).Where(z => !Zeilen(Besitzer).Contains(z) && !Zeilen(KiWissensbasis.MitarbeiterAlleRechte).Contains(z)))
+                Assert.DoesNotContain(z, text);
+        Assert.True(text.Length < 100_000, $"Propriétaire: {text.Length} Zeichen");
     }
 
     [Fact]
@@ -330,7 +372,7 @@ public class KiHilfeTests
         Assert.Contains("@page \"/aide/question\"", seite);
         Assert.Contains("@attribute [Authorize]", seite);
         Assert.Contains("if (!verfuegbar) Nav.NavigateTo(\"/introuvable\", replace: true);", seite);   // ohne Schlüssel/Rolle: « Page introuvable »
-        Assert.Contains("verfuegbar = KiHilfe.IstVerfuegbarFuer(rolle.Rolle);", seite);
+        Assert.Contains("verfuegbar = await KiHilfe.IstVerfuegbarFuerAsync(rolle.Rolle);", seite);   // Schalter frisch gelesen
         Assert.Contains("@if (verfuegbar)", seite);
         Assert.Contains("maxlength=\"@KiHilfeOptionen.MaxFrageZeichen\"", seite);
         Assert.Contains("<AsyncActionButton Text=\"Poser la question\"", seite);   // Ladekreis und Sperre wie überall

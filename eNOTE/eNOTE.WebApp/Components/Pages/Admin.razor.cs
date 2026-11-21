@@ -197,7 +197,7 @@ public partial class Admin(
         istSuperAdmin = authState.User.IsInRole(ENote.Core.DataModels.Identity.AppRollen.SuperAdmin);
         var userIdValue = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         Guid.TryParse(userIdValue, out aktuellerBenutzerId);
-        if (istSuperAdmin && StartTab is "formation" or "plateforme" or "tarifs" or "mobilemoney") aktiverTab = StartTab;
+        if (istSuperAdmin && StartTab is "formation" or "plateforme" or "tarifs" or "mobilemoney" or "reglages") aktiverTab = StartTab;
         // Nur der Hauptadministrator verwaltet andere Administratoren (Reiter „Administrateurs“).
         istErsterAdmin = istSuperAdmin && await adminKontenService.IstErsterAdminAsync(aktuellerBenutzerId);
         await LadeAsync();

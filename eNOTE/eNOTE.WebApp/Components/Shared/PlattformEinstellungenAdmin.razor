@@ -1,0 +1,64 @@
+@using ENote.WebApp.Services
+@inject PlattformEinstellungen Einstellungen
+@inject ENote.WebApp.Services.KiHilfe.KiHilfeDienst KiHilfe
+@inject ToastService Toast
+@* Administration › Réglages (21.11.2026): Plattform-Schalter ohne Deployment. Nur der Administrateur sieht den Reiter;
+   der Dienst prüft das Recht beim Speichern trotzdem selbst. *@
+
+<h2 class="enote-section-title">Réglages de la plateforme</h2>
+
+<section class="enote-card pe-karte">
+    <h3><Icon Name="sparkles" Groesse="18" /> Assistant « Poser une question »</h3>
+    @if (geladen)
+    {
+        <EnoteCheckbox Value="kiFuerAlle" ValueChanged="SetzeKiAsync" Disabled="@(!KiHilfe.IstVerfuegbar)"
+                       Label="Assistant (Poser une question) pour tous les rôles" />
+    }
+    else
+    {
+        <p class="enote-muted" role="status">Chargement…</p>
+    }
+    <p class="enote-muted">
+        Désactivé : seuls les administrateurs et les responsables voient « Aide › Poser une question ». Activé : aussi les propriétaires
+        et les employés avec un compte personnel. Chaque rôle reçoit seulement l'aide de son rôle et des rôles en dessous : le propriétaire
+        celle de ses employés, jamais celle de la plateforme.
+    </p>
+    @if (!KiHilfe.IstVerfuegbar)
+    {
+        <p class="alert alert-error" role="note">La clé du service d'IA n'est pas configurée : l'assistant reste invisible pour tous les rôles.</p>
+    }
+    else if (KiHilfe.AlleRollenPerKonfiguration)
+    {
+        <p class="alert alert-info" role="note">Le réglage du serveur l'active déjà pour tous les rôles : cet interrupteur n'a pas d'effet tant qu'il est en place.</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Guid AdminId { get; set; }
+
+    private bool kiFuerAlle;
+    private bool geladen;
+
+    protected override async Task OnInitializedAsync()
+    {
+        kiFuerAlle = await Einstellungen.GetKiFuerAlleRollenAsync();
+        geladen = true;
+    }
+
+    private async Task SetzeKiAsync(bool wert)
+    {
+        try
+        {
+            await Einstellungen.SetzeKiFuerAlleRollenAsync(AdminId, wert);
+            kiFuerAlle = wert;
+            Toast.ZeigeErfolg(wert
+                ? "Assistant activé pour tous les rôles. Le menu « Aide » le montre dès le prochain affichage."
+                : "Assistant réservé aux administrateurs et aux responsables.");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            kiFuerAlle = !wert;
+            Toast.ZeigeFehler(ex.Message);
+        }
+    }
+}

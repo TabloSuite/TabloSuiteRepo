@@ -38,6 +38,8 @@
                     <button class="enote-tab @(aktiverTab == "formation" ? "aktiv" : "")" @onclick='() => WechsleTab("formation")'>Formation</button>
                     @* Nutzer 19.11.2026 (« Onglet Administrateurs fehlt »): alle Admins sehen die Liste, ändern darf nur der Hauptadministrator. *@
                     <button class="enote-tab @(aktiverTab == "administrateurs" ? "aktiv" : "")" @onclick='() => WechsleTab("administrateurs")'>Administrateurs</button>
+                    @* 21.11.2026: Plattform-Schalter ohne Deployment (« Assistant pour tous les rôles »). *@
+                    <button class="enote-tab @(aktiverTab == "reglages" ? "aktiv" : "")" @onclick='() => WechsleTab("reglages")'>Réglages</button>
                 </Authorized>
             </AuthorizeView>
         </div>
@@ -307,6 +309,10 @@
                     <FormationAdmin AdminId="aktuellerBenutzerId" />
                 </Authorized>
             </AuthorizeView>
+        }
+        else if (aktiverTab == "reglages" && istSuperAdmin)
+        {
+            <PlattformEinstellungenAdmin AdminId="aktuellerBenutzerId" />
         }
     }
 </div>

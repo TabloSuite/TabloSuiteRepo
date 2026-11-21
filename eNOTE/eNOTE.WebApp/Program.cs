@@ -217,6 +217,8 @@ if (administration is null)
     // KI-Hilfe « Poser une question » (Claude Haiku 5.5, 19.11.2026): ohne Ki:AnthropicApiKey registriert, aber unsichtbar.
     builder.Services.AddOptions<ENote.WebApp.Services.KiHilfe.KiHilfeOptionen>().Bind(builder.Configuration.GetSection(ENote.WebApp.Services.KiHilfe.KiHilfeOptionen.Abschnitt));
     builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.IKiClient, ENote.WebApp.Services.KiHilfe.AnthropicKiClient>();
+    // Plattform-Schalter der Administration (u. a. « Assistant pour tous les rôles », 21.11.2026), 60 s zwischengespeichert.
+    builder.Services.AddSingleton<ENote.WebApp.Services.PlattformEinstellungen>();
     builder.Services.AddSingleton<ENote.WebApp.Services.KiHilfe.KiHilfeDienst>();
 }
 else

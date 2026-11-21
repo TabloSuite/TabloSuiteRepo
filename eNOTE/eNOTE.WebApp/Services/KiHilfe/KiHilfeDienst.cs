@@ -18,7 +18,8 @@ public sealed record KiErgebnis(bool Erfolg, string? Antwort, string? Meldung, I
 /// Keine Fragen-Grenzen; zunächst nur für Administrateurs und Responsables (<see cref="IstVerfuegbarFuer"/>).
 /// Fehler des Dienstes → Meldung, die App läuft weiter.
 /// </summary>
-public sealed class KiHilfeDienst(IKiClient client, IOptions<KiHilfeOptionen> optionen, ILogger<KiHilfeDienst> log)
+public sealed class KiHilfeDienst(IKiClient client, IOptions<KiHilfeOptionen> optionen, ILogger<KiHilfeDienst> log,
+    PlattformEinstellungen? einstellungen = null)
 {
     public const string MeldungIndisponible = "Le service d'aide est momentanément indisponible. Réessayez dans quelques minutes, ou consultez les vidéos d'aide.";
     public const string MeldungAbgelehnt = "Je ne peux pas répondre à cette question. Je réponds seulement aux questions sur l'utilisation d'eNOTE : reformulez-la, ou consultez les vidéos d'aide et la page « Aide & contact ».";
@@ -32,16 +33,27 @@ public sealed class KiHilfeDienst(IKiClient client, IOptions<KiHilfeOptionen> op
     /// <summary>Schlüssel konfiguriert (Voraussetzung für alles Weitere).</summary>
     public bool IstVerfuegbar => optionen.Value.IstBereit;
 
+    /// <summary>Freigabe für alle Rollen schon über die App-Einstellung <c>Ki:AlleRollen</c> (Schalter dann wirkungslos).</summary>
+    public bool AlleRollenPerKonfiguration => optionen.Value.AlleRollen;
+
+    private static bool IstPlattformRolle(string rolle) => rolle is AppRollen.SuperAdmin or AppRollen.ProduktOwner;
+
     /// <summary>
     /// Menüeintrag und Seite für diese Rolle: mit Schlüssel zunächst nur Administrateur und Responsable eNOTE
-    /// (Nutzer 19.11.2026); mit <see cref="KiHilfeOptionen.AlleRollen"/> für alle.
+    /// (Nutzer 19.11.2026); für alle mit <see cref="KiHilfeOptionen.AlleRollen"/> oder dem Schalter in Administration ›
+    /// Réglages (<see cref="PlattformEinstellungen"/>, 21.11.2026). Ohne Warten (Menü): Schalterwert aus dem Zwischenspeicher.
     /// </summary>
     public bool IstVerfuegbarFuer(string rolle)
-        => IstVerfuegbar && (optionen.Value.AlleRollen || rolle is AppRollen.SuperAdmin or AppRollen.ProduktOwner);
+        => IstVerfuegbar && (optionen.Value.AlleRollen || IstPlattformRolle(rolle) || einstellungen?.KiFuerAlleRollen == true);
+
+    /// <summary>Wie <see cref="IstVerfuegbarFuer"/>, mit frisch gelesenem Schalter (Seite, Frage).</summary>
+    public async Task<bool> IstVerfuegbarFuerAsync(string rolle, CancellationToken ct = default)
+        => IstVerfuegbar && (optionen.Value.AlleRollen || IstPlattformRolle(rolle)
+            || (einstellungen is not null && await einstellungen.GetKiFuerAlleRollenAsync(ct)));
 
     public async Task<KiErgebnis> FrageAsync(KiRolle rolle, string? frage, CancellationToken ct = default)
     {
-        if (!IstVerfuegbarFuer(rolle.Rolle)) return Meldung(MeldungIndisponible);
+        if (!await IstVerfuegbarFuerAsync(rolle.Rolle, ct)) return Meldung(MeldungIndisponible);
         var text = Normalisiere(frage);
         if (text.Length == 0) return Meldung(MeldungLeer);
         if (text.Length > KiHilfeOptionen.MaxFrageZeichen) return Meldung(MeldungZuLang);

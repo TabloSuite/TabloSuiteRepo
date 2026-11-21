@@ -189,7 +189,8 @@
             // Für alle angemeldeten Rollen: Erklärvideos (Inhalt je Rolle, siehe VideoKatalog)
             var aide = new List<NavEintrag> { new("/aide/videos", "Vidéos d'aide", "monitor", Kurz: "Vidéos") };
             // KI-Hilfe « Poser une question » (19.11.2026): nur mit konfiguriertem Schlüssel (Ki:AnthropicApiKey), sonst unsichtbar;
-            // zunächst nur für Administrateurs und Responsables (Nutzer 19.11.2026), mit Ki:AlleRollen für alle.
+            // zunächst nur für Administrateurs und Responsables (Nutzer 19.11.2026), für alle mit Ki:AlleRollen oder dem Schalter
+            // in Administration › Réglages (21.11.2026; Wert zwischengespeichert, siehe OnInitializedAsync).
             var kiRolle = istSuperAdmin ? ENote.Core.DataModels.Identity.AppRollen.SuperAdmin
                 : istProduktOwner ? ENote.Core.DataModels.Identity.AppRollen.ProduktOwner : string.Empty; // Laden-Rollen: nur mit Ki:AlleRollen
             if (KiHilfe.IstVerfuegbarFuer(kiRolle)) aide.Add(new(ENote.WebApp.Services.KiHilfe.KiHilfeDienst.SeitenAdresse, "Poser une question", "sparkles", Kurz: "Question"));
@@ -226,6 +227,9 @@
         {
             await AktiverSalon.InitialisiereAsync(userId);
         }
+
+        // Schalter « Assistant pour tous les rôles » laden (Zwischenspeicher), damit « Poser une question » gleich richtig erscheint.
+        if (KiHilfe.IstVerfuegbar && !istSuperAdmin && !istProduktOwner) await KiHilfe.IstVerfuegbarFuerAsync(string.Empty);
 
         // Ohne konfigurierte Besitzer-PIN gibt es nichts zu sperren.
         var aktive = AktiverSalon.Aktiv;

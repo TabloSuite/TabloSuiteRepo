@@ -1269,6 +1269,25 @@ namespace ENote.WebApp.Migrations
                     b.ToTable("MailRegeln");
                 });
 
+            modelBuilder.Entity("ENote.Core.DataModels.Infrastruktur.PlattformEinstellung", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("GeaendertUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("GeaendertVonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("KiFuerAlleRollen")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PlattformEinstellungen");
+                });
+
             modelBuilder.Entity("ENote.Core.DataModels.Kasse.AufenthaltsPosition", b =>
                 {
                     b.Property<Guid>("Id")

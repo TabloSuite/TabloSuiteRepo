@@ -59,6 +59,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<AnmeldeSitzung> AnmeldeSitzungen => Set<AnmeldeSitzung>();
     public DbSet<MailNachricht> MailNachrichten => Set<MailNachricht>();
     public DbSet<MailRegel> MailRegeln => Set<MailRegel>();
+    public DbSet<PlattformEinstellung> PlattformEinstellungen => Set<PlattformEinstellung>();
     public DbSet<EingangsMail> EingangsMails => Set<EingangsMail>();
     public DbSet<Kunde> Kunden => Set<Kunde>();
     public DbSet<Ankuendigung> Ankuendigungen => Set<Ankuendigung>();
@@ -360,6 +361,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.HasKey(r => r.Kategorie);
             entity.Property(r => r.Kategorie).HasMaxLength(50);
+        });
+
+        // Eine Zeile mit fester Id (wie FormationRegel).
+        builder.Entity<PlattformEinstellung>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
         });
 
         builder.Entity<EingangsMail>(entity =>

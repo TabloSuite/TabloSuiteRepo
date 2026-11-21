@@ -60,6 +60,12 @@ public static class KiWissensbasis
 
     private static readonly ConcurrentDictionary<string, string> Fertig = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Mitarbeiterkonto mit allen Rechten: so ist jede Rubrik beschrieben, die ein Employé bekommen kann. Steht vor
+    /// <see cref="AlleRollenFuerPlattform"/> (statische Felder werden in Textreihenfolge belegt).
+    /// </summary>
+    internal static readonly KiRolle MitarbeiterAlleRechte = new(AppRollen.Kassierer, Prestations: true, Remises: true, Finances: true, Clients: true);
+
     /// <summary>Anweisungen und Wissensbasis als ein System-Text (zuerst, mit Cache-Marke; die Frage folgt danach).</summary>
     public static string SystemText(KiRolle rolle) => Fertig.GetOrAdd(rolle.Schluessel, _ => AnweisungenFuer(rolle) + "\n\n" + Baue(rolle));
 
@@ -70,9 +76,21 @@ public static class KiWissensbasis
     /// </summary>
     internal static readonly IReadOnlyList<KiRolle> AlleRollenFuerPlattform =
     [
-        new(AppRollen.SuperAdmin), new(AppRollen.ProduktOwner), new(AppRollen.Besitzer),
-        new(AppRollen.Kassierer, Prestations: true, Remises: true, Finances: true, Clients: true)
+        new(AppRollen.SuperAdmin), new(AppRollen.ProduktOwner), new(AppRollen.Besitzer), MitarbeiterAlleRechte
     ];
+
+    /// <summary>
+    /// Regel « nach unten » (Nutzer 21.11.2026): jede Rolle kennt Menü und Hinweise ihrer eigenen Rolle und der Rollen darunter,
+    /// nie die darüber – « der Besitzer soll nichts von Admin/PO wissen ». Administrateur: alle; Responsable: alle außer dem
+    /// Administrateur (<see cref="PlattformReihenfolge"/>); Propriétaire: sich und das Mitarbeiterkonto (mit allen Rechten);
+    /// Employé: nur sich. Die eigene Rolle steht immer zuerst.
+    /// </summary>
+    internal static IReadOnlyList<KiRolle> BekannteRollen(KiRolle eigene) => eigene.Rolle switch
+    {
+        AppRollen.SuperAdmin or AppRollen.ProduktOwner => [.. PlattformReihenfolge(eigene)],
+        AppRollen.Besitzer => [eigene, MitarbeiterAlleRechte],
+        _ => [eigene]
+    };
 
     /// <summary>Lernvideos, die diese Rolle sehen darf (für Verweise in der Antwort).</summary>
     public static IReadOnlyList<VideoKatalog.LernVideo> Videos(KiRolle rolle)
@@ -86,8 +104,15 @@ public static class KiWissensbasis
     internal const string Regel3Plattform =
         "3. L'utilisateur fait partie de l'équipe de la plateforme (administrateur ou responsable eNOTE) : il peut poser des questions sur les autres rôles, par exemple pour aider un propriétaire ou un employé. La base décrit le menu de ces rôles. Dis toujours pour quel rôle vaut ta réponse (par exemple « Chez le propriétaire : »). Si la question porte sur ce que l'utilisateur fait lui-même et que son rôle n'y a pas accès, dis-le et indique qui s'en charge.";
 
-    /// <summary>Anweisungen je Rolle: nur Regel 3 unterscheidet sich (Plattform darf alles fragen).</summary>
-    internal static string AnweisungenFuer(KiRolle rolle) => rolle.IstPlattform ? Anweisungen.Replace(Regel3Laden, Regel3Plattform) : Anweisungen;
+    /// <summary>Regel 3 für den Propriétaire: auch Fragen zu seinen Employés, nie zur Plattform (Nutzer 21.11.2026, « nach unten »).</summary>
+    internal const string Regel3Besitzer =
+        "3. La base décrit d'abord le menu de l'utilisateur (propriétaire), puis celui du compte personnel de ses employés. Il peut aussi demander comment font ses employés : dis toujours pour quel rôle vaut ta réponse (par exemple « Chez l'employé : »). Si une fonction n'est dans aucun de ces menus, dis que son rôle n'y a pas accès et, si la base le dit, qui s'en charge. Ne décris jamais les rôles de la plateforme (administrateur, responsable eNOTE) ni leurs menus.";
+
+    /// <summary>Anweisungen je Rolle: nur Regel 3 unterscheidet sich (Plattform darf alles fragen, der Propriétaire nach unten).</summary>
+    internal static string AnweisungenFuer(KiRolle rolle)
+        => rolle.IstPlattform ? Anweisungen.Replace(Regel3Laden, Regel3Plattform)
+           : rolle.Rolle == AppRollen.Besitzer ? Anweisungen.Replace(Regel3Laden, Regel3Besitzer)
+           : Anweisungen;
 
     private const string Anweisungen =
         """
@@ -198,16 +223,20 @@ public static class KiWissensbasis
         _ => "l'essentiel du jour pour votre rôle."
     };
 
-    /// <summary>Hinweise je Rolle, die in keinem Menüpunkt stehen; Plattform: die allgemeinen und die aller Rollen (mit Rollenname).</summary>
+    /// <summary>
+    /// Hinweise, die in keinem Menüpunkt stehen: die allgemeinen und die der bekannten Rollen (<see cref="BekannteRollen"/>);
+    /// kennt die Rolle mehrere, steht der Rollenname davor.
+    /// </summary>
     private static IEnumerable<string> BonASavoir(KiRolle r)
     {
         foreach (var h in BonASavoirAllgemein()) yield return h;
-        if (!r.IstPlattform)
+        var bekannt = BekannteRollen(r);
+        if (bekannt.Count == 1)
         {
             foreach (var h in BonASavoirRolle(r.Rolle)) yield return h;
             yield break;
         }
-        foreach (var andere in PlattformReihenfolge(r))
+        foreach (var andere in bekannt)
             foreach (var h in BonASavoirRolle(andere.Rolle))
                 yield return andere.Bezeichnung + (andere.Rolle == r.Rolle ? " (votre rôle)" : string.Empty) + " – " + h;
     }
@@ -251,21 +280,32 @@ public static class KiWissensbasis
 
     // ---------------- Aufbau ----------------
 
+    /// <summary>Vor dem Menü des Mitarbeiterkontos (Plattform): Rubriken nur « selon les droits accordés ».</summary>
+    internal const string MitarbeiterHinweisPlattform =
+        "Compte personnel d'un employé : chaque rubrique ci-dessous seulement selon les droits accordés par le propriétaire (Gestion › Équipe : Prestations, Remises, Dossiers clients, Finances). Sans compte personnel, l'employé encaisse seulement sur l'appareil du propriétaire, avec son nom et son code PIN de caisse.";
+
+    /// <summary>Dasselbe aus Sicht des Propriétaire (« vous » = er).</summary>
+    internal const string MitarbeiterHinweisBesitzer =
+        "Compte personnel d'un employé : chaque rubrique ci-dessous seulement selon les droits accordés (par vous, dans Gestion › Équipe : Prestations, Remises, Dossiers clients, Finances). Sans compte personnel, l'employé encaisse seulement sur votre appareil, avec son nom et son code PIN de caisse.";
+
     private static string Baue(KiRolle rolle)
     {
         var sb = new StringBuilder();
         sb.Append("=== BASE DE CONNAISSANCES eNOTE – rôle de l'utilisateur : ").Append(rolle.Bezeichnung).AppendLine(" ===");
 
-        if (rolle.IstPlattform)
+        var bekannt = BekannteRollen(rolle);
+        if (bekannt.Count > 1)
         {
-            // Nutzer 20.11.2026: Administrateur und Responsable dürfen alles fragen → Menü jeder Rolle, die eigene zuerst.
-            sb.AppendLine("Équipe de la plateforme : cette base décrit l'application pour tous les rôles, pour pouvoir aider les établissements.");
+            // « Nach unten » (Nutzer 20./21.11.2026): Menü jeder bekannten Rolle, die eigene zuerst.
+            sb.AppendLine(rolle.IstPlattform
+                ? "Équipe de la plateforme : cette base décrit l'application pour tous les rôles, pour pouvoir aider les établissements."
+                : "Propriétaire : cette base décrit votre menu et celui de vos employés (compte personnel), pour pouvoir répondre aussi à leurs questions.");
             sb.AppendLine().AppendLine("## 1. Menu de chaque rôle (avec ce que contient chaque page)");
-            foreach (var r in PlattformReihenfolge(rolle))
+            foreach (var r in bekannt)
             {
                 sb.AppendLine().Append("### Menu : ").Append(r.Bezeichnung).AppendLine(r.Rolle == rolle.Rolle ? " (votre rôle)" : string.Empty);
                 if (r.Rolle == AppRollen.Kassierer)
-                    sb.AppendLine("Compte personnel d'un employé : chaque rubrique ci-dessous seulement avec le droit accordé par le propriétaire (Gestion › Équipe : Prestations, Remises, Dossiers clients, Finances). Sans compte personnel, l'employé encaisse seulement sur l'appareil du propriétaire, avec son nom et son code PIN de caisse.");
+                    sb.AppendLine(rolle.Rolle == AppRollen.Besitzer ? MitarbeiterHinweisBesitzer : MitarbeiterHinweisPlattform);
                 MenueZeilen(sb, r);
             }
         }
@@ -275,7 +315,7 @@ public static class KiWissensbasis
             MenueZeilen(sb, rolle);
         }
 
-        sb.AppendLine().AppendLine(rolle.IstPlattform
+        sb.AppendLine().AppendLine(bekannt.Count > 1
             ? "## 2. Bon à savoir (un rôle nommé au début : « vous » y désigne la personne de ce rôle)"
             : "## 2. Bon à savoir");
         foreach (var h in BonASavoir(rolle)) sb.Append("- ").AppendLine(h);
@@ -319,12 +359,25 @@ public static class KiWissensbasis
         return [.. FormationKatalog.Lektionen.Where(l => ids.Contains(l.Id))];
     }
 
-    /// <summary>Eine Lektion als Text; Bilder als Bildunterschrift, Videoverweise nur auf Videos dieser Rolle.</summary>
+    /// <summary>
+    /// Stellen der Formation (für Responsables geschrieben), die nur die Plattform betreffen – Seiten des Administrateurs bzw.
+    /// Responsables und « Votre rôle » des Responsables. Für Rollen im Laden fallen sie weg (Regel « nach unten », 21.11.2026:
+    /// der Propriétaire soll nichts von Admin/PO wissen).
+    /// </summary>
+    internal static readonly string[] NurPlattformMarken =
+        ["Facturation", "Administration", "Mes établissements", "Mes commissions", "Plateforme", "Journaux", "Annonces", "Votre rôle :", "Vous, le responsable"];
+
+    private static bool NurPlattform(string? text) => text is not null && NurPlattformMarken.Any(m => text.Contains(m, StringComparison.Ordinal));
+
+    /// <summary>Eine Lektion als Text; Bilder als Bildunterschrift, Videoverweise nur auf Videos dieser Rolle, Plattform-Stellen nur für die Plattform.</summary>
     private static void Lektion(StringBuilder sb, Lektion l, KiRolle rolle)
     {
         sb.Append("### Leçon « ").Append(l.Titel).Append(" » – ").AppendLine(l.Kurz);
+        bool Zeigen(string? text) => rolle.IstPlattform || !NurPlattform(text);
         foreach (var a in l.Abschnitte)
         {
+            if (!Zeigen(a.Titel) || (a.Art is not (AbschnittArt.Liste or AbschnittArt.Schritte) && !Zeigen(a.Text))) continue;
+            var punkte = (a.Punkte ?? []).Where(Zeigen).ToList();
             switch (a.Art)
             {
                 case AbschnittArt.Text:
@@ -332,13 +385,15 @@ public static class KiWissensbasis
                     sb.AppendLine(a.Text);
                     break;
                 case AbschnittArt.Liste:
+                    if (punkte.Count == 0) break;
                     sb.Append(a.Titel).AppendLine(" :");
-                    foreach (var p in a.Punkte ?? []) sb.Append("- ").AppendLine(p);
+                    foreach (var p in punkte) sb.Append("- ").AppendLine(p);
                     break;
                 case AbschnittArt.Schritte:
+                    if (punkte.Count == 0) break;
                     sb.Append(a.Titel).AppendLine(" (étapes) :");
                     var n = 1;
-                    foreach (var p in a.Punkte ?? []) sb.Append(n++).Append(". ").AppendLine(p);
+                    foreach (var p in punkte) sb.Append(n++).Append(". ").AppendLine(p);
                     break;
                 case AbschnittArt.Merke:
                     sb.Append("À retenir : ").AppendLine(a.Text);

@@ -3777,3 +3777,8 @@ html[data-theme="dark"] .vh-rolle-admin { --vh-text: #f9a8d4; }
 @keyframes enote-verbindung-ein { to { opacity: 1; } }
 @keyframes enote-verbindung-dreh { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .enote-verbindung-kreis { animation: none; } }
+
+/* Administration › Réglages (21.11.2026): Plattform-Schalter */
+.pe-karte { padding: 1.1rem 1.25rem; display: grid; gap: .75rem; max-width: 60rem; }
+.pe-karte h3 { margin: 0; display: flex; align-items: center; gap: .5rem; font-size: 1rem; }
+.pe-karte p { margin: 0; }

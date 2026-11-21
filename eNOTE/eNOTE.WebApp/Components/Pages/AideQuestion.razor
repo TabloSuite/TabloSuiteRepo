@@ -160,8 +160,8 @@
                 // Rechte des Mitarbeiterkontos (nur die Bereiche, die der Propriétaire freigegeben hat).
                 if (!AktiverSalon.IstGeladen) await AktiverSalon.InitialisiereAsync(kontoId);
                 rolle = KiRolle.Aus(user, AktiverSalon.Aktiv);
-                // Zunächst nur Administrateur und Responsable (Nutzer 19.11.2026).
-                verfuegbar = KiHilfe.IstVerfuegbarFuer(rolle.Rolle);
+                // Zunächst nur Administrateur und Responsable (Nutzer 19.11.2026); für alle per Schalter in Administration › Réglages.
+                verfuegbar = await KiHilfe.IstVerfuegbarFuerAsync(rolle.Rolle);
             }
         }
         if (!verfuegbar) Nav.NavigateTo("/introuvable", replace: true);

@@ -128,11 +128,13 @@ Hilfe-Assistent (Claude Haiku 5.5 über das offizielle Anthropic-SDK) im Menü �
 | --- | --- |
 | `Ki__AnthropicApiKey` | **Geheim** – API-Schlüssel aus der Anthropic Console. Nur als App Setting (oder Key-Vault-Referenz), nie in appsettings oder ins Repository |
 | `Ki__WorkspaceId` | Nur bei Schlüsseln **ohne** Workspace (`sk-ant-usr…` Benutzer-, `sk-ant-svc…` Service-Schlüssel): ID des Workspace aus der Anthropic Console (`wrkspc_…`), wird als Header `anthropic-workspace-id` gesendet. Workspace-Schlüssel (`sk-ant-api03-…`) brauchen ihn nicht. Ohne ihn antwortet Anthropic sonst 400 « not scoped to a workspace » (20.11.2026) |
-| `Ki__AlleRollen` | optional, `true` = für alle Rollen freischalten (Standard `false`: nur Admin + Responsable) |
+| `Ki__AlleRollen` | optional, `true` = für alle Rollen freischalten (Standard `false`: nur Admin + Responsable). Seit 21.11.2026 besser über den Schalter in Administration › Réglages (« Assistant (Poser une question) pour tous les rôles », Tabelle `PlattformEinstellungen`, Migration `20261121085140_PlattformEinstellungen`) – ohne Deployment |
 | `Ki__Modell` | optional, Standard `claude-haiku-5-5` |
 | `Ki__MaxTokens` / `Ki__TimeoutSekunden` | optional, Standard `2048` / `20` |
 
 Kosten begrenzt man in der Anthropic Console (Ausgabelimit des Schlüssels), nicht in der App.
+
+Wissen je Rolle « nach unten » (21.11.2026): jede Rolle kennt sich und die Rollen darunter – Administrateur alle, Responsable alle außer dem Administrateur, Propriétaire sich und seine Employés (Mitarbeiterkonto), Employé nur sich; Stellen der Formation über Plattform-Seiten fallen für Rollen im Laden weg (`KiWissensbasis.BekannteRollen`, `NurPlattformMarken`).
 
 Datenschutz: an Anthropic gehen nur die festen Hilfetexte der Rolle, die Rolle und die Frage – keine Namen, keine Daten des Ladens. Die Frage wird weder gespeichert noch protokolliert; im Log stehen nur Rolle und Token-Verbrauch. Fehler des Dienstes zeigen eine freundliche Meldung, die App läuft weiter.
 
