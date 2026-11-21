@@ -252,7 +252,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
 
     private static bool IstGueltig(Rabatt r)
     {
-        var jetzt = DateTime.UtcNow;
+        var jetzt = ENote.Core.Services.AppUhr.UtcNow;
         if (r.GueltigVonUtc is not null && jetzt < r.GueltigVonUtc) return false;
         if (r.GueltigBisUtc is not null && jetzt > r.GueltigBisUtc) return false;
         return true;

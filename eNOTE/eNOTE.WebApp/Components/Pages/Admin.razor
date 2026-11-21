@@ -387,7 +387,7 @@
             <EnoteSelect TValue="string" Value="landNeu" ValueChanged="(string? l) => landNeu = l ?? landNeu" Options="landAuswahlOptionen" MitSuche="true" Placeholder="Choisir le pays…" />
             @if (landNeu != (landBisher ?? ENote.WebApp.Services.LaenderAuswahl.Standard))
             {
-                <p class="st-land-folgen" role="status"><Icon Name="info" Groesse="16" /> @ENote.WebApp.Services.LaenderAuswahl.Folgen(landNeu, DateTime.UtcNow, fuerBesitzer: false)</p>
+                <p class="st-land-folgen" role="status"><Icon Name="info" Groesse="16" /> @ENote.WebApp.Services.LaenderAuswahl.Folgen(landNeu, ENote.Core.Services.AppUhr.UtcNow, fuerBesitzer: false)</p>
             }
             else if (landBisher is null)
             {
@@ -419,7 +419,7 @@
             }
             else
             {
-                <p class="enote-muted">Vous pouvez prolonger l'essai de « @probeSalonName » jusqu'au <strong>@ENote.WebApp.Services.AdminService.PoProbeGrenze(DateTime.UtcNow).ToString("dd.MM.yyyy")</strong> au plus (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours). Pour raccourcir ou retirer l'essai, envoyez une demande à l'administrateur.</p>
+                <p class="enote-muted">Vous pouvez prolonger l'essai de « @probeSalonName » jusqu'au <strong>@ENote.WebApp.Services.AdminService.PoProbeGrenze(ENote.Core.Services.AppUhr.UtcNow).ToString("dd.MM.yyyy")</strong> au plus (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours). Pour raccourcir ou retirer l'essai, envoyez une demande à l'administrateur.</p>
             }
             @if (ZeigeProbeFormular)
             {

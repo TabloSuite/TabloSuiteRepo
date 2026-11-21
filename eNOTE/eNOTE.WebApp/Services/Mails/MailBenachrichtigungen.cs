@@ -19,7 +19,7 @@ public class MailBenachrichtigungen(
     ILogger<MailBenachrichtigungen> logger,
     TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     /// <summary>Erinnerung so viele Tage vor der Kassensperre.</summary>
     public const int ErinnerungTageVorSperre = 3;
@@ -340,7 +340,7 @@ public class MailVersandDienst(IServiceScopeFactory scopes, ILogger<MailVersandD
     {
         var weck = weckruf ?? new MailWeckruf();
         try { await Task.Delay(StartVerzoegerung, stoppingToken); } catch (OperationCanceledException) { return; }
-        var naechsteWiederholung = DateTime.UtcNow + PruefVerzoegerung;
+        var naechsteWiederholung = ENote.Core.Services.AppUhr.UtcNow + PruefVerzoegerung;
         var naechstePruefung = naechsteWiederholung;
         var stapelAmStueck = 0;
 
@@ -357,16 +357,16 @@ public class MailVersandDienst(IServiceScopeFactory scopes, ILogger<MailVersandD
                     mehr = weitere;
                     if (gesendet > 0) logger.LogInformation("{Anzahl} E-Mail(s) versendet.", gesendet);
 
-                    if (DateTime.UtcNow >= naechsteWiederholung)
+                    if (ENote.Core.Services.AppUhr.UtcNow >= naechsteWiederholung)
                     {
-                        naechsteWiederholung = DateTime.UtcNow + WiederholAbstand;
+                        naechsteWiederholung = ENote.Core.Services.AppUhr.UtcNow + WiederholAbstand;
                         var erneut = await email.WiederholeAusstehendeAsync(stoppingToken);
                         if (erneut > 0) logger.LogInformation("{Anzahl} E-Mail(s) nachgesendet.", erneut);
                     }
 
-                    if (DateTime.UtcNow >= naechstePruefung)
+                    if (ENote.Core.Services.AppUhr.UtcNow >= naechstePruefung)
                     {
-                        naechstePruefung = DateTime.UtcNow + PruefAbstand;
+                        naechstePruefung = ENote.Core.Services.AppUhr.UtcNow + PruefAbstand;
                         var neu = await scope.ServiceProvider.GetRequiredService<MailBenachrichtigungen>().PruefeAboMailsAsync(stoppingToken);
                         if (neu > 0) logger.LogInformation("{Anzahl} Abo-E-Mail(s) eingereiht.", neu);
                         var formation = await scope.ServiceProvider.GetRequiredService<MailBenachrichtigungen>()

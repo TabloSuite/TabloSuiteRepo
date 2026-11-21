@@ -42,5 +42,5 @@ public class Rabatt
     /// <summary>Optionales Ende der Gültigkeit (null = unbegrenzt, bis gelöscht).</summary>
     public DateTime? GueltigBisUtc { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

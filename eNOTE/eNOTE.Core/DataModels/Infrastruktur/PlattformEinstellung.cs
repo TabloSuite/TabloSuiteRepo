@@ -13,6 +13,6 @@ public class PlattformEinstellung
     /// <summary>« Assistant (Poser une question) pour tous les rôles » – sonst nur Administrateur und Responsable.</summary>
     public bool KiFuerAlleRollen { get; set; }
 
-    public DateTime GeaendertUtc { get; set; } = DateTime.UtcNow;
+    public DateTime GeaendertUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public Guid? GeaendertVonId { get; set; }
 }

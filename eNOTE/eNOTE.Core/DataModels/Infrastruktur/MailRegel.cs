@@ -8,6 +8,6 @@ public class MailRegel
 {
     public string Kategorie { get; set; } = string.Empty;
     public bool Aktiv { get; set; }
-    public DateTime GeaendertUtc { get; set; } = DateTime.UtcNow;
+    public DateTime GeaendertUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public Guid? GeaendertVonId { get; set; }
 }

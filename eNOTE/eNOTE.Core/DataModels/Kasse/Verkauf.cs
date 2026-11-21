@@ -21,7 +21,7 @@ public class Verkauf
     public KassenSitzung KassenSitzung { get; set; } = null!;
     public Guid SalonId { get; set; }
 
-    public DateTime ZeitUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ZeitUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     /// <summary>
     /// Zusammenfassung für Listen/Filter: Art des einzigen Zahlungsanteils oder
     /// <see cref="ZahlungsArt.Gemischt"/>. Maßgeblich sind die <see cref="Zahlungen"/>.

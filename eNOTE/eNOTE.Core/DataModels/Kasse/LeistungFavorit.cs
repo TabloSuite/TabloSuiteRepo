@@ -15,5 +15,5 @@ public class LeistungFavorit
     /// <summary>Wer den Favoriten gesetzt hat (Kassierer oder Besitzer).</summary>
     public Guid GesetztVonId { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

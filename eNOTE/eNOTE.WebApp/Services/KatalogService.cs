@@ -167,7 +167,7 @@ public class KatalogService(
         }
 
         leistung.KategorieId = kategorieId;
-        leistung.UpdatedAtUtc = DateTime.UtcNow;
+        leistung.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -368,7 +368,7 @@ public class KatalogService(
         if (leistung.Id == Guid.Empty)
         {
             leistung.Id = Guid.NewGuid();
-            leistung.CreatedAtUtc = DateTime.UtcNow;
+            leistung.CreatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
             db.Leistungen.Add(leistung);
         }
         else
@@ -395,7 +395,7 @@ public class KatalogService(
             vorhanden.BasisAbzugMenge = leistung.BasisAbzugMenge;
             vorhanden.IstAktiv = leistung.IstAktiv;
             vorhanden.BildAssetId = leistung.BildAssetId;
-            vorhanden.UpdatedAtUtc = DateTime.UtcNow;
+            vorhanden.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
             leistung = vorhanden;
         }
 
@@ -546,7 +546,7 @@ public class KatalogService(
         await db.SaveChangesAsync(cancellationToken);
 
         leistung.BildAssetId = asset.Id;
-        leistung.UpdatedAtUtc = DateTime.UtcNow;
+        leistung.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         return (true, null, mediaStorage.GetPublicUrl(ergebnis.BlobName!));
@@ -634,7 +634,7 @@ public class KatalogService(
         if (rabatt.Id == Guid.Empty)
         {
             rabatt.Id = Guid.NewGuid();
-            rabatt.CreatedAtUtc = DateTime.UtcNow;
+            rabatt.CreatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
             db.Rabatte.Add(rabatt);
         }
         else

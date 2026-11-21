@@ -121,7 +121,7 @@ public class PostEingangService(IDbContextFactory<ApplicationDbContext> factory,
         if (!ok) return "Réponse mise en file d'attente : l'envoi n'est pas actif pour le moment (voir « Historique »).";
 
         mail.IstGelesen = true;
-        mail.BeantwortetUtc = DateTime.UtcNow;
+        mail.BeantwortetUtc = ENote.Core.Services.AppUhr.UtcNow;
         await db.SaveChangesAsync(ct);
         return null;
     }

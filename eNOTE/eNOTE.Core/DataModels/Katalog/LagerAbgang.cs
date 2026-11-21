@@ -41,7 +41,7 @@ public class LagerAbgang
     public Guid? KassenSitzungId { get; set; }
     public Guid ErfasstVonId { get; set; }
     public string ErfasstVonName { get; set; } = string.Empty;
-    public DateTime ZeitUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ZeitUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 
     public decimal? Einkaufswert => EinkaufspreisSnapshot is decimal e ? Math.Round(e * Menge, 0) : null;
 }

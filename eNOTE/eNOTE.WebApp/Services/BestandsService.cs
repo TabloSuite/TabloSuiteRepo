@@ -110,7 +110,7 @@ public class BestandsService(IDbContextFactory<ApplicationDbContext> dbContextFa
         if (menge > leistung.Stueckzahl) return $"Quantité supérieure au stock ({leistung.Stueckzahl:0.##}).";
 
         leistung.Stueckzahl -= menge;
-        leistung.UpdatedAtUtc = DateTime.UtcNow;
+        leistung.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         db.LagerAbgaenge.Add(new LagerAbgang
         {
             SalonId = leistung.SalonId, LeistungId = leistung.Id, LeistungName = leistung.Name, Menge = menge,
@@ -174,7 +174,7 @@ public class BestandsService(IDbContextFactory<ApplicationDbContext> dbContextFa
             SalonId = salonId, Art = GeldBewegungArt.Einlage, Ort = ort, Betrag = Math.Round(betrag, 0),
             Herkunft = Kuerze(herkunft, 120), Notiz = Kuerze(notiz), KassenSitzungId = sitzungId,
             ErfasstVonId = userId, ErfasstVonName = name,
-            ZeitUtc = ort == GeldOrt.AusserhalbKasse && datumUtc is DateTime d ? d : DateTime.UtcNow
+            ZeitUtc = ort == GeldOrt.AusserhalbKasse && datumUtc is DateTime d ? d : ENote.Core.Services.AppUhr.UtcNow
         };
 
         if (ort != GeldOrt.Kasse)

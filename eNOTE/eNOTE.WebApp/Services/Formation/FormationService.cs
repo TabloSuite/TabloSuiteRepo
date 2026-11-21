@@ -21,7 +21,7 @@ namespace ENote.WebApp.Services.Formation;
 public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory, TimeProvider? uhr = null, IReadOnlyList<Lektion>? katalog = null,
     IReadOnlyList<Lektion>? adminKatalog = null)
 {
-    private readonly TimeProvider zeit = uhr ?? TimeProvider.System;
+    private readonly TimeProvider zeit = uhr ?? ENote.Core.Services.AppUhr.Provider;
     /// <summary>Lernpfad der Responsables (Prüfungsrunden).</summary>
     public IReadOnlyList<Lektion> Lektionen { get; } = katalog ?? FormationKatalog.Lektionen;
     /// <summary>Lernpfad der Administrateure (nur freies Training, nur für SuperAdmin sichtbar).</summary>

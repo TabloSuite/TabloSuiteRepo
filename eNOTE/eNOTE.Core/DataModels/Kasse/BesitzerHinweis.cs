@@ -21,6 +21,6 @@ public class BesitzerHinweis
     /// <summary>true, bis der Besitzer ihn gelesen hat.</summary>
     public bool IstUngelesen { get; set; } = true;
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? GelesenUtc { get; set; }
 }

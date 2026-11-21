@@ -73,7 +73,7 @@ public class Salon
     public Guid? LogoAssetId { get; set; }
     public Infrastruktur.BlobMediaAsset? LogoAsset { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 
     public ICollection<UserSalon> UserSalons { get; set; } = new List<UserSalon>();

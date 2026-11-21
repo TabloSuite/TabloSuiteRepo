@@ -69,7 +69,7 @@
                             <strong>@a.Name</strong>
                             <small>Arrivée à @a.AnkunftUtc.ImLaden(aktiverSalon.Zeitzone).ToString("HH':'mm")@(string.IsNullOrWhiteSpace(a.ErfasstVon) ? "" : $" · {a.ErfasstVon}")</small>
                         </div>
-                        <span class="pz-dauer @(a.Vergessen ? "alt" : "")" title="Temps de présence">@(a.Vergessen ? $"depuis le {a.AnkunftUtc.ImLaden(aktiverSalon.Zeitzone):dd'/'MM}" : KundenBesuchRegeln.Kurz(a.AnkunftUtc, DateTime.UtcNow))</span>
+                        <span class="pz-dauer @(a.Vergessen ? "alt" : "")" title="Temps de présence">@(a.Vergessen ? $"depuis le {a.AnkunftUtc.ImLaden(aktiverSalon.Zeitzone):dd'/'MM}" : KundenBesuchRegeln.Kurz(a.AnkunftUtc, ENote.Core.Services.AppUhr.UtcNow))</span>
                     </div>
                     <div class="pz-grund">
                         <span>Présent pour</span>

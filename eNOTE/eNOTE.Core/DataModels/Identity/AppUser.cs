@@ -22,7 +22,7 @@ public class AppUser : IdentityUser<Guid>
     /// </summary>
     public Guid? ActiveSessionId { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 
     public ICollection<AppUserRole> UserRoles { get; set; } = new List<AppUserRole>();

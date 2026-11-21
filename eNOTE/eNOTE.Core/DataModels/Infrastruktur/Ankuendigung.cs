@@ -20,10 +20,10 @@ public class Ankuendigung
     /// <summary>Optionaler Link (App-intern, z. B. „/abonnement“, oder https://…).</summary>
     public string? LinkUrl { get; set; }
     public string? LinkText { get; set; }
-    public DateTime ErstelltUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ErstelltUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public Guid? ErstelltVonId { get; set; }
     /// <summary>Ab wann das Banner erscheint (Standard: sofort).</summary>
-    public DateTime SichtbarAbUtc { get; set; } = DateTime.UtcNow;
+    public DateTime SichtbarAbUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     /// <summary>Danach verschwindet das Banner automatisch (leer = bis zur Deaktivierung).</summary>
     public DateTime? SichtbarBisUtc { get; set; }
     public bool IstAktiv { get; set; } = true;
@@ -40,5 +40,5 @@ public class AnkuendigungGelesen
 {
     public Guid AnkuendigungId { get; set; }
     public Guid UserId { get; set; }
-    public DateTime GelesenUtc { get; set; } = DateTime.UtcNow;
+    public DateTime GelesenUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

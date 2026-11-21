@@ -44,5 +44,5 @@ public class UserSalon
     /// </summary>
     public bool KannSichAnmelden { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

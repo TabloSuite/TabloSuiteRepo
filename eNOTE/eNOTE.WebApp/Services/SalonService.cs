@@ -14,7 +14,7 @@ public class SalonService(
     IMediaStorageService mediaStorage,
     UserManager<AppUser> userManager, TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     public async Task<Salon?> GetSalonAsync(Guid salonId, CancellationToken cancellationToken = default)
     {

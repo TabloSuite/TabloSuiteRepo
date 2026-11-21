@@ -70,7 +70,7 @@
                         <EnoteSelect TValue="string" Value="landWahl" ValueChanged="(string? l) => landWahl = l ?? landWahl" Options="landOptionen" MitSuche="true" Placeholder="Choisir le pays…" />
                         @if (landWahl != (land ?? LaenderAuswahl.Standard))
                         {
-                            <p class="st-land-folgen" role="status"><Icon Name="info" Groesse="16" /> @LaenderAuswahl.Folgen(landWahl, DateTime.UtcNow)</p>
+                            <p class="st-land-folgen" role="status"><Icon Name="info" Groesse="16" /> @LaenderAuswahl.Folgen(landWahl, ENote.Core.Services.AppUhr.UtcNow)</p>
                         }
                         else if (land is null)
                         {

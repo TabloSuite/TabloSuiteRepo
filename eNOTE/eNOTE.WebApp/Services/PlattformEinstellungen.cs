@@ -15,7 +15,7 @@ public sealed class PlattformEinstellungen(IDbContextFactory<ApplicationDbContex
 {
     public static readonly TimeSpan CacheDauer = TimeSpan.FromSeconds(60);
 
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
     private readonly object sperre = new();
     private Stand? stand;
     private Task? laufend;

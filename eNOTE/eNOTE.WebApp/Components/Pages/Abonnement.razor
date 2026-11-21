@@ -73,7 +73,7 @@
         }
         @foreach (var p in OffenePerioden.OrderBy(p => p.Faellig))
         {
-            var ueberfaellig = DateTime.UtcNow >= p.SperreAb;
+            var ueberfaellig = ENote.Core.Services.AppUhr.UtcNow >= p.SperreAb;
             <div class="ab-faellig @(ueberfaellig ? "gesperrt" : "")" role="status">
                 <span class="ab-faellig-ico"><Icon Name="@(ueberfaellig ? "lock" : "alert")" Groesse="20" /></span>
                 <div>
@@ -282,7 +282,7 @@
         <div class="enote-form">
             <ul class="ab-ende-liste">
                 <li><Icon Name="lock" Groesse="16" /> <span>L'établissement <strong>@salonName</strong> est fermé immédiatement (caisse et équipe).</span></li>
-                <li><Icon Name="calendar" Groesse="16" /> <span>Le <strong>@Datum(DateTime.UtcNow.AddDays(KuendigungsRegeln.LoeschFristTage))</strong>, toutes ses données sont supprimées définitivement.</span></li>
+                <li><Icon Name="calendar" Groesse="16" /> <span>Le <strong>@Datum(ENote.Core.Services.AppUhr.UtcNow.AddDays(KuendigungsRegeln.LoeschFristTage))</strong>, toutes ses données sont supprimées définitivement.</span></li>
                 <li><Icon Name="undo" Groesse="16" /> <span>D'ici là, vous pouvez annuler dans « Abonnement ».</span></li>
             </ul>
             <label><span class="enote-pflicht">Mot de passe actuel</span>

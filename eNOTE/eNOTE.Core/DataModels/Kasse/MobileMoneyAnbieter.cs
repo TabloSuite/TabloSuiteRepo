@@ -17,5 +17,5 @@ public class MobileMoneyAnbieter
 
     public int Reihenfolge { get; set; }
     public bool IstAktiv { get; set; } = true;
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

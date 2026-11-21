@@ -8,7 +8,7 @@ public class MailNachricht
     public string Betreff { get; set; } = string.Empty;
     public string HtmlInhalt { get; set; } = string.Empty;
     public bool IstGesendet { get; set; }
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? GesendetUtc { get; set; }
 
     /// <summary>Art der Nachricht (z. B. « facture », « bienvenue ») – Postmark-Tag und Filter in der Übersicht.</summary>

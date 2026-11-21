@@ -18,7 +18,7 @@ public class KassenSitzung
     public Guid KassiererId { get; set; }
     public Identity.AppUser Kassierer { get; set; } = null!;
 
-    public DateTime GestartetUtc { get; set; } = DateTime.UtcNow;
+    public DateTime GestartetUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? AbgeschlossenUtc { get; set; }
     public KassenSitzungStatus Status { get; set; } = KassenSitzungStatus.Offen;
 

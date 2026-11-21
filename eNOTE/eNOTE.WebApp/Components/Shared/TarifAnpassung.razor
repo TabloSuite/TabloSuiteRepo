@@ -54,7 +54,7 @@
             @foreach (var p in stand.Verlauf)
             {
                 var hoch = p.NeuerStandard > p.AlterStandard;
-                var kommend = p.GueltigAbUtc > DateTime.UtcNow;
+                var kommend = p.GueltigAbUtc > ENote.Core.Services.AppUhr.UtcNow;
                 <div class="ta-verlauf-zeile @(p.IstAufgehoben ? "aufgehoben" : "")">
                     <span class="ta-verlauf-datum">@PreisAnpassungService.DatumText(p.GueltigAbUtc)</span>
                     <span class="ta-verlauf-preis"><s>@p.AlterStandard.ToString("N0") F</s> <Icon Name="arrow-right" Groesse="14" /> <strong>@p.NeuerStandard.ToString("N0") F</strong></span>

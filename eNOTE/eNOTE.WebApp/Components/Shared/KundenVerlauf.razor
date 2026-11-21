@@ -41,7 +41,7 @@
                                 @if (b.EndeUtc is null) { <span class="kv-status">Présent</span> }
                             </div>
                             <small class="enote-muted">
-                                @Datum(b.AnkunftUtc) · @(b.EndeUtc is DateTime ende ? $"durée {KundenBesuchRegeln.Dauer(b.AnkunftUtc, ende)}" : KundenBesuchRegeln.Seit(b.AnkunftUtc, DateTime.UtcNow))@(string.IsNullOrWhiteSpace(b.ErfasstVon) ? "" : $" · accueilli par {b.ErfasstVon}")@(b.MitVerkauf ? " · encaissé" : "")
+                                @Datum(b.AnkunftUtc) · @(b.EndeUtc is DateTime ende ? $"durée {KundenBesuchRegeln.Dauer(b.AnkunftUtc, ende)}" : KundenBesuchRegeln.Seit(b.AnkunftUtc, ENote.Core.Services.AppUhr.UtcNow))@(string.IsNullOrWhiteSpace(b.ErfasstVon) ? "" : $" · accueilli par {b.ErfasstVon}")@(b.MitVerkauf ? " · encaissé" : "")
                             </small>
                             @foreach (var n in b.Notizen)
                             {
@@ -96,7 +96,7 @@
     private string Datum(DateTime utc)
     {
         var lokal = utc.ImLaden(Zone);
-        var tage = (Zeitzonen.Heute(Zone, DateTime.UtcNow) - lokal.Date).Days;
+        var tage = (Zeitzonen.Heute(Zone, ENote.Core.Services.AppUhr.UtcNow) - lokal.Date).Days;
         var tag = tage switch { 0 => "Aujourd'hui", 1 => "Hier", _ => lokal.ToString("dd'/'MM'/'yyyy") };
         return $"{tag} {lokal:HH':'mm}";
     }

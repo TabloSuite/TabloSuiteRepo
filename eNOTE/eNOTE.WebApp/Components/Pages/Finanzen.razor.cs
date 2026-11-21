@@ -22,8 +22,8 @@ public partial class Finanzen(
     private Guid salonId;
     private TimeZoneInfo Zone => aktiverSalon.Zeitzone;
     /// <summary>Heutiges Datum im Laden (nicht auf dem Server).</summary>
-    private DateTime Heute => ENote.Core.Services.Zeitzonen.Heute(Zone, DateTime.UtcNow);
-    private TimeSpan Versatz => ENote.Core.Services.Zeitzonen.Versatz(Zone, DateTime.UtcNow);
+    private DateTime Heute => ENote.Core.Services.Zeitzonen.Heute(Zone, ENote.Core.Services.AppUhr.UtcNow);
+    private TimeSpan Versatz => ENote.Core.Services.Zeitzonen.Versatz(Zone, ENote.Core.Services.AppUhr.UtcNow);
     private Guid benutzerId;
     private string salonName = string.Empty;
 
@@ -39,8 +39,8 @@ public partial class Finanzen(
     private int liveAnzahlHeute;
     private bool liveVerbunden;
 
-    private DateTime? filterVon = DateTime.Today.AddDays(-13);
-    private DateTime? filterBis = DateTime.Today;
+    private DateTime? filterVon = ENote.Core.Services.AppUhr.Today.AddDays(-13);
+    private DateTime? filterBis = ENote.Core.Services.AppUhr.Today;
     private bool filterAktiv;
 
     // Tabs
@@ -240,7 +240,7 @@ public partial class Finanzen(
     private Core.DataModels.Finanzen.GeldOrt apportOrt = Core.DataModels.Finanzen.GeldOrt.AusserhalbKasse;
     private string? apportHerkunft;
     private string? apportNotiz;
-    private DateTime? apportDatum = DateTime.Today;
+    private DateTime? apportDatum = ENote.Core.Services.AppUhr.Today;
     private string? apportFehler;
 
     /// <summary>Pflichtangaben des Apports (wie BestandsService.ErfasseEinlageAsync): Betrag und Provenance.</summary>
@@ -304,7 +304,7 @@ public partial class Finanzen(
     }
 
     // Ohne aktiven Filter gilt der Standard-Zeitraum der Umsatzliste (14 Tage).
-    private DateTime StandardZeitraumVon() => DateTime.UtcNow.Date.AddDays(-14);
+    private DateTime StandardZeitraumVon() => ENote.Core.Services.AppUhr.UtcNow.Date.AddDays(-14);
 
     private void ExportierePdf()
     {

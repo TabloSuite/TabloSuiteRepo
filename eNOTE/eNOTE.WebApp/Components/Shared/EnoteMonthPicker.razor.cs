@@ -8,7 +8,7 @@ public partial class EnoteMonthPicker
     [Parameter] public DateTime? Value { get; set; }
     [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
 
-    private int angezeigtesJahr = DateTime.Today.Year;
+    private int angezeigtesJahr = ENote.Core.Services.AppUhr.Today.Year;
 
     protected override void OnParametersSet()
     {

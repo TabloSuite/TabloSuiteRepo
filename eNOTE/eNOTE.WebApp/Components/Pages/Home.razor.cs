@@ -89,8 +89,8 @@ public partial class Home(
         try
         {
             var zone = ENote.Core.Services.Zeitzonen.Fuer(aktiv.Salon?.Land);
-            daten = await dashboardService.LadeAsync(benutzerId, aktiv.SalonId, ENote.Core.Services.Zeitzonen.ImLaden(DateTime.UtcNow, zone),
-                ENote.Core.Services.Zeitzonen.Versatz(zone, DateTime.UtcNow));
+            daten = await dashboardService.LadeAsync(benutzerId, aktiv.SalonId, ENote.Core.Services.Zeitzonen.ImLaden(ENote.Core.Services.AppUhr.UtcNow, zone),
+                ENote.Core.Services.Zeitzonen.Versatz(zone, ENote.Core.Services.AppUhr.UtcNow));
         }
         catch (Exception ex)
         {

@@ -162,7 +162,7 @@ if (administration is null)
     builder.Services.AddScoped<DashboardService>();
     builder.Services.AddScoped<BestandsService>();
     builder.Services.AddScoped<StornoService>();
-    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddSingleton(ENote.Core.Services.AppUhr.Provider);
     // Schutz der öffentlichen Formulare: Bremse (Registrierung, « Mot de passe oublié ») und Rate-Limit der Anmeldung.
     builder.Services.AddSingleton<ENote.WebApp.Services.Sicherheit.MissbrauchsBremse>();
     ENote.WebApp.Services.Sicherheit.Schutzgrenzen.AddEnoteSchutzgrenzen(builder.Services);
@@ -509,7 +509,7 @@ app.MapGet("/finances/rapport", async (
     // Gewählte Tage sind Kalendertage des Ladens (Ortszeit aus dem Land).
     var zone = ENote.Core.Services.Zeitzonen.Fuer(salon.Land);
     var (vonUtc, bisEnde) = ENote.Core.Services.Zeitzonen.TageInUtc(zeitraum!.VonUtc, zeitraum.Bis, zone);
-    var versatz = ENote.Core.Services.Zeitzonen.Versatz(zone, DateTime.UtcNow);
+    var versatz = ENote.Core.Services.Zeitzonen.Versatz(zone, ENote.Core.Services.AppUhr.UtcNow);
     var tage = await finanzService.GetTagesUmsaetzeImZeitraumAsync(salonId, vonUtc, bisEnde, cancellationToken, versatz);
     var uebersicht = await finanzService.GetFinanzUebersichtAsync(salonId, vonUtc, bisEnde, cancellationToken);
     var pdf = FinanzBerichtPdfService.ErzeugeBericht(salon, zeitraum.VonUtc, zeitraum.Bis, tage, uebersicht);

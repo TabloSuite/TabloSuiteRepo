@@ -245,7 +245,7 @@
     private string Wann(DateTime? utc)
     {
         if (utc is not DateTime d) return "—";
-        var tage = (Zeitzonen.Heute(aktiverSalon.Zeitzone, DateTime.UtcNow) - d.ImLaden(aktiverSalon.Zeitzone).Date).Days;
+        var tage = (Zeitzonen.Heute(aktiverSalon.Zeitzone, ENote.Core.Services.AppUhr.UtcNow) - d.ImLaden(aktiverSalon.Zeitzone).Date).Days;
         return tage switch { 0 => "Aujourd'hui", 1 => "Hier", < 7 => $"Il y a {tage} jours", _ => d.ImLaden(aktiverSalon.Zeitzone).ToString("dd/MM/yyyy") };
     }
 

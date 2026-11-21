@@ -37,7 +37,7 @@
                         {
                             <div class="kf-praesenz-text">
                                 <strong>Présent pour @offen.Grund</strong>
-                                <span>@(offen.Raum is { } r ? $"{r} · " : "")@KundenBesuchRegeln.Seit(offen.AnkunftUtc, DateTime.UtcNow) (arrivée à @offen.AnkunftUtc.ImLaden(Zone).ToString("HH':'mm"))</span>
+                                <span>@(offen.Raum is { } r ? $"{r} · " : "")@KundenBesuchRegeln.Seit(offen.AnkunftUtc, ENote.Core.Services.AppUhr.UtcNow) (arrivée à @offen.AnkunftUtc.ImLaden(Zone).ToString("HH':'mm"))</span>
                             </div>
                             <div class="kf-knoepfe">
                                 <button type="button" class="enote-btn enote-btn-ghost enote-btn-sm" @onclick="StarteBearbeiten"><Icon Name="edit" Groesse="16" /> Motif / salle</button>

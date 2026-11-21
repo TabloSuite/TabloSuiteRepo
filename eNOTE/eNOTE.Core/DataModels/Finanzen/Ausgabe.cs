@@ -24,5 +24,5 @@ public class Ausgabe
     public Infrastruktur.BlobMediaAsset? BelegAsset { get; set; }
 
     public Guid ErfasstVonId { get; set; }
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

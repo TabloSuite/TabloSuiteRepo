@@ -20,7 +20,7 @@ public class Kunde
     /// <summary>Freie Notiz des Ladens (z. B. Allergie, Wunsch-Friseurin).</summary>
     public string? Notiz { get; set; }
 
-    public DateTime ErstelltUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ErstelltUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public Guid? ErstelltVonId { get; set; }
     public DateTime? GeaendertUtc { get; set; }
 }

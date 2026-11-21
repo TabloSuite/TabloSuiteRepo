@@ -23,7 +23,7 @@ public class PlattformPreis
     public AboIntervall Intervall { get; set; }
     public decimal Preis { get; set; }
     public bool IstAktuell { get; set; } = true;
-    public DateTime GueltigAbUtc { get; set; } = DateTime.UtcNow;
+    public DateTime GueltigAbUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }
 
 /// <summary>
@@ -54,7 +54,7 @@ public class NutzungsAbo
     public DateTime? ZahlungBestaetigtUtc { get; set; }
     public string? ZahlungsNotiz { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 
     // ---------- E-Mail-Benachrichtigungen (jeweils höchstens einmal) ----------
     /// <summary>Mail « Nouvelle facture » versendet.</summary>

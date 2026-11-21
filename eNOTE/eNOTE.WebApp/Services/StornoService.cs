@@ -17,7 +17,7 @@ public class StornoService(
     KassenService kassenService,
     IUmsatzBenachrichtigungService umsatzBenachrichtigung, TimeProvider? zeit = null, AnwesenheitsSignal? signal = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     public static readonly string[] GrundVorschlaege = ["Erreur de caisse", "Article défectueux", "Client mécontent", "Prestation non réalisée"];
 

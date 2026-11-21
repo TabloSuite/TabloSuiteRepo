@@ -183,7 +183,7 @@ public partial class Caisse(
     private string WarteSeit(TicketParkService.Eintrag w)
     {
         var ort = ENote.Core.Services.Zeitzonen.ImLaden(w.GeaendertUtc, zone);
-        var heute = ENote.Core.Services.Zeitzonen.ImLaden(DateTime.UtcNow, zone).Date;
+        var heute = ENote.Core.Services.Zeitzonen.ImLaden(ENote.Core.Services.AppUhr.UtcNow, zone).Date;
         var wann = ort.Date == heute ? $"depuis {ort:HH:mm}"
             : ort.Date == heute.AddDays(-1) ? $"depuis hier {ort:HH:mm}"
             : $"depuis le {ort:dd.MM} à {ort:HH:mm}";

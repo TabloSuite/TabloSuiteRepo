@@ -103,7 +103,7 @@ public class AdminKontenService(IDbContextFactory<ApplicationDbContext> factory,
         konto.Vorname = vorname.Trim(); konto.Nachname = nachname.Trim(); konto.FullName = $"{konto.Vorname} {konto.Nachname}";
         if (!string.Equals(konto.Email, email.Trim(), StringComparison.OrdinalIgnoreCase)) konto.EmailConfirmed = false;
         konto.Email = email.Trim(); konto.IsBlocked = gesperrt;
-        konto.ActiveSessionId = null; konto.UpdatedAtUtc = DateTime.UtcNow;
+        konto.ActiveSessionId = null; konto.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         PruefeErgebnis(await users.UpdateAsync(konto));
     }
 
@@ -113,7 +113,7 @@ public class AdminKontenService(IDbContextFactory<ApplicationDbContext> factory,
         await using var db = await factory.CreateDbContextAsync(ct);
         await PruefeZielAsync(db, bearbeiter, ziel, ct);
         var konto = await users.FindByIdAsync(ziel.ToString()) ?? throw new InvalidOperationException("Compte introuvable.");
-        konto.IsBlocked = gesperrt; konto.ActiveSessionId = null; konto.UpdatedAtUtc = DateTime.UtcNow;
+        konto.IsBlocked = gesperrt; konto.ActiveSessionId = null; konto.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         PruefeErgebnis(await users.UpdateAsync(konto));
     }
 

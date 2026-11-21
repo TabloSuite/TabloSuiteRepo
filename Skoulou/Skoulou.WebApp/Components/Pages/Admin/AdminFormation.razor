@@ -122,7 +122,7 @@ else
 
                 <section>
                     <h3>Pause</h3>
-                    @if (z.PausiertBisUtc is { } p && p > DateTime.UtcNow)
+                    @if (z.PausiertBisUtc is { } p && p > Skoulou.Core.Werkzeuge.AppUhr.UtcNow)
                     {
                         <p class="sk-leise">En pause jusqu'au @p.ToString("dd/MM/yyyy").</p>
                         <AsyncKnopf Text="Terminer la pause (session tout de suite)" CssClass="sk-btn-ghost" OnClick="() => PauseAsync(null)" />
@@ -235,7 +235,7 @@ else
     private int OhneAnzahl => schulenDesPo.Count(x => neuJeSchule.GetValueOrDefault(x.SchuleId) is null);
     private int regelGrenze, regelFragen, regelFrist, regelIntervall;
     private int MaxFragen => Formation.Lektionen.Sum(l => l.Pruefung.Count);
-    private static DateOnly Heute => DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+    private static DateOnly Heute => DateOnly.FromDateTime(Skoulou.Core.Werkzeuge.AppUhr.UtcNow).AddDays(1);
 
     private IEnumerable<FormationService.PoZeile> Gefiltert => string.IsNullOrWhiteSpace(suche) ? zeilen ?? []
         : (zeilen ?? []).Where(z => z.Name.Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase) || (z.Email?.Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase) ?? false));
@@ -322,7 +322,7 @@ else
             var l = o.LetzterAbgegeben;
             return $"Session ouverte jusqu'au {o.FristUtc:dd/MM/yyyy} · {o.Abgegeben}/{FormationRunde.MaxVersuche} essais" + (l is null ? "" : $" · dernier {l.Prozent} %");
         }
-        if (z.PausiertBisUtc is { } p && p > DateTime.UtcNow) return $"En pause jusqu'au {p:dd/MM/yyyy}";
+        if (z.PausiertBisUtc is { } p && p > Skoulou.Core.Werkzeuge.AppUhr.UtcNow) return $"En pause jusqu'au {p:dd/MM/yyyy}";
         return z.NaechsteRundeAbUtc is { } n ? $"Prochaine session le {n:dd/MM/yyyy}" : "Pas encore de session";
     }
 }

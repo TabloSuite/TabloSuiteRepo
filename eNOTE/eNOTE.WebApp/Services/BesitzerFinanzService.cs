@@ -8,7 +8,7 @@ namespace ENote.WebApp.Services;
 
 public class BesitzerFinanzService(IDbContextFactory<ApplicationDbContext> factory, TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     public record BesitzerEintrag(Guid Id, string Name, string? Email);
     public record LadenEintrag(Guid Id, string Name, string Vertragsart);

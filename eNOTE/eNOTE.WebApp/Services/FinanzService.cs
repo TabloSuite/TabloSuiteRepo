@@ -11,7 +11,7 @@ namespace ENote.WebApp.Services;
 /// </summary>
 public class FinanzService(IDbContextFactory<ApplicationDbContext> dbContextFactory, TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     public record TagesUmsatz(DateTime Datum, int AnzahlVerkaeufe, decimal Bar, decimal Karte, decimal MobileMoney, decimal Gesamt);
 

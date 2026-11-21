@@ -86,7 +86,7 @@
 
     private string Relativ(DateTime utc)
     {
-        var d = DateTime.UtcNow - utc;
+        var d = ENote.Core.Services.AppUhr.UtcNow - utc;
         if (d < TimeSpan.FromMinutes(10)) return "à l'instant";
         if (d < TimeSpan.FromHours(1)) return $"il y a {(int)d.TotalMinutes} min";
         if (d < TimeSpan.FromDays(1)) return $"il y a {(int)d.TotalHours} h";

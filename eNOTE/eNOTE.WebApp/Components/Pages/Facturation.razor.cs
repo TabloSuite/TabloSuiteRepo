@@ -45,7 +45,7 @@ public partial class Facturation(
     private bool alleMehr;
     private AboService.FacturationKennzahlen kennzahlen = new(0, 0, 0);
     private CancellationTokenSource? suchVerzoegerung;
-    private static DateTime MonatsAnfangUtc => new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+    private static DateTime MonatsAnfangUtc => new(ENote.Core.Services.AppUhr.UtcNow.Year, ENote.Core.Services.AppUhr.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private AboZahlungStatus? GewaehlterStatus
         => aboStatusFilter != "alle" && Enum.TryParse<AboZahlungStatus>(aboStatusFilter, out var status) ? status : null;

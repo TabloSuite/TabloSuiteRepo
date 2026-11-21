@@ -31,7 +31,7 @@
                     else
                     {
                         var tag = zelle.Value;
-                        var istHeute = tag.Date == DateTime.Today;
+                        var istHeute = tag.Date == ENote.Core.Services.AppUhr.Today;
                         var istGewaehlt = Value?.Date == tag.Date;
                         <button type="button"
                                 class="enote-datepicker-tag @(istHeute ? "heute" : "") @(istGewaehlt ? "gewaehlt" : "")"

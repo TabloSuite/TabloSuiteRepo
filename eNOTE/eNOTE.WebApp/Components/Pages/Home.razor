@@ -8,7 +8,7 @@
         <div class="db">
             <header class="db-kopf">
                 <div>
-                    <p class="db-datum">@DateTime.UtcNow.ImLaden(aktiverSalon.Zeitzone).ToString("dddd d MMMM", Francais)</p>
+                    <p class="db-datum">@ENote.Core.Services.AppUhr.UtcNow.ImLaden(aktiverSalon.Zeitzone).ToString("dddd d MMMM", Francais)</p>
                     <h1>Bonjour@(string.IsNullOrWhiteSpace(vorname) ? "" : $", {vorname}") <span aria-hidden="true">👋</span></h1>
                     @if (!string.IsNullOrWhiteSpace(ladenName))
                     {

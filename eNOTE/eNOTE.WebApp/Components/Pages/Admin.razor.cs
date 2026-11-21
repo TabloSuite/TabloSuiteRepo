@@ -486,7 +486,7 @@ public partial class Admin(
     private DateTime? probeBisher;
 
     /// <summary>Responsable darf nur eine laufende Probezeit verlängern, die noch vor seiner Grenze (30 Tage ab heute) endet.</summary>
-    private bool PoDarfVerlaengern => !istSuperAdmin && probeBisher is DateTime bisher && bisher < AdminService.PoProbeGrenze(DateTime.UtcNow);
+    private bool PoDarfVerlaengern => !istSuperAdmin && probeBisher is DateTime bisher && bisher < AdminService.PoProbeGrenze(ENote.Core.Services.AppUhr.UtcNow);
     private bool ZeigeProbeFormular => istSuperAdmin || PoDarfVerlaengern;
 
     private async Task SpeichereProbeAsync()
@@ -506,11 +506,11 @@ public partial class Admin(
     }
 
     private void SetzeProbeStandard()
-        => probeBisDatum = AuthService.BerechneProbeEnde(DateTime.UtcNow);
+        => probeBisDatum = AuthService.BerechneProbeEnde(ENote.Core.Services.AppUhr.UtcNow);
 
     /// <summary>Responsable: Probezeit bis zur erlaubten Grenze verlängern (höchstens 30 Tage ab heute).</summary>
     private void SetzeProbeMaximal()
-        => probeBisDatum = AdminService.PoProbeGrenze(DateTime.UtcNow).Date;
+        => probeBisDatum = AdminService.PoProbeGrenze(ENote.Core.Services.AppUhr.UtcNow).Date;
 
     private void EntferneProbe() => probeBisDatum = null;
 

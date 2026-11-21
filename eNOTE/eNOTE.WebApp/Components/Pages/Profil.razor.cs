@@ -244,7 +244,7 @@ public partial class Profil(
 
             // Blob-Name in DB speichern
             user.ProfilBildBlobName = result.BlobName;
-            user.UpdatedAtUtc = DateTime.UtcNow;
+            user.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
             await db.SaveChangesAsync();
 
             profilBildUrl = result.OeffentlicheUrl;
@@ -269,7 +269,7 @@ public partial class Profil(
             {
                 await mediaStorage.DeleteAsync(blobName);
                 user.ProfilBildBlobName = null;
-                user.UpdatedAtUtc = DateTime.UtcNow;
+                user.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
                 await db.SaveChangesAsync();
             }
 

@@ -28,5 +28,5 @@ public class ProduktOwnerAuszahlung
     public AuszahlungStatus Status { get; set; } = AuszahlungStatus.Offen;
     public DateTime? BestaetigtUtc { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

@@ -15,7 +15,7 @@ public class EingangsMail
     /// <summary>Postmark MessageID – verhindert doppelte Einträge bei wiederholter Zustellung.</summary>
     public string? AnbieterId { get; set; }
 
-    public DateTime EmpfangenUtc { get; set; } = DateTime.UtcNow;
+    public DateTime EmpfangenUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public bool IstGelesen { get; set; }
     public DateTime? BeantwortetUtc { get; set; }
 }

@@ -10,5 +10,5 @@ public class AusgabenKategorie
     public string Name { get; set; } = string.Empty;
     public bool IstAktiv { get; set; } = true;
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

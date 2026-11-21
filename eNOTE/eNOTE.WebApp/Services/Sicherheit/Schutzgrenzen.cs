@@ -57,7 +57,7 @@ public sealed class MissbrauchsBremse(TimeProvider? zeit = null)
     public static readonly Grenze OublieJeAnschluss = new(10, TimeSpan.FromMinutes(10));
 
     private const int MerkGrenze = 500;
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
     private readonly ConcurrentDictionary<string, List<DateTimeOffset>> zaehler = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Ist ein weiterer Vorgang erlaubt? Ohne Schlüssel (Anschluss unbekannt) greift diese Grenze nicht.</summary>

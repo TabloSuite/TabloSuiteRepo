@@ -98,7 +98,7 @@ public static class ApplicationDbInitializer
             else if (vorhanden.Description != beschreibung)
             {
                 vorhanden.Description = beschreibung;
-                vorhanden.UpdatedAtUtc = DateTime.UtcNow;
+                vorhanden.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
                 PruefeErgebnis(await roleManager.UpdateAsync(vorhanden));
             }
         }

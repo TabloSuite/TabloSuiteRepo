@@ -28,7 +28,7 @@
             var zustand = await AuthProvider.GetAuthenticationStateAsync();
             if (zustand.User.Identity?.IsAuthenticated != true) return;
             angemeldet = zustand.User;
-            letztePruefungUtc = DateTime.UtcNow;
+            letztePruefungUtc = ENote.Core.Services.AppUhr.UtcNow;
             AuthProvider.AuthenticationStateChanged += ZustandGeaendert;
             Nav.LocationChanged += SeiteGewechselt;
             abonniert = true;
@@ -55,9 +55,9 @@
     private void SeiteGewechselt(object? sender, LocationChangedEventArgs e)
     {
         if (angemeldet is not { } benutzer || umgeleitet || pruefungLaeuft
-            || DateTime.UtcNow - letztePruefungUtc < SeitenwechselAbstand) return;
+            || ENote.Core.Services.AppUhr.UtcNow - letztePruefungUtc < SeitenwechselAbstand) return;
         pruefungLaeuft = true;
-        letztePruefungUtc = DateTime.UtcNow;
+        letztePruefungUtc = ENote.Core.Services.AppUhr.UtcNow;
         _ = InvokeAsync(async () =>
         {
             try

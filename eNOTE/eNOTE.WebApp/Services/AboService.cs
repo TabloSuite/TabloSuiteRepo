@@ -11,7 +11,7 @@ namespace ENote.WebApp.Services;
 /// </summary>
 public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory, Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     /// <summary>Aktuelles (letztes) Abo eines Salons.</summary>
     public async Task<NutzungsAbo?> GetAktuellesAboAsync(Guid salonId, CancellationToken cancellationToken = default)
@@ -54,7 +54,7 @@ public class AboService(IDbContextFactory<ApplicationDbContext> dbContextFactory
     /// </summary>
     public static async Task<decimal> GlobalerMonatsPreisAsync(ApplicationDbContext db, CancellationToken ct = default, DateTime? jetztUtc = null)
     {
-        var jetzt = jetztUtc ?? DateTime.UtcNow;
+        var jetzt = jetztUtc ?? ENote.Core.Services.AppUhr.UtcNow;
         var stand = await db.MonatsPreisStaende.AsNoTracking()
             .Where(p => p.SalonId == null && p.GueltigAbUtc <= jetzt)
             .OrderByDescending(p => p.GueltigAbUtc)

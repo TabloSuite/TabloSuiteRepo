@@ -18,7 +18,7 @@ public class AdminService(
     ILogger<AdminService> logger,
     Mails.EmailService emailService, TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     /// <summary>Fachliche Mails (optional – in Tests ohne Service-Provider nicht vorhanden).</summary>
     private Mails.MailBenachrichtigungen? MailDienst => serviceProvider?.GetService(typeof(Mails.MailBenachrichtigungen)) as Mails.MailBenachrichtigungen;

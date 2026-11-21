@@ -85,7 +85,7 @@ public static class DemoSeedFinanzen
         await ZahlenAsync(j, "Sossou", 5_000, new(2026, 11, 3), ZahlungsKanal.MobileMoney, "TMONEY 71003318", koordinator);
         if (storno is not null)
         {
-            await Kassierer.ZahlungStornierenAsync(db, nummern, storno, direktor, "Chèque rejeté par la banque (sans provision)", new(2026, 10, 12), DateTime.UtcNow, ct);
+            await Kassierer.ZahlungStornierenAsync(db, nummern, storno, direktor, "Chèque rejeté par la banque (sans provision)", new(2026, 10, 12), Skoulou.Core.Werkzeuge.AppUhr.UtcNow, ct);
             await db.SaveChangesAsync(ct);
         }
 

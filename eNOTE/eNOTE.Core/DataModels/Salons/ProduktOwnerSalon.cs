@@ -29,6 +29,6 @@ public class ProduktOwnerSalon
     /// <summary>Vom SuperAdmin festgelegte feste Provision des PO für diesen Laden (pro Abo).</summary>
     public decimal? FestbetragProvision { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? GueltigBisUtc { get; set; }
 }

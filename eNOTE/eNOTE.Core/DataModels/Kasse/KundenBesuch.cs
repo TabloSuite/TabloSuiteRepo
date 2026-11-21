@@ -16,7 +16,7 @@ public class KundenBesuch
     /// <summary>Optionaler Raum/Platz, z. B. „Salle 2“, „Bac“.</summary>
     public string? Raum { get; set; }
 
-    public DateTime AnkunftUtc { get; set; } = DateTime.UtcNow;
+    public DateTime AnkunftUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? EndeUtc { get; set; }
 
     public Guid? ErfasstVonId { get; set; }

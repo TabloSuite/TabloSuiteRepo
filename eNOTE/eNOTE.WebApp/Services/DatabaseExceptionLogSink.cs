@@ -43,7 +43,7 @@ public sealed class DatabaseExceptionLogSink(
 
             db.ExceptionLogs.Add(new Core.DataModels.Infrastruktur.ExceptionLog
             {
-                ZeitUtc = DateTime.UtcNow,
+                ZeitUtc = ENote.Core.Services.AppUhr.UtcNow,
                 Nachricht = logEvent.RenderMessage(),
                 Ausnahme = logEvent.Exception.ToString(),
                 Pfad = httpContext?.Request.Path.Value,

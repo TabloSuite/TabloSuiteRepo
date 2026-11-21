@@ -32,7 +32,7 @@
                 @if (IstWartung)
                 {
                     <div class="an-fenster">
-                        <label><span class="enote-pflicht">Jour</span> <input type="date" @bind="neu.Tag" @bind:event="oninput" min="@DateTime.UtcNow.ToString("yyyy-MM-dd")" /></label>
+                        <label><span class="enote-pflicht">Jour</span> <input type="date" @bind="neu.Tag" @bind:event="oninput" min="@ENote.Core.Services.AppUhr.UtcNow.ToString("yyyy-MM-dd")" /></label>
                         <label><span class="enote-pflicht">De</span> <input type="time" step="300" @bind="neu.Von" @bind:event="oninput" /></label>
                         <label><span class="enote-pflicht">À</span> <input type="time" step="300" @bind="neu.Bis2" @bind:event="oninput" /></label>
                     </div>
@@ -70,7 +70,7 @@
                 {
                     <div class="enote-form-grid">
                         <label>Destinataires <EnoteSelect TValue="string" @bind-Value="zielWahl" Options="zielOptionen" /></label>
-                        <label>Visible jusqu'au <small class="enote-muted">(facultatif)</small> <input type="date" @bind="neu.Bis" min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" /></label>
+                        <label>Visible jusqu'au <small class="enote-muted">(facultatif)</small> <input type="date" @bind="neu.Bis" min="@ENote.Core.Services.AppUhr.Today.AddDays(1).ToString("yyyy-MM-dd")" /></label>
                     </div>
                 }
                 <div class="enote-form-grid">
@@ -135,7 +135,7 @@
                 <div class="enote-liste-scroll an-liste">
                 @foreach (var a in liste)
                 {
-                    var laeuft = a.IstAktiv && (a.SichtbarBisUtc is null || a.SichtbarBisUtc > DateTime.UtcNow);
+                    var laeuft = a.IstAktiv && (a.SichtbarBisUtc is null || a.SichtbarBisUtc > ENote.Core.Services.AppUhr.UtcNow);
                     <article class="enote-card an-eintrag @(laeuft ? "" : "beendet")">
                         <span class="an-symbol an-@AnkuendigungService.Klasse(a.Art)"><Icon Name="@AnkuendigungService.Symbol(a.Art)" Groesse="18" /></span>
                         <div class="an-eintrag-text">
@@ -184,7 +184,7 @@
     {
         public AnkuendigungArt Art { get; set; } = AnkuendigungArt.Maintenance;
         // Zeitfenster einer geplanten Aktualisierung (heure de Lomé = UTC)
-        public DateTime? Tag { get; set; } = DateTime.UtcNow.Date.AddDays(1);
+        public DateTime? Tag { get; set; } = ENote.Core.Services.AppUhr.UtcNow.Date.AddDays(1);
         public TimeOnly? Von { get; set; } = new(22, 0);
         public TimeOnly? Bis2 { get; set; } = new(22, 30);
         public bool HinweisDanach { get; set; } = true;

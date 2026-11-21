@@ -118,7 +118,7 @@ public static class DemoSeedPlattform
         var konto = new Konto
         {
             UserName = identifiant, Vorname = vorname, Nachname = nachname, SchuleId = schuleId, Email = $"{identifiant}@{DemoSeed.Domain}",
-            Status = status, SelbstRegistriert = selbst, AgbVersion = agb, AgbAkzeptiertAmUtc = agb is null ? null : DateTime.UtcNow
+            Status = status, SelbstRegistriert = selbst, AgbVersion = agb, AgbAkzeptiertAmUtc = agb is null ? null : Skoulou.Core.Werkzeuge.AppUhr.UtcNow
         };
         var ergebnis = await KontoAnlage.AnlegenAsync(users, konto, Rollen.Direktor, passwort);
         if (!ergebnis.Succeeded) throw new InvalidOperationException($"Compte de démonstration non créé : {KontoAnlage.Fehlertext(ergebnis)}");

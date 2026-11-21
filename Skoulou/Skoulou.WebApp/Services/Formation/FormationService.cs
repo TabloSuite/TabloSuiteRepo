@@ -18,7 +18,7 @@ namespace Skoulou.WebApp.Services.Formation;
 public class FormationService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, AuditService audit, SitzungsPruefung sitzungen,
     TimeProvider? uhr = null, IReadOnlyList<LernLektion>? katalog = null, IReadOnlyList<LernLektion>? adminKatalog = null)
 {
-    private readonly TimeProvider zeit = uhr ?? TimeProvider.System;
+    private readonly TimeProvider zeit = uhr ?? Skoulou.Core.Werkzeuge.AppUhr.Provider;
 
     /// <summary>Lernpfad der Responsables (Prüfungsrunden).</summary>
     public IReadOnlyList<LernLektion> Lektionen { get; } = katalog ?? FormationKatalog.Lektionen;

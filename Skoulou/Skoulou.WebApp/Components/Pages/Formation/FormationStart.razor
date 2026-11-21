@@ -145,11 +145,11 @@
     }
 
     private string PruefungsKlasse => istFrei ? "frei" : stand?.Offen is null ? "ruhig"
-        : stand.Offen.FristUtc < DateTime.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist) ? "dringend" : "offen";
+        : stand.Offen.FristUtc < Skoulou.Core.Werkzeuge.AppUhr.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist) ? "dringend" : "offen";
 
     private string PruefungsTitel => istFrei ? "Entraînement libre"
         : stand?.Offen is { } o ? (o.Abgegeben == 0 ? "Votre évaluation est ouverte" : "Session d'évaluation en cours")
-        : stand?.PausiertBisUtc is { } p && p > DateTime.UtcNow ? "Évaluation en pause"
+        : stand?.PausiertBisUtc is { } p && p > Skoulou.Core.Werkzeuge.AppUhr.UtcNow ? "Évaluation en pause"
         : "Pas d'évaluation pour le moment";
 
     private string PruefungsText => istFrei
@@ -157,7 +157,7 @@
         : stand?.Offen is { } o
             ? (o.Uebrig > 0 ? $"{o.FragenAnzahl} questions sur toutes les leçons. Après chaque essai, vous voyez votre note et vos erreurs. Vous avez {FormationRunde.MaxVersuche} essais au plus : seul le dernier compte."
                             : "Vous avez utilisé vos essais.")
-            : stand?.PausiertBisUtc is { } p && p > DateTime.UtcNow
+            : stand?.PausiertBisUtc is { } p && p > Skoulou.Core.Werkzeuge.AppUhr.UtcNow
                 ? $"L'administrateur a mis votre évaluation en pause jusqu'au {p:dd/MM/yyyy}. Les leçons restent ouvertes."
                 : stand?.NaechsteRundeAbUtc is { } n
                     ? $"Prochaine évaluation à partir du {n:dd/MM/yyyy} (tous les {stand.IntervallMonate} mois). D'ici là, relisez les leçons quand vous voulez."
@@ -165,7 +165,7 @@
 
     private static string TageText(DateTime frist)
     {
-        var tage = (int)Math.Ceiling((frist - DateTime.UtcNow).TotalDays);
+        var tage = (int)Math.Ceiling((frist - Skoulou.Core.Werkzeuge.AppUhr.UtcNow).TotalDays);
         return tage <= 0 ? "aujourd'hui" : tage == 1 ? "encore 1 jour" : $"encore {tage} jours";
     }
 

@@ -17,7 +17,7 @@ public class TeamService(
     ILogger<TeamService> logger,
     Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     public record TeamMitglied(
         Guid UserSalonId,

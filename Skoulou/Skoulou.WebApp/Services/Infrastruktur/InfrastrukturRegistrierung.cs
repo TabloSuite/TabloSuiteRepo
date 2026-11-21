@@ -65,7 +65,7 @@ public static class InfrastrukturRegistrierung
 
         services.AddHttpContextAccessor();
         services.AddMemoryCache();
-        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(Skoulou.Core.Werkzeuge.AppUhr.Provider);
         services.AddSingleton<Zugriff>();
         services.AddSingleton<AuditService>();
         services.AddSingleton<NummernkreisService>();

@@ -14,7 +14,7 @@ public partial class EnoteDatePicker : IAsyncDisposable
     [Inject] private IJSRuntime Js { get; set; } = default!;
 
     private bool offen;
-    private DateTime angezeigterMonat = DateTime.Today;
+    private DateTime angezeigterMonat = ENote.Core.Services.AppUhr.Today;
     private DotNetObjectReference<EnoteDatePicker>? selfRef;
     private bool closerRegistriert;
 
@@ -87,7 +87,7 @@ public partial class EnoteDatePicker : IAsyncDisposable
         await ValueChanged.InvokeAsync(tag);
     }
 
-    private async Task HeuteAsync() => await WaehleAsync(DateTime.Today);
+    private async Task HeuteAsync() => await WaehleAsync(ENote.Core.Services.AppUhr.Today);
 
     private async Task LoeschenAsync()
     {

@@ -36,7 +36,7 @@ public static class DemoDatenSeeder
     {
         await EntferneVorhandeneDemoAsync(db, userManager);
 
-        var jetzt = DateTime.UtcNow;
+        var jetzt = ENote.Core.Services.AppUhr.UtcNow;
         var zufall = new Random(2026);
 
         // --- Konten ---

@@ -105,7 +105,7 @@ public class EmailService(
         var regel = await db.MailRegeln.FirstOrDefaultAsync(r => r.Kategorie == kategorie, ct);
         if (regel is null) db.MailRegeln.Add(regel = new MailRegel { Kategorie = kategorie });
         regel.Aktiv = aktiv;
-        regel.GeaendertUtc = DateTime.UtcNow;
+        regel.GeaendertUtc = ENote.Core.Services.AppUhr.UtcNow;
         regel.GeaendertVonId = bearbeiter;
         await db.SaveChangesAsync(ct);
     }
@@ -114,7 +114,7 @@ public class EmailService(
     public async Task<int> GesendetImMonatAsync(CancellationToken ct = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(ct);
-        var jetzt = DateTime.UtcNow;
+        var jetzt = ENote.Core.Services.AppUhr.UtcNow;
         var anfang = new DateTime(jetzt.Year, jetzt.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         return await db.MailNachrichten.CountAsync(m => m.IstGesendet && m.GesendetUtc >= anfang, ct);
     }
@@ -212,7 +212,7 @@ public class EmailService(
         List<MailNachricht> neue;
         await using (var db = await dbContextFactory.CreateDbContextAsync(ct))
         {
-            var grenze = DateTime.UtcNow.AddDays(-3);
+            var grenze = ENote.Core.Services.AppUhr.UtcNow.AddDays(-3);
             neue = await db.MailNachrichten.AsNoTracking()
                 .Where(m => !m.IstGesendet && m.Versuche == 0 && m.CreatedAtUtc >= grenze)
                 .OrderBy(m => m.Kategorie == KategorieVorrang ? 0 : 1)
@@ -237,7 +237,7 @@ public class EmailService(
     {
         if (!IstKonfiguriert) return 0;
         await using var db = await dbContextFactory.CreateDbContextAsync(ct);
-        var grenze = DateTime.UtcNow.AddDays(-3);
+        var grenze = ENote.Core.Services.AppUhr.UtcNow.AddDays(-3);
         var offene = await db.MailNachrichten
             .Where(m => !m.IstGesendet && m.Versuche < MaxVersuche && m.CreatedAtUtc >= grenze)
             .OrderBy(m => m.CreatedAtUtc)
@@ -321,7 +321,7 @@ public class EmailService(
             if (m is null) return;
             m.Versuche++;
             m.IstGesendet = erfolg;
-            if (erfolg) m.GesendetUtc = DateTime.UtcNow;
+            if (erfolg) m.GesendetUtc = ENote.Core.Services.AppUhr.UtcNow;
             if (anbieterId is not null) m.AnbieterId = anbieterId;
             m.LetzterFehler = fehler is null ? null : fehler.Length > 1000 ? fehler[..1000] : fehler;
             await db.SaveChangesAsync(ct);

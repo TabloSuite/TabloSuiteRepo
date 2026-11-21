@@ -4,7 +4,7 @@ namespace ENote.Core.DataModels.Infrastruktur;
 public class ExceptionLog
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public DateTime ZeitUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ZeitUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public string? Nachricht { get; set; }
     public string? Ausnahme { get; set; }
     public string? Pfad { get; set; }

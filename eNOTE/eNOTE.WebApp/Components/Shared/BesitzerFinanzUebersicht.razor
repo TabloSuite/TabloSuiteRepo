@@ -131,12 +131,12 @@ else if (bericht is not null)
     private bool laedtLaeden, laedtBericht, entsorgt;
     private int version;
     private string modus = "monat";
-    private DateTime? monat = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-    private int jahr = DateTime.UtcNow.Year;
-    private DateTime? von = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1), bis = DateTime.UtcNow.Date;
+    private DateTime? monat = new DateTime(ENote.Core.Services.AppUhr.UtcNow.Year, ENote.Core.Services.AppUhr.UtcNow.Month, 1);
+    private int jahr = ENote.Core.Services.AppUhr.UtcNow.Year;
+    private DateTime? von = new DateTime(ENote.Core.Services.AppUhr.UtcNow.Year, ENote.Core.Services.AppUhr.UtcNow.Month, 1), bis = ENote.Core.Services.AppUhr.UtcNow.Date;
     private static readonly IReadOnlyList<EnoteSelectOption<string>> ModusOptionen =
         [new() { Value = "monat", Label = "Mois" }, new() { Value = "jahr", Label = "Année" }, new() { Value = "frei", Label = "Période personnalisée" }];
-    private IReadOnlyList<EnoteSelectOption<int>> Jahre => Enumerable.Range(2000, DateTime.UtcNow.Year - 2000 + 2).Reverse()
+    private IReadOnlyList<EnoteSelectOption<int>> Jahre => Enumerable.Range(2000, ENote.Core.Services.AppUhr.UtcNow.Year - 2000 + 2).Reverse()
         .Select(j => new EnoteSelectOption<int> { Value = j, Label = j.ToString() }).ToList();
     private IReadOnlyList<EnoteSelectOption<Guid?>> BesitzerOptionen => besitzer.Select(b => new EnoteSelectOption<Guid?> { Value = b.Id, Label = $"{b.Name} · {b.Email}" }).ToList();
     private IReadOnlyList<EnoteSelectOption<Guid?>> SalonOptionen => laeden.Select(s => new EnoteSelectOption<Guid?> { Value = s.Id, Label = $"{s.Name} · {s.Vertragsart}" }).ToList();

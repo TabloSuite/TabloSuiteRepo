@@ -14,7 +14,7 @@ public class KundenNotiz
 
     public string Text { get; set; } = string.Empty;
 
-    public DateTime ErstelltUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ErstelltUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public Guid? ErstelltVonId { get; set; }
     /// <summary>Name zum Zeitpunkt der Notiz (bleibt lesbar, auch wenn das Konto später gelöscht wird).</summary>
     public string ErstelltVonName { get; set; } = string.Empty;

@@ -12,7 +12,7 @@ namespace ENote.WebApp.Services;
 /// </summary>
 public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbContextFactory, TimeProvider? zeit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     public record Zuweisung(
         Guid ZuweisungId,

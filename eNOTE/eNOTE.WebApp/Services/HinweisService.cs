@@ -37,7 +37,7 @@ public class HinweisService(IDbContextFactory<ApplicationDbContext> dbContextFac
         }
 
         hinweis.IstUngelesen = false;
-        hinweis.GelesenUtc = DateTime.UtcNow;
+        hinweis.GelesenUtc = ENote.Core.Services.AppUhr.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -48,6 +48,6 @@ public class HinweisService(IDbContextFactory<ApplicationDbContext> dbContextFac
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await db.BesitzerHinweise
             .Where(h => h.SalonId == salonId && h.IstUngelesen)
-            .ExecuteUpdateAsync(s => s.SetProperty(h => h.IstUngelesen, false).SetProperty(h => h.GelesenUtc, DateTime.UtcNow), cancellationToken);
+            .ExecuteUpdateAsync(s => s.SetProperty(h => h.IstUngelesen, false).SetProperty(h => h.GelesenUtc, ENote.Core.Services.AppUhr.UtcNow), cancellationToken);
     }
 }

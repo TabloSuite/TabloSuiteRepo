@@ -60,7 +60,7 @@ else if (fehler is null)
     [Parameter] public Guid? SalonId { get; set; }
     private bool IstBesitzer;
     private Guid userId;
-    private DateTime? von = new DateTime(DateTime.UtcNow.Year, 1, 1), bis = DateTime.UtcNow.Date;
+    private DateTime? von = new DateTime(ENote.Core.Services.AppUhr.UtcNow.Year, 1, 1), bis = ENote.Core.Services.AppUhr.UtcNow.Date;
     private DateTime appliqueVon, appliqueBis;
     private string status = "alle", suche = "";
     private string? fehler;
@@ -74,7 +74,7 @@ else if (fehler is null)
         && (string.IsNullOrWhiteSpace(suche) || (a.Besitzer + " " + a.Laden).Contains(suche.Trim(), StringComparison.OrdinalIgnoreCase))
         && (status == "alle" || status == "bezahlt" && a.Status == AboZahlungStatus.Bestaetigt
             || status == "offen" && a.Status != AboZahlungStatus.Bestaetigt || status == "gemeldet" && a.Status == AboZahlungStatus.Gemeldet
-            || status == "gesperrt" && a.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt && a.SperreAb <= DateTime.UtcNow));
+            || status == "gesperrt" && a.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt && a.SperreAb <= ENote.Core.Services.AppUhr.UtcNow));
     private static string Geld(decimal p) => p.ToString("N0", new System.Globalization.CultureInfo("fr-FR")) + " F";
     protected override async Task OnInitializedAsync()
     {

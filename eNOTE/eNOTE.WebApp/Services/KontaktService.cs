@@ -89,7 +89,7 @@ public class KontaktService(IDbContextFactory<ApplicationDbContext> factory, Mai
         if (text.Length < NachrichtMin) return $"Le message doit contenir au moins {NachrichtMin} caractères.";
         if (text.Length > NachrichtMax) return $"Le message est trop long ({NachrichtMax} caractères au plus).";
 
-        var jetzt = jetztUtc ?? DateTime.UtcNow;
+        var jetzt = jetztUtc ?? ENote.Core.Services.AppUhr.UtcNow;
         lock (Sperre)
         {
             Verlauf.RemoveAll(v => v.Zeit < jetzt.AddHours(-1));

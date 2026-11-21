@@ -190,7 +190,7 @@ public static class TabloSuiteMails
     public static string Test(string anbieter, string absender)
         => Wrap("E-mail de test", "La configuration fonctionne.",
             P("Si vous lisez ce message, l'envoi d'e-mails d'eNOTE fonctionne.")
-            + Tabelle([("Service", anbieter), ("Expéditeur", absender), ("Envoyé le", Datum(DateTime.UtcNow, mitZeit: true))]));
+            + Tabelle([("Service", anbieter), ("Expéditeur", absender), ("Envoyé le", Datum(ENote.Core.Services.AppUhr.UtcNow, mitZeit: true))]));
 
     // ------------------------------------------------------------------ Abonnement
 
@@ -418,7 +418,7 @@ public static class TabloSuiteMails
   <tr><td style=""background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 14px 14px;padding:18px 24px;font-size:12px;line-height:1.6;color:#64748b;"">
     <strong style=""color:#334155;"">TabloSuite</strong> — Votre activité, simplement connectée.<br/>
     Une question ? Répondez à cet e-mail ou écrivez à <a href=""mailto:{Kontakt}"" style=""color:#2f4ec9;text-decoration:none;"">{Kontakt}</a><br/>
-    © {DateTime.UtcNow.Year} TabloSuite · Lomé, Togo
+    © {ENote.Core.Services.AppUhr.UtcNow.Year} TabloSuite · Lomé, Togo
   </td></tr>
 </table>
 </td></tr></table>

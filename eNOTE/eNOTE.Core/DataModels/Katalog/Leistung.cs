@@ -66,6 +66,6 @@ public class Leistung
     public Guid? BildAssetId { get; set; }
     public Infrastruktur.BlobMediaAsset? BildAsset { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 }

@@ -12,5 +12,5 @@ public class BlobMediaAsset
     public long GroesseBytes { get; set; }
 
     public Guid HochgeladenVonId { get; set; }
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

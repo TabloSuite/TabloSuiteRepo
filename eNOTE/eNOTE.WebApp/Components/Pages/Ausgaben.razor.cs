@@ -19,7 +19,7 @@ public partial class Ausgaben(
     private bool isLoading = true;
     private Guid salonId;
     /// <summary>Heutiges Datum im Laden (nicht auf dem Server).</summary>
-    private DateTime Heute => ENote.Core.Services.Zeitzonen.Heute(aktiverSalon.Zeitzone, DateTime.UtcNow);
+    private DateTime Heute => ENote.Core.Services.Zeitzonen.Heute(aktiverSalon.Zeitzone, ENote.Core.Services.AppUhr.UtcNow);
     private Guid benutzerId;
     private string salonName = string.Empty;
 
@@ -28,8 +28,8 @@ public partial class Ausgaben(
     private List<Ausgabe> ausgaben = [];
     private Dictionary<Guid, string> belegUrls = [];
 
-    private DateTime? filterVon = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-    private DateTime? filterBis = DateTime.UtcNow.Date;
+    private DateTime? filterVon = new DateTime(ENote.Core.Services.AppUhr.UtcNow.Year, ENote.Core.Services.AppUhr.UtcNow.Month, 1);
+    private DateTime? filterBis = ENote.Core.Services.AppUhr.UtcNow.Date;
 
     // Suche/Filter
     private string ausgabenSuche = string.Empty;
@@ -116,7 +116,7 @@ public partial class Ausgaben(
     private bool ausgabeDialogOffen;
     private string? ausgabeFehler;
     private decimal neuBetrag;
-    private DateTime? neuDatum = DateTime.UtcNow.Date;
+    private DateTime? neuDatum = ENote.Core.Services.AppUhr.UtcNow.Date;
     private string neuKategorieId = string.Empty;
     private string? neuNotiz;
     private IBrowserFile? belegDatei;

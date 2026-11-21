@@ -1013,7 +1013,7 @@ else
                         <span class="ku-avatar">@string.Concat(a.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(t => char.ToUpperInvariant(t[0])))</span>
                         <span class="pz-kasse-text">
                             <strong>@a.Name</strong>
-                            <small>@a.Grund@(a.Raum is { } r ? $" · {r}" : "") · @ENote.Core.Services.Kunden.KundenBesuchRegeln.Seit(a.AnkunftUtc, DateTime.UtcNow)</small>
+                            <small>@a.Grund@(a.Raum is { } r ? $" · {r}" : "") · @ENote.Core.Services.Kunden.KundenBesuchRegeln.Seit(a.AnkunftUtc, ENote.Core.Services.AppUhr.UtcNow)</small>
                         </span>
                         <button type="button" class="enote-icon-btn" title="Fiche" aria-label="@($"Fiche de {a.Name}")" @onclick="() => { anwesendeOffen = false; ficheKundeId = a.KundeId; }"><Icon Name="note" Groesse="16" /></button>
                         <AsyncActionButton CssClass="enote-btn-primary enote-btn-sm" Text="@(wartende.Any(w => w.KundeId == a.KundeId) ? "Reprendre son ticket" : "Au ticket")" OnClick="() => AnwesendenAnsTicketAsync(a)" />

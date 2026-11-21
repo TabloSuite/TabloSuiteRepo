@@ -35,7 +35,7 @@ public class GeldBewegung
     public Guid? KassenSitzungId { get; set; }
     public Guid ErfasstVonId { get; set; }
     public string ErfasstVonName { get; set; } = string.Empty;
-    public DateTime ZeitUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ZeitUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 
     /// <summary>Wirkung auf den Kassenbestand bzw. Saldo: Einlage +, Entnahme −.</summary>
     public decimal Vorzeichenbetrag => Art == GeldBewegungArt.Einlage ? Betrag : -Betrag;

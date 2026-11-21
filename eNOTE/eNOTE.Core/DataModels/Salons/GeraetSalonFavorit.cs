@@ -19,5 +19,5 @@ public class GeraetSalonFavorit
     /// <summary>Optionaler Geräte-Name, damit der Besitzer das Gerät erkennt (z. B. „Tablet Eingang“).</summary>
     public string? GeraeteName { get; set; }
 
-    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
 }

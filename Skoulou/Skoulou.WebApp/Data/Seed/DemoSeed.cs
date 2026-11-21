@@ -122,7 +122,7 @@ public sealed class DemoSeed(UserManager<Konto> users, IDbContextFactory<Skoulou
             {
                 KontoId = konto.Id, SchuleId = schule.Id, Matrikel = NummernFormat.Formatiere(NummernArt.Matrikel, 2026, ++nr, "CDP"),
                 Geburtsort = "Lomé", Nationalitaet = "Togolaise", ElternTelefon = "+228 00 00 00 " + nr.ToString("00"),
-                AufnahmeBestaetigtAmUtc = DateTime.UtcNow
+                AufnahmeBestaetigtAmUtc = Skoulou.Core.Werkzeuge.AppUhr.UtcNow
             });
             db.Einschreibungen.Add(new Einschreibung
             {

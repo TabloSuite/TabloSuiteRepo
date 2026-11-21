@@ -58,7 +58,7 @@ public class KontoProfilService(UserManager<AppUser> users, MailBenachrichtigung
         user.Nachname = n;
         user.FullName = $"{v} {n}";
         user.TelefonNummer = tel;
-        user.UpdatedAtUtc = DateTime.UtcNow;
+        user.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         var result = await users.UpdateAsync(user);
         return result.Succeeded ? (true, null) : (false, "Les informations n'ont pas pu être enregistrées.");
     }
@@ -82,7 +82,7 @@ public class KontoProfilService(UserManager<AppUser> users, MailBenachrichtigung
         // Eindeutigkeit prüft der Identity-Validator gemäß Konfiguration (RequireUniqueEmail).
         user.Email = neu;
         user.EmailConfirmed = false;
-        user.UpdatedAtUtc = DateTime.UtcNow;
+        user.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         IdentityResult result;
         try
         {
@@ -119,7 +119,7 @@ public class KontoProfilService(UserManager<AppUser> users, MailBenachrichtigung
         user.UserName = name;
         user.ActiveSessionId = null;
         user.SecurityStamp = Guid.NewGuid().ToString();
-        user.UpdatedAtUtc = DateTime.UtcNow;
+        user.UpdatedAtUtc = ENote.Core.Services.AppUhr.UtcNow;
         var result = await users.UpdateAsync(user);
         return result.Succeeded ? (true, null) : (false, "Le pseudonyme n'a pas pu être enregistré. Il est peut-être déjà utilisé.");
     }

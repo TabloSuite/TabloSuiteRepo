@@ -143,7 +143,7 @@ public static class DemoSeedOrganisation
         db.SchuelerProfile.Add(new SchuelerProfil
         {
             KontoId = konto.Id, SchuleId = schuleId, Matrikel = NummernFormat.Formatiere(NummernArt.Matrikel, 2026, nr.Letzte, "CDP"),
-            Geburtsort = "Lomé", Nationalitaet = "Togolaise", AufnahmeBestaetigtAmUtc = DateTime.UtcNow
+            Geburtsort = "Lomé", Nationalitaet = "Togolaise", AufnahmeBestaetigtAmUtc = Skoulou.Core.Werkzeuge.AppUhr.UtcNow
         });
         db.Einschreibungen.Add(new Einschreibung
         {

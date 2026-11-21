@@ -6,7 +6,7 @@ public class VertragsHistorie
     public Guid NutzungsAboId { get; set; }
     public NutzungsAbo NutzungsAbo { get; set; } = null!;
     public Guid BenutzerId { get; set; }
-    public DateTime ZeitpunktUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ZeitpunktUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public string Aktion { get; set; } = string.Empty;
     public string? Begruendung { get; set; }
 }

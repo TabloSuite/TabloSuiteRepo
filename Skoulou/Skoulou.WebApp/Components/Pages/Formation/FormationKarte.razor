@@ -26,13 +26,13 @@
             if (stand.Offen is { } o && o.Uebrig > 0)
             {
                 offen = true;
-                dringend = o.FristUtc < DateTime.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist);
+                dringend = o.FristUtc < Skoulou.Core.Werkzeuge.AppUhr.UtcNow.AddDays(FormationService.ErinnerungTageVorFrist);
                 text = o.Abgegeben == 0 ? $"Évaluation à faire avant le {o.FristUtc:dd/MM/yyyy}" : $"Session en cours · essai {o.Abgegeben}/3 · jusqu'au {o.FristUtc:dd/MM/yyyy}";
             }
             else
             {
                 var gelesen = Formation.Lektionen.Count(l => stand.Gelesen.Contains(l.Id));
-                text = $"{gelesen} / {Formation.Lektionen.Count} leçons lues" + (stand.NaechsteRundeAbUtc is { } n && n > DateTime.UtcNow ? $" · prochaine évaluation le {n:dd/MM/yyyy}" : "");
+                text = $"{gelesen} / {Formation.Lektionen.Count} leçons lues" + (stand.NaechsteRundeAbUtc is { } n && n > Skoulou.Core.Werkzeuge.AppUhr.UtcNow ? $" · prochaine évaluation le {n:dd/MM/yyyy}" : "");
             }
         }
         catch (Skoulou.Core.Fehler.KeinZugriffFehler) { text = null; }

@@ -67,7 +67,7 @@ public static partial class MailLayout
                 <a href="mailto:{SkoulouMarke.KontaktEmail}" style="color:#e2eefc;text-decoration:none;">{SkoulouMarke.KontaktEmail}</a><br>{SkoulouMarke.Ort}
               </div>
               <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,.18);padding-top:14px;font-size:12px;line-height:1.8;color:#b6cdeb;">
-                &copy; {DateTime.UtcNow.Year} SKOULOU, une application TabloSuite.<br>
+                &copy; {Skoulou.Core.Werkzeuge.AppUhr.UtcNow.Year} SKOULOU, une application TabloSuite.<br>
                 Cet e-mail a été envoyé automatiquement, merci de ne pas y répondre directement.
               </div>
             </td></tr>

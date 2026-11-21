@@ -107,7 +107,7 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
         var quand = abUtc is DateTime ab ? "à partir du " + DatumText(ab) : "dès maintenant";
         var text = vorlage
             .Replace("{ancien}", F(alt)).Replace("{nouveau}", F(neu)).Replace("{ecart}", F(Math.Abs(neu - alt)))
-            .Replace("{date}", DatumText(abUtc ?? DateTime.UtcNow)).Replace("{quand}", quand)
+            .Replace("{date}", DatumText(abUtc ?? ENote.Core.Services.AppUhr.UtcNow)).Replace("{quand}", quand)
             .Trim();
         return mitPlatzhalterAmAnfang && text.Length > 0 ? char.ToUpper(text[0], Fr) + text[1..] : text;
     }

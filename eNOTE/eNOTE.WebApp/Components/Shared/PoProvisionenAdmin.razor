@@ -156,7 +156,7 @@
     private List<PoProvisionService.AltAuszahlung> alt = [];
     private List<EnoteSelectOption<Guid?>> poOptionen = [];
     private HashSet<Guid> auswahl = [];
-    private DateTime? datum = DateTime.Today;
+    private DateTime? datum = ENote.Core.Services.AppUhr.Today;
     private string referenz = "";
     private string? dialogFehler;
 
@@ -221,7 +221,7 @@
 
     private void OeffneVersementDialog()
     {
-        dialogFehler = null; datum = DateTime.Today; referenz = "";
+        dialogFehler = null; datum = ENote.Core.Services.AppUhr.Today; referenz = "";
         dialogOffen = auswahl.Count > 0;
     }
 

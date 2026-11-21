@@ -87,7 +87,7 @@ public static class DemoSeedNoten
                             db.Noten.Add(note);
                             db.NotenAenderungen.Add(new NotenAenderung
                             {
-                                SchuleId = schuleId, NoteId = note.Id, NeuerStatus = status, NeuePunkte = punkte, GeaendertVonId = lehrer, ZeitUtc = DateTime.UtcNow
+                                SchuleId = schuleId, NoteId = note.Id, NeuerStatus = status, NeuePunkte = punkte, GeaendertVonId = lehrer, ZeitUtc = Skoulou.Core.Werkzeuge.AppUhr.UtcNow
                             });
                         }
                     }

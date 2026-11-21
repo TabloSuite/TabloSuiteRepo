@@ -134,7 +134,7 @@ public class SkoulouDbContext(DbContextOptions<SkoulouDbContext> options)
 
     private void SetzeZeitstempel()
     {
-        var jetzt = DateTime.UtcNow;
+        var jetzt = Skoulou.Core.Werkzeuge.AppUhr.UtcNow;
         foreach (var eintrag in ChangeTracker.Entries<IZeitgestempelt>())
         {
             if (eintrag.State == EntityState.Added)

@@ -21,7 +21,7 @@ public class AuthService(
     Mails.MailBenachrichtigungen? mails = null, TimeProvider? zeit = null, Sicherheit.MissbrauchsBremse? bremse = null,
     AnmeldeSitzungen? anmeldeSitzungen = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
     private AnmeldeSitzungen Sitzungen => anmeldeSitzungen ?? new AnmeldeSitzungen(dbContextFactory, uhr);
 
     private const string AppName = "eNOTE";

@@ -10,7 +10,7 @@
 
 @if (aktuell is { } a)
 {
-    var laeuft = a.WartungLaeuft(DateTime.UtcNow);
+    var laeuft = a.WartungLaeuft(ENote.Core.Services.AppUhr.UtcNow);
     <div class="an-banner an-@AnkuendigungService.Klasse(a.Art) @(laeuft ? "laeuft" : "")" role="status" aria-live="polite">
         <span class="an-symbol"><Icon Name="@AnkuendigungService.Symbol(a.Art)" Groesse="20" /></span>
         <div class="an-inhalt">
@@ -67,13 +67,13 @@
         if (user is null || userId == Guid.Empty) return;
         try { liste = await ankuendigungen.GetFuerNutzerAsync(userId, user); }
         catch (Exception) { liste = []; } // Banner ist Komfort – nie die Seite blockieren
-        naechsteAbfrage = DateTime.UtcNow.AddMinutes(5);
+        naechsteAbfrage = ENote.Core.Services.AppUhr.UtcNow.AddMinutes(5);
     }
 
     // Neue Ankündigungen erscheinen beim nächsten Seitenwechsel (höchstens alle 5 Minuten abgefragt).
     private void BeiNavigation(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        if (DateTime.UtcNow < naechsteAbfrage) return;
+        if (ENote.Core.Services.AppUhr.UtcNow < naechsteAbfrage) return;
         _ = InvokeAsync(async () => { await LadeAsync(); StateHasChanged(); });
     }
 

@@ -11,7 +11,7 @@ public class PreisAnpassung
     public decimal AlterStandard { get; set; }
     public decimal NeuerStandard { get; set; }
     public DateTime GueltigAbUtc { get; set; }
-    public DateTime ErstelltUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ErstelltUtc { get; set; } = ENote.Core.Services.AppUhr.UtcNow;
     public Guid? ErstelltVonId { get; set; }
     /// <summary>Anzahl Läden mit individuellem Preis, die mit angepasst wurden.</summary>
     public int AngepassteLaeden { get; set; }

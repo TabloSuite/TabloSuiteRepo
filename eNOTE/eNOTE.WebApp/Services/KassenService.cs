@@ -20,7 +20,7 @@ public class KassenService(
     TimeProvider? zeit = null,
     AnwesenheitsSignal? anwesenheit = null)
 {
-    private readonly TimeProvider uhr = zeit ?? TimeProvider.System;
+    private readonly TimeProvider uhr = zeit ?? ENote.Core.Services.AppUhr.Provider;
 
     /// <summary>
     /// Kassensperre wegen unbezahltem Abo (ab dem 15. nach Fälligkeit, bis der Admin bestätigt).
