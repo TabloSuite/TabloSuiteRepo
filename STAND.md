@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 21.11.2026 vormittags (8 Verbesserungen fertig, lokal getestet – noch nicht gepusht/deployt)
+# TabloSuite – Arbeitsstand 21.11.2026 mittags (8 Verbesserungen fertig, gepusht, master übernommen, Azure migriert – Deploy beim Nutzer)
 
 Diese Datei ist der Einstieg für ein neues Chat-Fenster. Erst lesen, dann weitermachen.
 Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbindlich) und `Skoulou/docs/fachkonzept/01…05`.
@@ -7,19 +7,14 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachts
 
-**>>> JETZT ZUERST (21.11. vormittags):**
-1. **Pushen** (`Etse.TabloSuite.Muster`, Nutzer: « wir pushen alles am Ende ») – 11 Commits seit ff43351, alles lokal getestet.
-2. **`master` übernehmen – nur nach ausdrücklichem OK.**
-3. **Vor dem nächsten Deploy: zwei Azure-Migrationen – nur nach OK, unmittelbar vor dem Deploy:**
-   - **SKOULOU `20261121090934_KiFuerAlleRollen`** (Skoulou-Database): nur AddColumn `PlattformEinstellungen.KiFuerAlleRollen bit NOT NULL
-     DEFAULT 0`. **Pflicht** – ohne die Spalte bricht die neue Version beim Lesen der Plattform-Einstellungen (`/admin/tarifs`, Abrechnung).
-     Einspielen: `dotnet ef database update --project Skoulou/Skoulou.WebApp --configuration Release --connection \"Server=tcp:tablosuite-sqlserver.database.windows.net,1433;Database=Skoulou-Database;Authentication=Active Directory Default;Encrypt=True;\"`.
-   - **eNOTE `20261121085140_PlattformEinstellungen`** (ENote-Database): nur CreateTable `PlattformEinstellungen` (Id int PK, KiFuerAlleRollen bit,
-     GeaendertUtc datetime2, GeaendertVonId uniqueidentifier NULL). Ohne Tabelle läuft die App, der KI-Schalter gilt als « aus ».
-     Einspielen: idempotentes Skript (`dotnet ef migrations script 20261119131056_KundenAktenRecht 20261121085140_PlattformEinstellungen --idempotent`)
-     mit `%TEMP%\enote-scripts\azure-anwenden.ps1` (siehe Memory « Azure-DB Stand »).
-   - Lokal (`ENOTEDB`, `SkoulouDB`) sind beide schon eingespielt (21.11., per `scripts\Datenbanken-anlegen.cmd`).
-4. Dann deployt der Nutzer **eNOTE und SKOULOU** (TabloSuiteHome unverändert).
+**>>> JETZT (21.11. mittags):**
+1. ~~Pushen~~ erledigt (81f66ce). 2. ~~`master` übernehmen~~ erledigt (mit OK, Fast-Forward auf 81f66ce).
+3. ~~Azure-Migrationen~~ erledigt (mit OK « JA »), beide lesend geprüft, laufende Apps antworten normal:
+   - eNOTE `20261121085140_PlattformEinstellungen` (Tabelle angelegt) per idempotentem Skript + `azure-anwenden.ps1`.
+   - SKOULOU `20261121090934_KiFuerAlleRollen` (Spalte, Wert False) – **`dotnet ef database update --connection … Active Directory Default`
+     scheiterte (« Login failed for user '<token-identified principal>' », offenbar falsches Konto aus Visual Studio)**, daher ebenfalls
+     idempotentes Skript + `azure-anwenden.ps1 -Datenbank Skoulou-Database` (az-Token). Azure = lokal (beide Apps).
+4. **Beim Nutzer: eNOTE und SKOULOU deployen** (TabloSuiteHome unverändert). Danach: KI-Schalter steht in beiden Apps auf « aus ».
 
 **>>> UMGESETZT 21.11. vormittags – alle 8 Verbesserungen aus dem Klicktest (Nutzer: « alle nach deiner Reihenfolge »):**
 - Zwei Agenten (Worktrees), von mir geprüft und übernommen; Tests eNOTE 591, SKOULOU 746 (mit SQL-Server 767), Home 11 – alle grün.
