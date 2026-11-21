@@ -1,0 +1,93 @@
+@* « Déconnecter » wirkt sofort (21.11.2026): Wird die Anmeldung dieses Geräts ungültig (« Appareils connectés » › Déconnecter,
+   Konto gesperrt, neue Anmeldung bei « une seule connexion »), lädt die offene Seite die Anmeldeseite neu – mit Hinweis.
+   Auslöser: die 30-s-Prüfung der offenen Verbindung (SitzungsRevalidierung) und eine eigene Prüfung beim Seitenwechsel
+   (höchstens alle 10 s). Prüffehler melden niemanden ab und lassen die Seite nie abstürzen. Kein sichtbarer Inhalt. *@
+@implements IDisposable
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Nav
+@inject ENote.WebApp.Services.AnmeldeSitzungen Sitzungen
+@inject ILogger<SitzungsWaechter> Logger
+
+@code {
+    /// <summary>Beim Seitenwechsel höchstens so oft prüfen (dazwischen genügt die 30-s-Prüfung).</summary>
+    internal static readonly TimeSpan SeitenwechselAbstand = TimeSpan.FromSeconds(10);
+
+    /// <summary>Hinweis der Anmeldeseite: « Cet appareil a été déconnecté. »</summary>
+    public const string HinweisCode = "appareil-deconnecte";
+
+    private ClaimsPrincipal? angemeldet;
+    private DateTime letztePruefungUtc;
+    private bool pruefungLaeuft, umgeleitet, abonniert;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !RendererInfo.IsInteractive) return;
+        try
+        {
+            var zustand = await AuthProvider.GetAuthenticationStateAsync();
+            if (zustand.User.Identity?.IsAuthenticated != true) return;
+            angemeldet = zustand.User;
+            letztePruefungUtc = DateTime.UtcNow;
+            AuthProvider.AuthenticationStateChanged += ZustandGeaendert;
+            Nav.LocationChanged += SeiteGewechselt;
+            abonniert = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Sitzungswächter konnte nicht starten.");
+        }
+    }
+
+    /// <summary>30-s-Prüfung hat die Anmeldung beendet (Zustand jetzt anonym).</summary>
+    private void ZustandGeaendert(Task<AuthenticationState> aufgabe) => _ = InvokeAsync(async () =>
+    {
+        try
+        {
+            if ((await aufgabe).User.Identity?.IsAuthenticated != true) ZurAnmeldung();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Sitzungswächter: Anmeldezustand nicht lesbar.");
+        }
+    });
+
+    private void SeiteGewechselt(object? sender, LocationChangedEventArgs e)
+    {
+        if (angemeldet is not { } benutzer || umgeleitet || pruefungLaeuft
+            || DateTime.UtcNow - letztePruefungUtc < SeitenwechselAbstand) return;
+        pruefungLaeuft = true;
+        letztePruefungUtc = DateTime.UtcNow;
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                if (!await Sitzungen.IstNochGueltigAsync(benutzer)) ZurAnmeldung();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Sitzungsprüfung beim Seitenwechsel fehlgeschlagen – Anmeldung bleibt bestehen.");
+            }
+            finally
+            {
+                pruefungLaeuft = false;
+            }
+        });
+    }
+
+    private void ZurAnmeldung()
+    {
+        if (umgeleitet) return;
+        umgeleitet = true;
+        var pfad = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+        // Neu laden: die Cookie-Prüfung meldet das Gerät dabei ab, die Anmeldeseite zeigt den Hinweis.
+        Nav.NavigateTo($"/auth/login?info={HinweisCode}&returnUrl={Uri.EscapeDataString(pfad)}", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        if (!abonniert) return;
+        AuthProvider.AuthenticationStateChanged -= ZustandGeaendert;
+        Nav.LocationChanged -= SeiteGewechselt;
+    }
+}

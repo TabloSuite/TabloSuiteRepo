@@ -34,6 +34,8 @@ public partial class Login
             "logged-out" => "Vous avez été déconnecté.",
             "password-updated" => "Mot de passe modifié. Connectez-vous avec le nouveau mot de passe.",
             "identifiant-modifie" => "Identifiant modifié. Connectez-vous avec le nouvel identifiant.",
+            // Offene Seite nach « Déconnecter » (Appareils connectés), Sperre oder neuer Anmeldung (SitzungsWaechter, 21.11.2026).
+            Shared.SitzungsWaechter.HinweisCode => "Cet appareil a été déconnecté. Connectez-vous à nouveau pour continuer.",
             _ => null
         };
     }

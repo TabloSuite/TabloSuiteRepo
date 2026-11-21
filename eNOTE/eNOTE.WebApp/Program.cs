@@ -154,6 +154,8 @@ if (administration is null)
 {
     builder.Services.AddScoped<AuthService>();
     builder.Services.AddScoped<AnmeldeSitzungen>();
+    // Offene Blazor-Verbindungen prüfen ihre Anmeldung alle 30 s (« Déconnecter » ein Gerät wirkt ohne Neuladen).
+    builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, SitzungsRevalidierung>();
     builder.Services.AddScoped<KatalogService>();
     builder.Services.AddScoped<KassenService>();
     builder.Services.AddScoped<MobileMoneyService>();

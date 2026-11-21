@@ -20,7 +20,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
 ## 2. Technologie-Stack
 
 - **.NET 10**, **Blazor Interactive Server** (global `@rendermode InteractiveServer` in `Routes.razor`).
-- **EF Core + SQL Server** (Code-First, Migrationen in `eNOTE.WebApp/Migrations`), **ASP.NET Core Identity** (Anmeldung per Pseudonym, eine aktive Sitzung pro Konto über `ActiveSessionId`, Prüfung bei jeder Anfrage).
+- **EF Core + SQL Server** (Code-First, Migrationen in `eNOTE.WebApp/Migrations`), **ASP.NET Core Identity** (Anmeldung per Pseudonym, eine aktive Sitzung pro Konto über `ActiveSessionId`, Prüfung bei jeder Anfrage; offene Blazor-Verbindungen prüfen zusätzlich alle 30 s und beim Seitenwechsel – `SitzungsRevalidierung` + `SitzungsWaechter` –, damit « Déconnecter » unter « Appareils connectés » und Sperren ohne Neuladen wirken).
 - **SignalR** für Live-Umsatz (`/hubs/umsatz`) und Kunden-Display.
 - **QuestPDF** (Bon-, Berichts-, Etikett-PDFs), **QRCoder** (Bon-QR), **ZXing** (SVG-Barcodes).
 - **Postmark** (HTTP-API) für E-Mails, Warteschlange `MailNachrichten` mit Wiederholung.

@@ -5,8 +5,16 @@
 {
     <div class="enote-verbindung-aufbau" data-enote-vorgerendert role="status" aria-live="polite"><span class="enote-verbindung-kreis" aria-hidden="true"></span> Connexion en cours…</div>
 }
+<SitzungsWaechter />
 <Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NichtGefunden)">
     <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            @* Statt « Not authorized » (englisch): Gerät abgemeldet → SitzungsWaechter lädt gleich die Anmeldeseite. *@
+            <NotAuthorized>
+                <p class="enote-empty" role="status">@(context.User.Identity?.IsAuthenticated == true
+                    ? "Cette page n'est pas disponible pour votre compte."
+                    : "Connexion requise…")</p>
+            </NotAuthorized>
+        </AuthorizeRouteView>
     </Found>
 </Router>

@@ -88,6 +88,37 @@ public class AnmeldeSitzungen(IDbContextFactory<ApplicationDbContext> factory, T
         return (true, neu.Id);
     }
 
+    /// <summary>Name des Cookie-Claims mit dem Konto-Stempel (muss <c>ActiveSessionId</c> entsprechen).</summary>
+    public const string KontoStempelClaim = "enote_session";
+
+    /// <summary>
+    /// Prüfung der offenen Blazor-Verbindung (alle 30 s und beim Seitenwechsel, 21.11.2026): gilt die Anmeldung dieses Geräts
+    /// noch? Dieselben Regeln wie die Cookie-Prüfung bei jeder Anfrage – Konto vorhanden und nicht gesperrt, Konto-Stempel
+    /// unverändert, Geräte-Sitzung offen (« Déconnecter » unter « Appareils connectés »), Mitarbeiter mit « Connexion
+    /// personnelle ». Nur lesend (Primärschlüssel-Abfragen), schreibt kein Zuletzt-gesehen.
+    /// </summary>
+    public async Task<bool> IstNochGueltigAsync(System.Security.Claims.ClaimsPrincipal benutzer, CancellationToken ct = default)
+    {
+        if (benutzer.Identity?.IsAuthenticated != true
+            || !Guid.TryParse(benutzer.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var userId))
+            return true;                                         // nicht angemeldet: nichts abzumelden
+        if (!Guid.TryParse(benutzer.FindFirst(KontoStempelClaim)?.Value, out var stempel)) return false;
+        Guid? geraet = Guid.TryParse(benutzer.FindFirst(GeraetClaim)?.Value, out var g) ? g : null;
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var konto = await db.Users.AsNoTracking().Where(u => u.Id == userId)
+            .Select(u => new { u.IsBlocked, u.ActiveSessionId }).FirstOrDefaultAsync(ct);
+        if (konto is null || konto.IsBlocked || konto.ActiveSessionId != stempel) return false;
+        if (geraet is Guid id && !await db.AnmeldeSitzungen.AsNoTracking()
+                .AnyAsync(s => s.Id == id && s.UserId == userId && s.BeendetUtc == null && s.Stempel == stempel, ct))
+            return false;
+        if (LadenZugriff.IstMitarbeiterRolle(benutzer.IsInRole(AppRollen.Kassierer), benutzer.IsInRole(AppRollen.Besitzer),
+                benutzer.IsInRole(AppRollen.SuperAdmin) || benutzer.IsInRole(AppRollen.ProduktOwner))
+            && !await LadenZugriff.DarfSichAnmeldenAsync(db, userId, ct))
+            return false;
+        return true;
+    }
+
     /// <summary>Abmelden dieses Geräts (Knopf « Se déconnecter »).</summary>
     public async Task BeendeAsync(Guid userId, Guid? sitzungId, CancellationToken ct = default)
     {
