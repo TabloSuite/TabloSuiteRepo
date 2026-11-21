@@ -82,13 +82,12 @@
     /// <summary>Liest die Eingabe: gültig (leer = null) oder Meldung.</summary>
     private (bool Ok, long? Wert, string? Fehler) Lies(string? eingabe)
     {
-        var text = eingabe ?? string.Empty;
-        if (text.Any(c => !(char.IsDigit(c) || c is '.' or ' ' or ' ' or ' ')))
-            return (false, null, "Saisissez un montant entier en FCFA (sans centimes).");
-        var ziffern = new string(text.Where(char.IsDigit).ToArray());
-        long? wert = ziffern.Length == 0 ? null : long.TryParse(ziffern, out var z) ? z : null;
-        if (ziffern.Length > 0 && (wert is null || wert < Min || wert > Max))
+        // Punkt/Leerzeichen nur als Tausendertrennzeichen (Klicktest 21.11.2026: « 15000.00 » wurde zu 1.500.000 FCFA).
+        var status = Skoulou.Core.Finanzen.BetragEingabe.Lies(eingabe, out var z);
+        if (status == Skoulou.Core.Finanzen.BetragStatus.Leer) return (true, null, null);
+        if (status == Skoulou.Core.Finanzen.BetragStatus.Format) return (false, null, Skoulou.Core.Finanzen.BetragEingabe.MeldungGanz);
+        if (status == Skoulou.Core.Finanzen.BetragStatus.ZuGross || z < Min || z > Max)
             return (false, null, $"Le montant doit être compris entre {SkoulouKultur.Fcfa(Min)} et {SkoulouKultur.Fcfa(Max)}.");
-        return (true, wert, null);
+        return (true, z, null);
     }
 }
