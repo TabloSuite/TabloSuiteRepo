@@ -1,29 +1,70 @@
-@* Beispiel-Oberfläche der Direktion auf der Startseite (feste Beispielwerte, kein Foto). *@
-<div class="lp-vorschau" aria-label="Aperçu de l'espace direction (exemple)">
-    <div class="lp-vorschau-band"></div>
-    <div class="lp-vorschau-inhalt">
-        <div class="lp-vorschau-kopf">
-            <span class="lp-vorschau-logo"><Icon Name="school" Groesse="18" /></span>
-            <div><strong>Collège Les Palmiers</strong><small>Année scolaire 2026-2027</small></div>
-            <span class="sk-badge sk-badge-info">Exemple</span>
+@*
+    Bild der Startseite (feste Beispielwerte, kein Foto): Oberfläche der Direktion, daneben das Handy einer Schülerin mit einem
+    Devoir. Beim Laden nacheinander eingeblendet wie bei eNOTE (21.11.2026): Karte von rechts, Kacheln und Balken, dann Handy
+    und Hinweis « Corrigé automatiquement ». CSS (lp-ein, --lp-verz) + kleines Skript im Kopf von App.razor (erst wenn sichtbar, nur einmal); bei « Bewegung reduzieren » sofort sichtbar.
+*@
+<div class="lp-hero-bild">
+    <div class="lp-vorschau lp-ein lp-von-rechts" style="--lp-verz: 120ms" role="img" aria-label="Aperçu de l'espace direction (exemple)">
+        <div class="lp-vorschau-band"></div>
+        <div class="lp-vorschau-inhalt">
+            <div class="lp-vorschau-kopf">
+                <span class="lp-vorschau-logo"><Icon Name="school" Groesse="18" /></span>
+                <div><strong>Collège Les Palmiers</strong><small>Année scolaire 2026-2027</small></div>
+                <span class="sk-badge sk-badge-info">Exemple</span>
+            </div>
+            <div class="lp-vorschau-kacheln">
+                <div class="lp-ein" style="--lp-verz: 380ms"><small>Élèves</small><strong>482</strong></div>
+                <div class="lp-ein" style="--lp-verz: 450ms"><small>Classes</small><strong>18</strong></div>
+                <div class="lp-ein" style="--lp-verz: 520ms"><small>Frais encaissés</small><strong>74 %</strong><span class="lp-balken"><span style="width:74%; --lp-verz: 900ms"></span></span></div>
+                <div class="lp-ein" style="--lp-verz: 590ms"><small>Absences du jour</small><strong>6</strong></div>
+            </div>
+            <div class="lp-vorschau-liste lp-ein" style="--lp-verz: 660ms">
+                <div class="lp-vorschau-zeile kopf"><span>Bulletins · 1er trimestre</span><span class="sk-badge sk-badge-warn">En préparation</span></div>
+                @foreach (var ((klasse, stand), i) in Stand.Select((s, i) => (s, i)))
+                {
+                    <div class="lp-vorschau-zeile">
+                        <span>@klasse</span>
+                        <span class="lp-balken"><span style="width:@(stand)%; --lp-verz: @(1000 + i * 140)ms"></span></span>
+                        <span class="lp-prozent">@stand %</span>
+                    </div>
+                }
+            </div>
         </div>
-        <div class="lp-vorschau-kacheln">
-            <div><small>Élèves</small><strong>482</strong></div>
-            <div><small>Classes</small><strong>18</strong></div>
-            <div><small>Frais encaissés</small><strong>74 %</strong><span class="lp-balken"><span style="width:74%"></span></span></div>
-            <div><small>Absences du jour</small><strong>6</strong></div>
+    </div>
+
+    <div class="lp-handy lp-ein lp-von-unten" style="--lp-verz: 900ms" role="img" aria-label="Aperçu de l'espace élève sur téléphone : un devoir de mathématiques (exemple)">
+        <div class="lp-handy-schirm">
+            <div class="lp-handy-kopf">
+                <span class="lp-handy-logo"><Icon Name="graduation" Groesse="12" /></span>
+                <div><strong>Bonjour, Ama</strong><small>6e A</small></div>
+            </div>
+            <div class="lp-handy-devoir">
+                <small>Devoir · Mathématiques</small>
+                <strong>Devoir n° 1 – Les fractions</strong>
+                <span><Icon Name="clock" Groesse="11" /> À rendre le 28/11</span>
+            </div>
+            <div class="lp-handy-frage">
+                <p>Quelle fraction est égale à <b>1/2</b>&nbsp;?</p>
+                <span class="lp-handy-wahl gewaehlt">2/4 <Icon Name="check" Groesse="11" Strich="3" /></span>
+                <span class="lp-handy-wahl">3/5</span>
+                <span class="lp-handy-wahl">1/3</span>
+            </div>
+            <div class="lp-handy-video">
+                <span><Icon Name="play" Groesse="12" /></span>
+                <div><strong>Leçon en vidéo</strong><small>Les fractions · 6 min</small></div>
+            </div>
+            <div class="lp-handy-menue">
+                <span><Icon Name="home" Groesse="12" />Accueil</span>
+                <span class="aktiv"><Icon Name="book-open" Groesse="12" />Leçons</span>
+                <span><Icon Name="award" Groesse="12" />Résultats</span>
+                <span><Icon Name="calendar" Groesse="12" />Horaires</span>
+            </div>
         </div>
-        <div class="lp-vorschau-liste">
-            <div class="lp-vorschau-zeile kopf"><span>Bulletins · 1er trimestre</span><span class="sk-badge sk-badge-warn">En préparation</span></div>
-            @foreach (var (klasse, stand) in Stand)
-            {
-                <div class="lp-vorschau-zeile">
-                    <span>@klasse</span>
-                    <span class="lp-balken"><span style="width:@(stand)%"></span></span>
-                    <span class="lp-prozent">@stand %</span>
-                </div>
-            }
-        </div>
+    </div>
+
+    <div class="lp-schwebe lp-ein lp-von-unten" style="--lp-verz: 1250ms" aria-hidden="true">
+        <span class="lp-schwebe-icon"><Icon Name="check-circle" Groesse="18" /></span>
+        <div><small>Corrigé automatiquement</small><strong>18 / 20</strong></div>
     </div>
 </div>
 

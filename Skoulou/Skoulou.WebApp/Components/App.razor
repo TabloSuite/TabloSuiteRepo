@@ -26,6 +26,32 @@
             new MutationObserver(anwenden).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
             document.addEventListener('DOMContentLoaded', anwenden);
         })();
+        // Startseite (21.11.2026): Das Bild im Einstieg (.lp-hero-bild) blendet erst ein, wenn es sichtbar ist (am Handy weiter
+        // unten), und nur einmal: ersetzt Blazor beim Verbinden das vorgerenderte HTML, läuft die Animation an derselben Stelle
+        // weiter (--lp-schon = vergangene Zeit, negative CSS-Verzögerung). Ohne IntersectionObserver: sofort, wie früher.
+        (function () {
+            if (!('IntersectionObserver' in window)) return;
+            var html = document.documentElement, start = null, bekannt = null;
+            function markiere() { if (!html.classList.contains('lp-js')) html.classList.add('lp-js'); }
+            function los(el) {
+                if (start === null) start = performance.now();
+                el.style.setProperty('--lp-schon', Math.round(performance.now() - start) + 'ms');
+                el.classList.add('lp-los');
+            }
+            var io = new IntersectionObserver(function (eintraege) {
+                eintraege.forEach(function (e) { if (e.isIntersecting) { io.unobserve(e.target); los(e.target); } });
+            }, { threshold: 0.15 });
+            function erfasse() {
+                var el = document.querySelector('.lp-hero-bild');
+                if (!el || el === bekannt) return;
+                bekannt = el;
+                if (start !== null) los(el); else io.observe(el);
+            }
+            markiere();
+            // Blazor gleicht <html>-Attribute nach Navigation ab – Markierung dann wieder setzen.
+            new MutationObserver(markiere).observe(html, { attributes: true, attributeFilter: ['class'] });
+            new MutationObserver(erfasse).observe(html, { childList: true, subtree: true });
+        })();
     </script>
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["css/plattform.css"]" />
