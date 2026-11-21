@@ -47,6 +47,29 @@ public class TarifAbfrageTests
         Assert.Equal("5.000", TarifAbfrage.Zahl(500 * Skoulou.TarifJahrMonate!.Value));
     }
 
+    /// <summary>21.11.2026: eNOTE liefert « monatspreis » je Laden und Monat (auf tablosuite.com fehlte der eNOTE-Preis).</summary>
+    [Fact]
+    public async Task Liest_Den_Monatspreis_Von_ENOTE()
+    {
+        var enote = new TabloSuiteApp { Id = "enote", TarifQuelle = "https://enote.test/tarifs/public", TarifEinheit = "/ établissement / mois" };
+        var (t, _) = Neu(() => Json("""{"monatspreis":2500,"waehrung":"FCFA"}"""));
+        Assert.Equal(2500, await t.PreisAsync(enote));
+        Assert.Equal("2.500", TarifAbfrage.Zahl(2500));
+    }
+
+    /// <summary>Der echte Katalog: beide Apps haben eine Preisquelle, SKOULOU nennt die Emplois du temps.</summary>
+    [Fact]
+    public void Katalog_eNOTE_Mit_Preis_SKOULOU_Mit_Emplois_Du_Temps()
+    {
+        var ordner = new DirectoryInfo(AppContext.BaseDirectory);
+        while (ordner is not null && !File.Exists(Path.Combine(ordner.FullName, "TabloSuiteHome", "TabloSuiteHome.WebApp", "appsettings.json"))) ordner = ordner.Parent;
+        Assert.NotNull(ordner);
+        var json = File.ReadAllText(Path.Combine(ordner!.FullName, "TabloSuiteHome", "TabloSuiteHome.WebApp", "appsettings.json"));
+        Assert.Contains("\"TarifQuelle\": \"https://enote.tablosuite.com/tarifs/public\"", json);
+        Assert.Contains("\"TarifQuelle\": \"https://skoulou.tablosuite.com/tarifs/public\"", json);
+        Assert.Contains("Emplois du temps", json);
+    }
+
     [Fact]
     public async Task Alte_Antwort_Mit_Jahrespreis_Gilt_Als_Kein_Preis()
     {

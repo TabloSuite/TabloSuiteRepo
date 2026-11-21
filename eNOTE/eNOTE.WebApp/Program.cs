@@ -279,6 +279,16 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 
+// Öffentlicher Standard-Monatspreis für die Firmenseite tablosuite.com (nur die Zahl, zwischengespeichert) – wie SKOULOU
+// « /tarifs/public » (Nutzer 21.11.2026: auf tablosuite.com fehlte der eNOTE-Preis). Einziger Leser: TabloSuiteHome TarifAbfrage.
+app.MapGet("/tarifs/public", async (IDbContextFactory<ApplicationDbContext> dbFactory, HttpContext http) =>
+{
+    await using var db = await dbFactory.CreateDbContextAsync(http.RequestAborted);
+    var preis = await AboService.GlobalerMonatsPreisAsync(db, http.RequestAborted);
+    http.Response.Headers.CacheControl = "public, max-age=600";
+    return preis > 0 ? Results.Json(new { monatspreis = (long)decimal.Round(preis), waehrung = "FCFA" }) : Results.NoContent();
+}).AllowAnonymous();
+
 // Videos: eigener Endpunkt statt wwwroot, damit Teilanfragen (Range) korrekt beantwortet werden –
 // der Browser lädt Videos stückweise; MapStaticAssets lieferte dabei die ganze Datei und das Video brach ab.
 var videoOrdner = Path.Combine(app.Environment.ContentRootPath, "Medien", "videos");

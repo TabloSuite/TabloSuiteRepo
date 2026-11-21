@@ -15,7 +15,11 @@ public sealed class TarifAbfrage(IHttpClientFactory clients, IMemoryCache cache,
 {
     public const string Client = "tarife";
 
-    private sealed record Antwort(long MonatspreisProSchueler, string? Waehrung);
+    /// <summary>SKOULOU liefert « monatspreisProSchueler », eNOTE (seit 21.11.2026) « monatspreis » je Laden und Monat.</summary>
+    private sealed record Antwort(long? MonatspreisProSchueler, long? Monatspreis, string? Waehrung)
+    {
+        public long? Preis => MonatspreisProSchueler ?? Monatspreis;
+    }
 
     public async Task<long?> PreisAsync(TabloSuiteApp app, CancellationToken ct = default)
     {
@@ -26,7 +30,7 @@ public sealed class TarifAbfrage(IHttpClientFactory clients, IMemoryCache cache,
         {
             using var antwort = await clients.CreateClient(Client).GetAsync(app.TarifQuelle, ct);
             preis = antwort.IsSuccessStatusCode && antwort.StatusCode != System.Net.HttpStatusCode.NoContent
-                ? (await antwort.Content.ReadFromJsonAsync<Antwort>(ct))?.MonatspreisProSchueler
+                ? (await antwort.Content.ReadFromJsonAsync<Antwort>(ct))?.Preis
                 : null;
             if (preis is not > 0) preis = null;
             cache.Set(schluessel, preis, preis is null ? TimeSpan.FromMinutes(2) : TimeSpan.FromMinutes(30));
