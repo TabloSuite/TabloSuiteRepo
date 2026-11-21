@@ -33,13 +33,14 @@ public sealed record RegistrierungsErgebnis(RegistrierungsArt Art, string Identi
 
 /// <summary>
 /// Bremse gegen Massenregistrierungen (zusätzlich zum Rate-Limiter des Endpunkts): je Verbindung und je
-/// E-Mail-Adresse nur wenige erfolgreiche Registrierungen in 24 Stunden. Schulen: 10 je Verbindung. Schüler
+/// E-Mail-Adresse nur wenige erfolgreiche Registrierungen in 24 Stunden. Schulen: 50 je Verbindung. Schüler
 /// registrieren sich klassenweise vom selben Anschluss (Schul-WLAN, Informatikraum) – für sie gilt ein eigener,
 /// großzügiger Zähler, sonst wäre nach dem zehnten Schüler für den ganzen Tag Schluss (S4).
 /// </summary>
 public sealed class RegistrierungsBremse(TimeProvider zeit)
 {
-    public const int ProVerbindung = 10;
+    /// <summary>21.11.2026: 10 → 50 (Mobilfunk: viele Nutzer hinter einer Adresse; Direktorentreffen mit einem WLAN).</summary>
+    public const int ProVerbindung = 50;
     public const int ProVerbindungEleves = 300;
     public const int ProAdresse = 3;
     public static readonly TimeSpan Fenster = TimeSpan.FromHours(24);

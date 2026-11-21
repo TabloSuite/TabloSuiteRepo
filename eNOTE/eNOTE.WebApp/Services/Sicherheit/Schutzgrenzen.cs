@@ -49,7 +49,9 @@ public sealed class MissbrauchsBremse(TimeProvider? zeit = null)
     public const string MeldungInscription =
         "Trop d'inscriptions depuis cette connexion ou avec cette adresse e-mail. Réessayez demain ou écrivez à contact@tablosuite.com.";
 
-    public static readonly Grenze InscriptionJeAnschluss = new(10, TimeSpan.FromHours(24));
+    // 21.11.2026: 10 → 50 je Anschluss (Mobilfunk in Togo/Kamerun: viele Kunden hinter einer Adresse; Vorführung mit einem WLAN).
+    // Die Grenze je E-Mail-Adresse (3) bremst weiter Missbrauch.
+    public static readonly Grenze InscriptionJeAnschluss = new(50, TimeSpan.FromHours(24));
     public static readonly Grenze InscriptionJeAdresse = new(3, TimeSpan.FromHours(24));
     public static readonly Grenze OublieJeKonto = new(3, TimeSpan.FromHours(1));
     public static readonly Grenze OublieJeAnschluss = new(10, TimeSpan.FromMinutes(10));
