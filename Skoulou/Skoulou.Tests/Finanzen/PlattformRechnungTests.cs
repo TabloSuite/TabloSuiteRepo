@@ -296,6 +296,43 @@ public class PlattformRechnungTests
     }
 
     [Fact]
+    public async Task Storno_einer_bezahlten_Rechnung_bucht_Rueckzahlung_und_benachrichtigt_die_Schule()
+    {
+        // Nutzer 22.11.2026 (Normaltest: nach dem Storno der bezahlten B-T2-Rechnung blieb die Zahlung als Ausgabe stehen).
+        var w = await FinanzWelt.ErstelleAsync();
+        await using (var db = await w.Db.CreateDbContextAsync())
+        {
+            (await db.Users.FirstAsync(k => k.Id == w.D)).Email = "direction@exemple.tg";
+            await db.SaveChangesAsync();
+        }
+        w.Heute(NachP1);
+        await w.Abrechnung.FaelligeAbrechnenAsync();
+        var r = await EinzigeAsync(w);
+        await w.Rechnungen.MeldenAsync(w.D, r.Id, new MeldungEingabe(r.Betrag, NachP1, "VIR-PAYE"), null);
+        await w.Rechnungen.BestaetigenAsync(w.Org.Admin, r.Id);
+
+        await w.Rechnungen.StornierenAsync(w.Org.Admin, r.Id, "Période facturée par erreur");
+        var buchungen = await w.MitDbAsync(db => db.Buchungen.Where(b => b.Herkunft == BuchungsHerkunft.FactureSkoulou || b.Herkunft == BuchungsHerkunft.Annulation).ToListAsync());
+        Assert.Equal(0L, buchungen.Sum(b => b.Richtung == BuchungsRichtung.Recette ? b.Betrag : -b.Betrag));
+        var rueck = Assert.Single(buchungen, b => b.Herkunft == BuchungsHerkunft.Annulation);
+        var ausgabe = Assert.Single(buchungen, b => b.Herkunft == BuchungsHerkunft.FactureSkoulou);
+        Assert.Equal((BuchungsRichtung.Recette, r.Betrag, ausgabe.Id), (rueck.Richtung, rueck.Betrag, rueck.StornoVonId));
+        Assert.Equal($"Remboursement à recevoir – facture {r.Nummer} annulée par SKOULOU (annule {ausgabe.Nummer})", rueck.Text);
+
+        var mail = Assert.Single(await w.MitDbAsync(db => db.MailAusgaenge.Where(m => m.Bezug == "facture-skoulou-annulee").ToListAsync()));
+        Assert.Contains(r.Nummer, mail.Betreff);
+        Assert.Contains("Remboursement à recevoir", mail.Text);
+        var detail = await w.Rechnungen.DetailAsync(w.D, r.Id);
+        Assert.Equal(RechnungsStatus.Annulee, detail.Kopf.Status);
+        Assert.NotNull(detail.BestaetigtAmUtc);
+
+        // Keine doppelte Gegenbuchung, keine zweite Mail.
+        await Assert.ThrowsAsync<FachFehler>(() => w.Rechnungen.StornierenAsync(w.Org.Admin, r.Id, "Encore"));
+        Assert.Equal(1, await w.MitDbAsync(db => db.Buchungen.CountAsync(b => b.Herkunft == BuchungsHerkunft.Annulation)));
+        Assert.Equal(1, await w.MitDbAsync(db => db.MailAusgaenge.CountAsync(m => m.Bezug == "facture-skoulou-annulee")));
+    }
+
+    [Fact]
     public async Task Anfechten_beantworten_und_vorzeitig_abrechnen()
     {
         var w = await FinanzWelt.ErstelleAsync();

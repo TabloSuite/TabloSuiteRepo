@@ -187,6 +187,22 @@ public sealed class PlattformAbrechnung(
         return gesendet;
     }
 
+    /// <summary>
+    /// Bezahlte Rechnung storniert (Nutzer 22.11.2026): Mail an die Direktion mit dem Betrag, den SKOULOU zurückzahlt
+    /// (« Remboursement à recevoir » im Kassenjournal, falls die Zahlung dort gebucht war).
+    /// </summary>
+    internal async Task StornoMitteilenAsync(Guid rechnungId, string motiv, bool gegenbuchung, CancellationToken ct)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var x = await (from r in db.Plattformrechnungen
+                       where r.Id == rechnungId
+                       join s in db.Schulen on r.SchuleId equals s.Id
+                       join p in db.Perioden on r.PeriodeId equals p.Id
+                       join j in db.Schuljahre on r.SchuljahrId equals j.Id
+                       select new { r.SchuleId, r.Nummer, r.Betrag, Schule = s.Name, Periode = p.Titel + " " + j.Bezeichnung }).FirstAsync(ct);
+        await mails.StornoBezahltAsync(await DirektionsAdressenAsync(x.SchuleId, ct), x.Schule, x.Nummer, x.Periode, x.Betrag, motiv, gegenbuchung, ct);
+    }
+
     /// <summary>Adressen der Direktion (Direktor, Koordinator mit Rechnungsrecht) und der Schule.</summary>
     internal async Task<List<string?>> DirektionsAdressenAsync(Guid schuleId, CancellationToken ct)
     {

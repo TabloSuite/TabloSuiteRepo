@@ -24,6 +24,14 @@
             {
                 <Hinweis Art="@(k.Status == RechnungsStatus.Contestee ? "warn" : "info")" Titel="@(k.Status switch { RechnungsStatus.Contestee => "Contestation", RechnungsStatus.Annulee => "Motif de l'annulation", _ => "Remarque" })">@k.Grund</Hinweis>
             }
+            @if (k.Status == RechnungsStatus.Annulee && d.BestaetigtAmUtc is not null)
+            {
+                @* 22.11.2026: bezahlte Rechnung storniert → SKOULOU zahlt zurück (Gegenbuchung im Kassenjournal der Schule). *@
+                <Hinweis Art="warn" Titel="Remboursement">@(Modus == "schule"
+                    ? $"Cette facture avait déjà été payée : SKOULOU vous rembourse {Geld.F(k.Betrag)}."
+                      + (d.Meldungen.Any(m => m.BuchungId is not null) ? " L'écriture « Remboursement à recevoir » figure dans votre journal de caisse." : string.Empty)
+                    : $"Facture payée puis annulée : {Geld.F(k.Betrag)} à rembourser à l'établissement.")</Hinweis>
+            }
             @if (d.Meldungen.Count > 0)
             {
                 <h3 class="fin-unterkopf">Paiement déclaré</h3>

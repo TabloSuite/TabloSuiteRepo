@@ -156,6 +156,8 @@ Verbindliche Fachentscheidung (Doc `docs/Automatischer-Schuelerzugang-und-Zyklus
   - Service erlaubt jeden Wechsel zwischen `Erstellt/Akzeptiert/Abgelehnt`, solange nicht `Bestaetigt`; UI zeigt « Accepter… » bei Status ≠ `Akzeptiert` (also auch nach Ablehnung) und « Refuser » nur bei `Erstellt`.
   - `Akzeptiert` → `Bestaetigt` nur durch aktiven SuperAdmin (« Seule une facturation acceptée par le directeur peut être confirmée. »); setzt `IstAbgeschlossen`, Zeitstempel, `BestaetigtVonSuperAdminId`. Danach unveränderlich (« Cette facturation a déjà été confirmée et ne peut plus être modifiée. »).
   - Keine Fälligkeit, keine Mahnung, keine Teilzahlung, kein Storno/Gutschrift einer Rechnung; abgelehnte Rechnungen behalten ihre Positionen dauerhaft.
+  - **Neubau (Nutzer 22.11.2026):** Storniert der Admin eine schon bezahlte Rechnung, bucht SKOULOU im Kassenjournal der Schule die
+    Gegenbuchung « Remboursement à recevoir – facture … annulée par SKOULOU » (einmal je Ausgabe) und schreibt der Direktion eine Mail.
 - **R21 Verpflichtungsübersicht** « Engagements de l'école par cycle » (`AbrechnungService.GetZyklusVerpflichtungenAsync:25-50`, Recht Billing): je laufendem neuen Zyklus `Teilnehmer = Anzahl nicht stornierter Teilnahmen`, `Betrag = Σ PriceAtEnrollment` → « Engagement provisoire »; `OffeneRechnungen = alle Rechnungen ≠ Bestaetigt` (Anzahl, Summe); `ZahlungGemeldet = Σ Umsatz mit Status Akzeptiert`.
 
 ### 3.7 Saldo der Direktion (« Finances de l'école »)

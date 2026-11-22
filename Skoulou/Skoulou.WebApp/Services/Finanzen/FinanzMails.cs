@@ -58,6 +58,25 @@ public sealed class FinanzMails(MailAusgangService mails, IOptions<AppOptionen> 
         return gesendet;
     }
 
+    /// <summary>Bezahlte Plattformrechnung von SKOULOU storniert: Rückzahlung an die Schule (22.11.2026).</summary>
+    public async Task<int> StornoBezahltAsync(IEnumerable<string?> an, string schule, string nummer, string periode, long betrag, string motiv,
+        bool gegenbuchung, CancellationToken ct = default)
+    {
+        var inhalt = MailLayout.Absatz("Bonjour,")
+            + MailLayout.Absatz($"SKOULOU a annulé la facture {nummer} de « {schule} » ({periode}), que vous aviez déjà payée.")
+            + MailLayout.InfoKasten(
+                $"<p style=\"margin:0 0 6px;\">Montant que SKOULOU vous rembourse : <strong>{Html(SkoulouKultur.Fcfa(betrag))}</strong></p>"
+                + $"<p style=\"margin:0;\">Motif : {Html(motiv)}</p>")
+            + MailLayout.Absatz(gegenbuchung
+                ? "Une écriture « Remboursement à recevoir » a été ajoutée à votre journal de caisse. SKOULOU vous contacte pour le remboursement."
+                : "SKOULOU vous contacte pour le remboursement.")
+            + MailLayout.Knopf(app.Value.Url("/finances/facturation"), "Voir la facture");
+        var gesendet = 0;
+        foreach (var adresse in an.Where(MailAusgangService.IstAdresse).Select(a => a!.Trim().ToLowerInvariant()).Distinct())
+            if (await SendeAsync(adresse, $"Facture SKOULOU {nummer} annulée : remboursement", inhalt, "facture-skoulou-annulee", ct)) gesendet++;
+        return gesendet;
+    }
+
     private static string Html(string text) => WebUtility.HtmlEncode(text);
 
     private async Task<bool> SendeAsync(string an, string titel, string inhalt, string bezug, CancellationToken ct)

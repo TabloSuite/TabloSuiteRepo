@@ -338,6 +338,11 @@ Von mir entschieden (änderbar):
 38. **Passage vor dem Jahresende** (heute in der Zeitzone der Schule vor « Fin » des Schuljahres): Warnung « L'année … n'est pas
     terminée : elle se termine le JJ/MM/AAAA » oben auf der Seite und im Dialog; « Effectuer » erst nach ausdrücklicher Bestätigung,
     auch serverseitig (`PassagePlan.VorJahresendeBestaetigt`).
+39. **Storno einer bezahlten (bestätigten) Plattformrechnung:** wie beim gemeldeten, nicht bestätigten Fall (21.11.2026) entsteht je
+    Ausgabe « Facture SKOULOU » genau eine Gegenbuchung (Recette, Herkunft `Annulation`, `StornoVonId`), Text « Remboursement à
+    recevoir – facture … annulée par SKOULOU (annule ECR-…) » – bewusste Ausnahme zu §5 Regel 9: der Saldo zeigt das Geld, das
+    SKOULOU zurückzahlt. Die Direktion bekommt eine Mail (Outbox, Bezug `facture-skoulou-annulee`); Rechnungsdetail zeigt
+    « Remboursement ». Der negative Ausgleichsanteil des Responsable bleibt wie bisher.
 
 ---
 

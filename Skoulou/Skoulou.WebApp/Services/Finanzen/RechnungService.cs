@@ -314,31 +314,44 @@ public sealed class RechnungService(
         }, ct);
     }
 
-    /// <summary>Storno mit Grund: Positionen werden frei (neu abrechenbar); war sie bestätigt, entsteht ein negativer Ausgleichsanteil.</summary>
+    /// <summary>
+    /// Storno mit Grund: Positionen werden frei (neu abrechenbar); war sie bestätigt, entsteht ein negativer Ausgleichsanteil,
+    /// im Kassenjournal der Schule die Gegenbuchung « Remboursement à recevoir » und eine Mail an die Direktion (22.11.2026).
+    /// </summary>
     public async Task StornierenAsync(Guid akteurId, Guid rechnungId, string? grund, CancellationToken ct = default)
     {
         var admin = await AdminAsync(akteurId, ct);
         var motiv = Eingabe.Pflicht(grund, 300, "le motif de l'annulation", "grund");
+        var (bezahltStorniert, gegenbuchung) = (false, false);
         await StatusAsync(async db =>
         {
+            (bezahltStorniert, gegenbuchung) = (false, false);
             var r = await RechnungAsync(db, rechnungId, ct);
             if (r.Status == RechnungsStatus.Annulee) throw new FachFehler("Cette facture est déjà annulée.");
             var warBezahlt = r.Status == RechnungsStatus.Payee;
-            if (r.Status == RechnungsStatus.PaiementDeclare)
+            if (r.Status is RechnungsStatus.PaiementDeclare or RechnungsStatus.Payee)
             {
                 // Gemeldet, aber nie bestätigt: die Ausgabe « Facture SKOULOU » im Kassenjournal der Schule wird aufgehoben –
                 // die Schule selbst kann sie nicht korrigieren (Klicktest 21.11.2026: Ausgabe blieb nach dem Storno stehen).
+                // Schon bestätigt (Nutzer 22.11.2026, Normaltest: Saldo blieb −18.000): Gegenbuchung « Remboursement à recevoir » –
+                // SKOULOU zahlt den Betrag an die Schule zurück. Je Ausgabe höchstens eine Gegenbuchung.
                 var heute = Heute;
                 foreach (var b in await db.Buchungen.Where(b => b.HerkunftId == r.Id && b.Herkunft == BuchungsHerkunft.FactureSkoulou
                                  && !db.Buchungen.Any(x => x.StornoVonId == b.Id)).ToListAsync(ct))
+                {
                     db.Buchungen.Add(new Buchung
                     {
                         SchuleId = b.SchuleId, Datum = heute, KategorieId = b.KategorieId, Betrag = b.Betrag, Richtung = BuchungsRichtung.Recette,
-                        Text = Kassierer.Kuerze($"Annulation de {b.Nummer} : facture {r.Nummer} annulée par SKOULOU"), Herkunft = BuchungsHerkunft.Annulation,
-                        HerkunftId = b.Id, StornoVonId = b.Id, ErfasstVonId = admin.Id,
+                        Text = Kassierer.Kuerze(warBezahlt
+                            ? $"Remboursement à recevoir – facture {r.Nummer} annulée par SKOULOU (annule {b.Nummer})"
+                            : $"Annulation de {b.Nummer} : facture {r.Nummer} annulée par SKOULOU"),
+                        Herkunft = BuchungsHerkunft.Annulation, HerkunftId = b.Id, StornoVonId = b.Id, ErfasstVonId = admin.Id,
                         Nummer = await nummern.NaechsteNummerAsync(db, b.SchuleId, NummernArt.Ecriture, heute.Year, ct: ct)
                     });
+                    gegenbuchung = true;
+                }
             }
+            bezahltStorniert = warBezahlt;
             (r.Status, r.Grund) = (RechnungsStatus.Annulee, motiv);
             var jetzt = zeit.GetUtcNow().UtcDateTime;
             foreach (var p in await db.Rechnungspositionen.Where(p => p.RechnungId == r.Id && p.StorniertGrund == null).ToListAsync(ct))
@@ -354,8 +367,11 @@ public sealed class RechnungService(
                         Betrag = -anteil.Betrag, AusgleichFuerId = anteil.Id
                     });
             }
-            audit.Erfasse(db, admin.Id, r.SchuleId, AuditAktionen.RechnungStatus, nameof(Plattformrechnung), r.Id, $"Facture {r.Nummer} annulée : {motiv}");
+            audit.Erfasse(db, admin.Id, r.SchuleId, AuditAktionen.RechnungStatus, nameof(Plattformrechnung), r.Id,
+                $"Facture {r.Nummer} annulée{(warBezahlt ? " après paiement (remboursement à l'établissement)" : string.Empty)} : {motiv}");
         }, ct);
+        // Hinweis an die Schule über den vorhandenen Mailweg (Outbox); ein Mailfehler bricht den Storno nie ab.
+        if (bezahltStorniert) await abrechnung.StornoMitteilenAsync(rechnungId, motiv, gegenbuchung, ct);
     }
 
     public async Task<Guid?> JetztAbrechnenAsync(Guid akteurId, Guid periodeId, CancellationToken ct = default)
