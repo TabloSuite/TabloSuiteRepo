@@ -244,7 +244,7 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
                 if (schonImNeuenJahr.Contains(e.SchuelerId)) continue;
                 var n = new Einschreibung
                 {
-                    SchuleId = a.SchuleId, SchuelerId = e.SchuelerId, SchuljahrId = neu.Id, KlasseId = zuordnung[p.Ziel!].Id, Von = neu.Beginn,
+                    SchuleId = a.SchuleId, SchuelerId = e.SchuelerId, SchuljahrId = neu.Id, KlasseId = zuordnung[Pruefe(p.Ziel)].Id, Von = neu.Beginn,
                     Status = EinschreibungsStatus.Active, IstWiederholer = p.Entscheidung == JahresEntscheidungsArt.Redouble
                 };
                 db.Einschreibungen.Add(n);

@@ -42,6 +42,23 @@ public class JahreswechselTests
     }
 
     [Fact]
+    public async Task Klassennamen_mit_Leerzeichen_brechen_den_Jahreswechsel_nicht()
+    {
+        // Klicktest 21.11.2026: neuer Name « 5e  A » (doppeltes/abschließendes Leerzeichen) → KeyNotFoundException, Seite abgestürzt.
+        var w = await NotenWelt.ErstelleAsync();
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        plan.Namen[w.O.Klasse5A] = " 5e  A ";
+        plan.Namen[w.O.Klasse6A] = "6e A  ";
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal(2, ergebnis.Einschreibungen);
+        var e1 = await w.MitDbAsync(db => db.Einschreibungen.Where(e => e.SchuelerId == w.O.Schueler && e.SchuljahrId == w.O.JahrVorb)
+            .Join(db.Klassen, e => e.KlasseId, k => k.Id, (e, k) => k.Name).SingleAsync());
+        Assert.StartsWith("5e", e1);
+    }
+
+    [Fact]
     public async Task Ausfuehrung_legt_Klassen_Faecher_Einschreibungen_an_und_schliesst_das_Jahr()
     {
         var w = await NotenWelt.ErstelleAsync();
