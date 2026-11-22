@@ -341,6 +341,9 @@ public class PlattformRechnungTests
         var mail = Assert.Single(await w.MitDbAsync(db => db.MailAusgaenge.Where(m => m.Bezug == "facture-skoulou-annulee").ToListAsync()));
         Assert.Contains(r.Nummer, mail.Betreff);
         Assert.Contains("Remboursement à recevoir", mail.Text);
+        // R8 (Nutzer 22.11.2026): klar sagen, dass die Rückzahlung schon im Journal steht und nicht doppelt erfasst wird.
+        Assert.Contains("Ce remboursement figure déjà dans votre journal de caisse", mail.Text);
+        Assert.Contains("ne l'enregistrez pas une deuxième fois comme recette", mail.Text);
         var detail = await w.Rechnungen.DetailAsync(w.D, r.Id);
         Assert.Equal(RechnungsStatus.Annulee, detail.Kopf.Status);
         Assert.NotNull(detail.BestaetigtAmUtc);
@@ -349,6 +352,18 @@ public class PlattformRechnungTests
         await Assert.ThrowsAsync<FachFehler>(() => w.Rechnungen.StornierenAsync(w.Org.Admin, r.Id, "Encore"));
         Assert.Equal(1, await w.MitDbAsync(db => db.Buchungen.CountAsync(b => b.Herkunft == BuchungsHerkunft.Annulation)));
         Assert.Equal(1, await w.MitDbAsync(db => db.MailAusgaenge.CountAsync(m => m.Bezug == "facture-skoulou-annulee")));
+    }
+
+    [Fact]
+    public void Rechnungsdetail_der_Schule_sagt_dass_die_Rueckzahlung_nicht_doppelt_erfasst_wird()
+    {
+        // R8 (Nutzer 22.11.2026): derselbe Hinweis wie in der Mail, im Detail der Schule (« Remboursement »).
+        Assert.Equal("Ce remboursement figure déjà dans votre journal de caisse (écriture « Remboursement à recevoir »).", FinanzMails.RueckzahlungImJournal);
+        Assert.Equal("Quand vous recevrez l'argent, ne l'enregistrez pas une deuxième fois comme recette.", FinanzMails.RueckzahlungNichtDoppelt);
+        var d = new DirectoryInfo(AppContext.BaseDirectory);
+        while (d is not null && !Directory.Exists(Path.Combine(d.FullName, "Skoulou.WebApp"))) d = d.Parent;
+        var dialog = File.ReadAllText(Path.Combine(d!.FullName, "Skoulou.WebApp", "Components", "Pages", "Finances", "RechnungTeile", "RechnungDetailDialog.razor"));
+        Assert.Contains("@FinanzMails.RueckzahlungImJournal <strong>@FinanzMails.RueckzahlungNichtDoppelt</strong>", dialog);
     }
 
     [Fact]

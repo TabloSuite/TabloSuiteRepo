@@ -26,11 +26,23 @@
             }
             @if (k.Status == RechnungsStatus.Annulee && d.BestaetigtAmUtc is not null)
             {
-                @* 22.11.2026: bezahlte Rechnung storniert → SKOULOU zahlt zurück (Gegenbuchung im Kassenjournal der Schule). *@
-                <Hinweis Art="warn" Titel="Remboursement">@(Modus == "schule"
-                    ? $"Cette facture avait déjà été payée : SKOULOU vous rembourse {Geld.F(k.Betrag)}."
-                      + (d.Meldungen.Any(m => m.BuchungId is not null) ? " L'écriture « Remboursement à recevoir » figure dans votre journal de caisse." : string.Empty)
-                    : $"Facture payée puis annulée : {Geld.F(k.Betrag)} à rembourser à l'établissement.")</Hinweis>
+                @* 22.11.2026: bezahlte Rechnung storniert → SKOULOU zahlt zurück (Gegenbuchung im Kassenjournal der Schule);
+                   R8: die Schule erfasst das zurückgezahlte Geld nicht ein zweites Mal als Einnahme. *@
+                var imJournal = d.Meldungen.Any(m => m.BuchungId is not null);
+                <Hinweis Art="warn" Titel="Remboursement">
+                    @if (Modus == "schule")
+                    {
+                        <span>Cette facture avait déjà été payée : SKOULOU vous rembourse @(Geld.F(k.Betrag)).</span>
+                        @if (imJournal)
+                        {
+                            <span>@FinanzMails.RueckzahlungImJournal <strong>@FinanzMails.RueckzahlungNichtDoppelt</strong></span>
+                        }
+                    }
+                    else
+                    {
+                        <span>Facture payée puis annulée : @(Geld.F(k.Betrag)) à rembourser à l'établissement.@(imJournal ? " L'écriture « Remboursement à recevoir » figure déjà dans son journal de caisse." : null)</span>
+                    }
+                </Hinweis>
             }
             @if (d.Meldungen.Count > 0)
             {

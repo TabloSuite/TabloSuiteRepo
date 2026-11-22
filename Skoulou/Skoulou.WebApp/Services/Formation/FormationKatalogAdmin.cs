@@ -126,7 +126,7 @@ public static partial class FormationKatalog
                     "L'école déclare son paiement (montant, date, référence, preuve facultative) : « Paiement déclaré » (filtre « À confirmer »).",
                     "Vous vérifiez que l'argent est arrivé, puis « Confirmer le paiement reçu » : la facture passe « Payée » et la part du responsable est calculée.",
                     "Une « Contestée » : vous examinez, puis « Répondre et maintenir » (elle redevient « À payer » avec votre réponse).",
-                    "« Annuler la facture » avec un motif : ses élèves redeviennent facturables par « Facturer maintenant » ; si elle était payée, la part du responsable est compensée, l'école reçoit un e-mail et l'écriture « Remboursement à recevoir » dans son journal de caisse : remboursez-lui le montant."),
+                    "« Annuler la facture » avec un motif : ses élèves redeviennent facturables par « Facturer maintenant » ; si elle était payée, la part du responsable est compensée, l'école reçoit un e-mail et l'écriture « Remboursement à recevoir » dans son journal de caisse : remboursez-lui le montant (elle ne l'enregistre pas une deuxième fois comme recette)."),
                 L("Bon à savoir",
                     "Période d'essai : « Écoles » › « Essai » – 0 à 4 premières périodes de la première année sans facture. Par défaut aucune : vous décidez pour chaque nouvelle école, tant qu'aucune facture n'existe. Le responsable peut aussi la régler pour ses écoles ; vous recevez un e-mail.",
                     "Une contestation justifiée : « Annuler la facture », puis « Facturer maintenant ».",

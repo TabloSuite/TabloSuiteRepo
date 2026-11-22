@@ -368,6 +368,11 @@ Von mir entschieden (änderbar):
     « Fin » des Schuljahres; ohne zählende Periode wie bisher « Fin ». Warnung « … sa dernière période, « 3e trimestre », se termine
     le 30/06/2027 », Dialog und Fehlermeldung « (fin de « 3e trimestre » le 30/06/2027) » (`PassageVorschau.JahrLaeuftBisPeriode`).
     Ein Examen blanc nach dem letzten Trimester verlangt keine Bestätigung mehr.
+47. **Storno einer bezahlten Plattformrechnung – Hinweis an die Schule** (Ergänzung zu Nr. 39): Mail an die Direktion und Hinweis
+    « Remboursement » im Rechnungsdetail der Schule sagen klar « Ce remboursement figure déjà dans votre journal de caisse (écriture
+    « Remboursement à recevoir »). **Quand vous recevrez l'argent, ne l'enregistrez pas une deuxième fois comme recette.** »
+    (`FinanzMails.RueckzahlungImJournal`/`RueckzahlungNichtDoppelt`, nur wenn die Gegenbuchung besteht). Admin/Responsable sehen,
+    dass die Gegenbuchung schon im Journal der Schule steht; Guide « Facture SKOULOU » und Formationen nennen es ebenso.
 
 ---
 

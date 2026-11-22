@@ -58,6 +58,15 @@ public sealed class FinanzMails(MailAusgangService mails, IOptions<AppOptionen> 
         return gesendet;
     }
 
+    /// <summary>
+    /// Storno einer bezahlten Rechnung (Nutzer 22.11.2026, R8): die Rückzahlung steht schon im Kassenjournal der Schule – Satz für
+    /// Mail und Rechnungsdetail, zusammen mit <see cref="RueckzahlungNichtDoppelt"/>.
+    /// </summary>
+    public const string RueckzahlungImJournal = "Ce remboursement figure déjà dans votre journal de caisse (écriture « Remboursement à recevoir »).";
+
+    /// <summary>Beim Eingang des Geldes nicht ein zweites Mal als Einnahme erfassen (Nutzer 22.11.2026, R8).</summary>
+    public const string RueckzahlungNichtDoppelt = "Quand vous recevrez l'argent, ne l'enregistrez pas une deuxième fois comme recette.";
+
     /// <summary>Bezahlte Plattformrechnung von SKOULOU storniert: Rückzahlung an die Schule (22.11.2026).</summary>
     public async Task<int> StornoBezahltAsync(IEnumerable<string?> an, string schule, string nummer, string periode, long betrag, string motiv,
         bool gegenbuchung, CancellationToken ct = default)
@@ -67,9 +76,10 @@ public sealed class FinanzMails(MailAusgangService mails, IOptions<AppOptionen> 
             + MailLayout.InfoKasten(
                 $"<p style=\"margin:0 0 6px;\">Montant que SKOULOU vous rembourse : <strong>{Html(SkoulouKultur.Fcfa(betrag))}</strong></p>"
                 + $"<p style=\"margin:0;\">Motif : {Html(motiv)}</p>")
-            + MailLayout.Absatz(gegenbuchung
-                ? "Une écriture « Remboursement à recevoir » a été ajoutée à votre journal de caisse. SKOULOU vous contacte pour le remboursement."
-                : "SKOULOU vous contacte pour le remboursement.")
+            + (gegenbuchung
+                ? MailLayout.InfoKasten($"<p style=\"margin:0;\">{Html(RueckzahlungImJournal)} <strong>{Html(RueckzahlungNichtDoppelt)}</strong></p>")
+                : string.Empty)
+            + MailLayout.Absatz("SKOULOU vous contacte pour le remboursement.")
             + MailLayout.Knopf(app.Value.Url("/finances/facturation"), "Voir la facture");
         var gesendet = 0;
         foreach (var adresse in an.Where(MailAusgangService.IstAdresse).Select(a => a!.Trim().ToLowerInvariant()).Distinct())

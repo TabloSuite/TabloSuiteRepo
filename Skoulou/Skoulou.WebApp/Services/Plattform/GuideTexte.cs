@@ -106,7 +106,7 @@ public static class GuideTexte
             new("Frais de scolarité", "Définissez les frais par niveau ou par classe, avec tranches et échéances. Dans une école de langues, un frais peut concerner une seule session. Les réductions (bourse, fratrie…) s'accordent par élève.", "/finances/frais"),
             new("Paiements", "Encaissez (espèces, Mobile Money, virement, chèque) et imprimez le reçu. Une erreur se corrige par une annulation avec motif.", "/finances/paiements"),
             new("Journal de caisse", "Les vrais mouvements d'argent : ajoutez les dépenses avec leur justificatif. On ne supprime rien : une erreur se corrige par une écriture inverse.", "/finances/journal"),
-            new("Facture SKOULOU", "Après chaque période, SKOULOU facture chaque élève inscrit une seule fois. Virez le montant, puis déclarez le paiement ; contestez la facture si un chiffre vous semble faux. Si SKOULOU annule une facture déjà payée, vous êtes prévenu et l'écriture « Remboursement à recevoir » apparaît dans le journal de caisse.", "/finances/facturation"),
+            new("Facture SKOULOU", "Après chaque période, SKOULOU facture chaque élève inscrit une seule fois. Virez le montant, puis déclarez le paiement ; contestez la facture si un chiffre vous semble faux. Si SKOULOU annule une facture déjà payée, vous êtes prévenu et l'écriture « Remboursement à recevoir » apparaît dans le journal de caisse ; quand l'argent arrive, ne l'enregistrez pas une deuxième fois comme recette.", "/finances/facturation"),
             new("Rapport financier", "Recettes et dépenses par catégorie, paiements par moyen et retards des familles sur la période choisie, en PDF.", "/finances/rapport")
         ]),
         new("fin", "Fin d'année", "layers",
