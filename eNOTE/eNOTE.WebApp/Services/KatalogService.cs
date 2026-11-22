@@ -113,9 +113,9 @@ public class KatalogService(
     public async Task<(bool Erfolg, string? Fehler, LeistungKategorie? Kategorie)> SpeichereUnterkategorieAsync(
         Guid salonId, Guid parentId, string name, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (PruefeKategorieName(name) is string namensFehler)
         {
-            return (false, "Veuillez saisir un nom.", null);
+            return (false, namensFehler, null);
         }
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -172,8 +172,10 @@ public class KatalogService(
         return true;
     }
 
+    /// <summary>Legt eine Hauptkategorie an (gleichnamige wird zurückgegeben); zu langer Name → <see cref="ArgumentException"/>.</summary>
     public async Task<LeistungKategorie> SpeichereKategorieAsync(Guid salonId, string name, CancellationToken cancellationToken = default)
     {
+        if (PruefeKategorieName(name) is string fehler) throw new ArgumentException(fehler);
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var bereinigt = name.Trim();
 
@@ -203,9 +205,9 @@ public class KatalogService(
 
     private async Task<(bool Erfolg, string? Fehler)> AktualisiereKategorieAsync(Guid kategorieId, Guid salonId, string neuerName, string? farbe, bool farbeSetzen, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(neuerName))
+        if (PruefeKategorieName(neuerName) is string namensFehler)
         {
-            return (false, "Veuillez saisir un nom.");
+            return (false, namensFehler);
         }
 
         if (farbeSetzen && !KategorieFarben.IstGueltig(farbe))
@@ -333,9 +335,39 @@ public class KatalogService(
         return await db.Leistungen.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
     }
 
+    /// <summary>
+    /// Längen und Höchstwerte (Fehlersuche 21.11.2026): ein 17-stelliger Preis sprengte decimal(18,2), ein Name über
+    /// 200 Zeichen ließ « Déclarer une perte » und « Retrait » (Kopie des Namens in nvarchar(200)) mit Datenbankfehler
+    /// scheitern, eine Kategorie über 450 Zeichen den eindeutigen Index. Höchstbetrag wie <c>BetragEingabe</c>.
+    /// </summary>
+    public const int LeistungNameMax = 200, KategorieNameMax = 100;
+    public const decimal BetragMax = 999_999_999m;
+
+    /// <summary>Null = in Ordnung, sonst die französische Meldung (Formular und Server).</summary>
+    public static string? PruefeLeistung(Leistung leistung)
+    {
+        if (string.IsNullOrWhiteSpace(leistung.Name)) return "Veuillez saisir un nom.";
+        if (leistung.Name.Trim().Length > LeistungNameMax) return $"Nom : {LeistungNameMax} caractères au maximum.";
+        if (leistung.Preis < 0 || leistung.Kaufpreis < 0) return "Le prix ne peut pas être négatif.";
+        if (leistung.Preis > BetragMax || leistung.Kaufpreis > BetragMax) return "Prix trop élevé : 999.999.999 F au maximum.";
+        if (Math.Abs(leistung.Stueckzahl) > BetragMax || leistung.MindestbestandWarnung > BetragMax || leistung.BasisAbzugMenge > BetragMax)
+            return "Quantité trop élevée : 999.999.999 au maximum.";
+        return PreisEingabe.Pruefe(leistung.Preis, leistung.Kaufpreis);
+    }
+
+    /// <summary>Name einer Kategorie/Unterkategorie: Pflicht, höchstens <see cref="KategorieNameMax"/> Zeichen.</summary>
+    public static string? PruefeKategorieName(string? name)
+        => string.IsNullOrWhiteSpace(name) ? "Veuillez saisir un nom."
+            : name.Trim().Length > KategorieNameMax ? $"Nom de catégorie : {KategorieNameMax} caractères au maximum." : null;
+
     public async Task<Leistung> SpeichereLeistungAsync(Leistung leistung, CancellationToken cancellationToken = default,
         decimal? stueckzahlBeimOeffnen = null)
     {
+        if (PruefeLeistung(leistung) is string eingabeFehler)
+        {
+            throw new InvalidOperationException(eingabeFehler);
+        }
+
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         // Barcode: eingegebenen Code prüfen (Format, eindeutig pro Laden); leer → automatisch erzeugen
@@ -609,6 +641,7 @@ public class KatalogService(
         if (rabatt.Wert < 0) return "La valeur ne peut pas être négative.";
         if (rabatt.Wert == 0) return "Saisissez une valeur supérieure à 0.";
         if (rabatt.Art == RabattArt.Prozent && rabatt.Wert > 100) return "Le pourcentage ne peut pas dépasser 100.";
+        if (rabatt.Wert > BetragMax) return "Montant trop élevé : 999.999.999 F au maximum.";
         return null;
     }
 

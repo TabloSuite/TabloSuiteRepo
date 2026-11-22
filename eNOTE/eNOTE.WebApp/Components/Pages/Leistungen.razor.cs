@@ -420,6 +420,12 @@ public partial class Leistungen(
             return;
         }
 
+        if (KatalogService.PruefeKategorieName(neueKategorieName) is string fehler)
+        {
+            toast.ZeigeFehler(fehler);
+            return;
+        }
+
         await katalogService.SpeichereKategorieAsync(salonId, neueKategorieName);
         neueKategorieName = string.Empty;
         toast.ZeigeErfolg("Catégorie ajoutée.");

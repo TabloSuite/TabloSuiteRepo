@@ -86,7 +86,7 @@
                         @if (unterkategorieParentId == knoten.Kategorie.Id)
                         {
                             <div class="pr-kat-neu pr-kat-unter">
-                                <input @bind="neueUnterkategorieName" @bind:event="oninput" placeholder="Nom de la sous-catégorie…" class="enote-input-inline" />
+                                <input @bind="neueUnterkategorieName" @bind:event="oninput" maxlength="@ENote.WebApp.Services.KatalogService.KategorieNameMax" placeholder="Nom de la sous-catégorie…" class="enote-input-inline" />
                                 <AsyncActionButton Text="OK" OnClick="FuegeUnterkategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" Disabled="@string.IsNullOrWhiteSpace(neueUnterkategorieName)" />
                                 <button type="button" class="enote-icon-btn" aria-label="Annuler" @onclick="SchliesseUnterkategorieDialog"><Icon Name="x" Groesse="16" /></button>
                             </div>
@@ -100,7 +100,7 @@
                 @if (darfVerwalten)
                 {
                     <div class="pr-kat-neu">
-                        <input @bind="neueKategorieName" @bind:event="oninput" placeholder="Nouvelle catégorie…" class="enote-input-inline" />
+                        <input @bind="neueKategorieName" @bind:event="oninput" maxlength="@ENote.WebApp.Services.KatalogService.KategorieNameMax" placeholder="Nouvelle catégorie…" class="enote-input-inline" />
                         <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-sm" Disabled="@string.IsNullOrWhiteSpace(neueKategorieName)" />
                     </div>
                 }
@@ -138,7 +138,7 @@
                             @if (unterkategorieParentId == knoten.Kategorie.Id)
                             {
                                 <div class="pr-verw-neu unter">
-                                    <input @bind="neueUnterkategorieName" @bind:event="oninput" placeholder="Nom de la sous-catégorie…" class="enote-input" />
+                                    <input @bind="neueUnterkategorieName" @bind:event="oninput" maxlength="@ENote.WebApp.Services.KatalogService.KategorieNameMax" placeholder="Nom de la sous-catégorie…" class="enote-input" />
                                     <AsyncActionButton Text="OK" OnClick="FuegeUnterkategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" Disabled="@string.IsNullOrWhiteSpace(neueUnterkategorieName)" />
                                     <button type="button" class="enote-icon-btn" aria-label="Annuler" @onclick="SchliesseUnterkategorieDialog"><Icon Name="x" Groesse="16" /></button>
                                 </div>
@@ -149,7 +149,7 @@
                             }
                         }
                         <div class="pr-verw-neu">
-                            <input @bind="neueKategorieName" @bind:event="oninput" placeholder="Nouvelle catégorie…" class="enote-input" />
+                            <input @bind="neueKategorieName" @bind:event="oninput" maxlength="@ENote.WebApp.Services.KatalogService.KategorieNameMax" placeholder="Nouvelle catégorie…" class="enote-input" />
                             <AsyncActionButton Text="Ajouter" OnClick="FuegeKategorieHinzuAsync" CssClass="enote-btn-primary enote-btn-sm" Disabled="@string.IsNullOrWhiteSpace(neueKategorieName)" />
                         </div>
                     </div>
@@ -294,7 +294,7 @@
 <ModalDialog Open="editorOffen" Title="@(bearbeitungsLeistung.Id == Guid.Empty ? "Nouvelle prestation" : "Modifier la prestation")" ErrorMessage="@editorFehler" OnClose="SchliesseEditor">
     <ChildContent>
         <div class="enote-form">
-            <label><span class="enote-pflicht">Nom</span> <input @bind="bearbeitungsLeistung.Name" @bind:event="oninput" /></label>
+            <label><span class="enote-pflicht">Nom</span> <input @bind="bearbeitungsLeistung.Name" @bind:event="oninput" maxlength="@ENote.WebApp.Services.KatalogService.LeistungNameMax" /></label>
             <label>Description <input @bind="bearbeitungsLeistung.Beschreibung" /></label>
 
             @* Typ zuerst: Prestation (Dienstleistung) oder Produit (Artikel) *@
@@ -513,7 +513,7 @@
 <ModalDialog Open="kategorieUmbenennenOffen" Title="@(aktiveKategorie?.ParentId is null ? "Modifier la catégorie" : "Modifier la sous-catégorie")" ErrorMessage="@kategorieFehler" OnClose="() => kategorieUmbenennenOffen = false">
     <ChildContent>
         <div class="enote-form">
-            <label><span class="enote-pflicht">Nom</span> <input @bind="kategorieNeuerName" @bind:event="oninput" /></label>
+            <label><span class="enote-pflicht">Nom</span> <input @bind="kategorieNeuerName" @bind:event="oninput" maxlength="@ENote.WebApp.Services.KatalogService.KategorieNameMax" /></label>
             <fieldset class="kat-farben">
                 <legend>Couleur</legend>
                 <p class="kat-farben-hinweis">Visible sur les articles du catalogue et dans la caisse.@(aktiveKategorie?.ParentId is null ? " Les sous-catégories reprennent cette couleur." : "")</p>
