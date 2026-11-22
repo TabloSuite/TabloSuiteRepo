@@ -18,7 +18,7 @@ public class BonPdfTests
         Assert.NotNull(pdf);
         Assert.True(pdf.Length > 500);
 
-        File.WriteAllBytes(Path.Combine(Path.GetTempPath(), $"enote-beispiel-bon-{Guid.NewGuid():N}.pdf"), pdf);
+        BeispielAblegen(pdf, "enote-beispiel-bon.pdf");
     }
 
     [Fact]
@@ -33,7 +33,18 @@ public class BonPdfTests
         Assert.NotNull(pdf);
         Assert.True(pdf.Length > 2000);
 
-        File.WriteAllBytes(Path.Combine(Path.GetTempPath(), $"enote-beispiel-bon-mit-logo-{Guid.NewGuid():N}.pdf"), pdf);
+        BeispielAblegen(pdf, "enote-beispiel-bon-mit-logo.pdf");
+    }
+
+    /// <summary>
+    /// Beispiel-PDF zum Ansehen nur auf Wunsch ablegen (Umgebungsvariable <c>ENOTE_PDF_BILDER</c> = Ordner). Vorher lag bei jedem
+    /// Testlauf ein neues PDF im TEMP-Ordner (am 22.11.2026 waren es 749).
+    /// </summary>
+    private static void BeispielAblegen(byte[] pdf, string datei)
+    {
+        if (Environment.GetEnvironmentVariable("ENOTE_PDF_BILDER") is not { Length: > 0 } ordner) return;
+        Directory.CreateDirectory(ordner);
+        File.WriteAllBytes(Path.Combine(ordner, datei), pdf);
     }
 
     private static Salon ErstelleBeispielSalon() => new()
