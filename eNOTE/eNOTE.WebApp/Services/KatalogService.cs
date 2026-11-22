@@ -738,8 +738,19 @@ public class KatalogService(
         if (rabatt.Wert == 0) return "Saisissez une valeur supérieure à 0.";
         if (rabatt.Art == RabattArt.Prozent && rabatt.Wert > 100) return "Le pourcentage ne peut pas dépasser 100.";
         if (rabatt.Wert > BetragMax) return "Montant trop élevé : 999.999.999 F au maximum.";
+        if (rabatt.GueltigVonUtc is DateTime von && rabatt.GueltigBisUtc is DateTime bis && bis.Date < von.Date)
+            return "La date « Au » doit être le même jour que « Du » ou plus tard.";
         return null;
     }
+
+    /// <summary>
+    /// Gültigkeit nach Kalendertagen, « Du » und « Au » jeweils einschließlich (Fehlersuche 21.11.2026: « Au » wurde als
+    /// 00:00 gespeichert und mit der Uhrzeit verglichen – am letzten Tag galt die Remise nicht mehr, die Kasse bot sie aber
+    /// an und der Verkauf scheiterte mit « La remise choisie … n'est pas valide »). Gleiche Regel für Kasse, Server und Seite.
+    /// </summary>
+    public static bool IstRabattGueltig(Rabatt rabatt, DateTime jetztUtc)
+        => (rabatt.GueltigVonUtc is not DateTime von || jetztUtc.Date >= von.Date)
+           && (rabatt.GueltigBisUtc is not DateTime bis || jetztUtc.Date <= bis.Date);
 
     /// <summary>Schalter auf der Karte: nur aktiv/inaktiv (auch für ältere Remises, die die heutigen Regeln nicht erfüllen).</summary>
     public async Task<bool> SetzeRabattAktivAsync(Guid id, Guid salonId, bool aktiv, CancellationToken cancellationToken = default)

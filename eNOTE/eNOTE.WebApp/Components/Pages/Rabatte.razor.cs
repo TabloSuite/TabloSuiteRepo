@@ -250,11 +250,5 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     private static string RabattText(Rabatt r)
         => r.Art == RabattArt.Prozent ? $"−{r.Wert:0.##} %" : $"−{r.Wert:N0} F";
 
-    private static bool IstGueltig(Rabatt r)
-    {
-        var jetzt = ENote.Core.Services.AppUhr.UtcNow;
-        if (r.GueltigVonUtc is not null && jetzt < r.GueltigVonUtc) return false;
-        if (r.GueltigBisUtc is not null && jetzt > r.GueltigBisUtc) return false;
-        return true;
-    }
+    private static bool IstGueltig(Rabatt r) => KatalogService.IstRabattGueltig(r, ENote.Core.Services.AppUhr.UtcNow);
 }

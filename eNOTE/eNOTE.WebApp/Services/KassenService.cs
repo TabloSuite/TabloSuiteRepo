@@ -617,8 +617,7 @@ public class KassenService(
 
             var rabatt = rabatte.FirstOrDefault(r => r.Id == rabattId);
             var gueltig = rabatt is not null && rabatt.IstAktiv
-                && (rabatt.GueltigVonUtc is null || jetzt >= rabatt.GueltigVonUtc)
-                && (rabatt.GueltigBisUtc is null || jetzt <= rabatt.GueltigBisUtc)
+                && KatalogService.IstRabattGueltig(rabatt, jetzt)
                 && (rabatt.LeistungId is null || rabatt.LeistungId == leistungId);
             if (!gueltig)
             {

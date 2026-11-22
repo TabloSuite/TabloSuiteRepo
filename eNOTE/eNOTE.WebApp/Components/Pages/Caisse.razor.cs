@@ -818,7 +818,9 @@ public partial class Caisse(
     {
         leistungen = (await katalogService.GetLeistungenAsync(salonId)).Where(l => l.IstAktiv).ToList();
         kategorien = await katalogService.GetKategorienAsync(salonId);
-        rabatte = (await katalogService.GetRabatteAsync(salonId)).Where(r => r.IstAktiv).ToList();
+        // Nur heute gültige Remises anbieten (abgelaufene/künftige ließen den Verkauf am Server scheitern).
+        rabatte = (await katalogService.GetRabatteAsync(salonId))
+            .Where(r => r.IstAktiv && KatalogService.IstRabattGueltig(r, ENote.Core.Services.AppUhr.UtcNow)).ToList();
         favoritenIds = await katalogService.GetFavoritenIdsAsync(salonId);
         bildUrls = await katalogService.GetLeistungsBildUrlsAsync(salonId);
         mobileAnbieter = await mobileMoneyService.GetErlaubteAnbieterAsync(salonId);
