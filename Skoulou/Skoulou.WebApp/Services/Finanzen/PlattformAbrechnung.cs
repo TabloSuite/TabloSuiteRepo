@@ -51,7 +51,7 @@ public sealed class PlattformAbrechnung(
             var einstellung = await db.PlattformEinstellungen.AsNoTracking().FirstOrDefaultAsync(ct) ?? new PlattformEinstellung();
 
             var (anteil, monate, monatspreis, ab) = Anteil(jahr, p, schule, einstellung);
-            var kandidaten = await KandidatenAsync(db, p, mitStornierten: !manuell, ct);
+            var kandidaten = await KandidatenAsync(db, p, ab, mitStornierten: !manuell, ct);
             if (kandidaten.Count == 0) return null;
 
             var heute = Heute;
@@ -102,9 +102,12 @@ public sealed class PlattformAbrechnung(
     }
 
     /// <summary>Abrechnungspflichtige, noch nicht abgerechnete Schüler der Periode.</summary>
-    internal static async Task<IReadOnlyList<AbrechnungsKandidat>> KandidatenAsync(SkoulouDbContext db, Periode p, bool mitStornierten, CancellationToken ct)
+    /// <param name="ab">Erster berechneter Tag (<see cref="Anteil"/>): in der Periode der Anmeldung der 1. des Anmeldemonats. Wer davor
+    /// schon ausgetreten war, schneidet den berechneten Zeitraum nicht (Klicktest 21.11.2026: Austritt 15.10., Anmeldung 23.11. → berechnet).</param>
+    internal static async Task<IReadOnlyList<AbrechnungsKandidat>> KandidatenAsync(SkoulouDbContext db, Periode p, DateOnly ab, bool mitStornierten, CancellationToken ct)
     {
-        var einschreibungen = await (from e in SchulAbfragen.EinschreibungenImZeitraum(db, p.SchuljahrId, p.Beginn, p.Ende)
+        var beginn = ab > p.Beginn ? ab : p.Beginn;
+        var einschreibungen = await (from e in SchulAbfragen.EinschreibungenImZeitraum(db, p.SchuljahrId, beginn, p.Ende)
                                      join k in db.Klassen on e.KlasseId equals k.Id
                                      join s in db.Perioden on k.PeriodeId equals (Guid?)s.Id into sj
                                      from s in sj.DefaultIfEmpty()
@@ -113,7 +116,7 @@ public sealed class PlattformAbrechnung(
         var positionen = db.Rechnungspositionen.Where(x => x.PeriodeId == p.Id);
         if (!mitStornierten) positionen = positionen.Where(x => x.StorniertGrund == null);
         var bereits = (await positionen.Select(x => x.SchuelerId).ToListAsync(ct)).ToHashSet();
-        return Abrechnungspflicht.Kandidaten(einschreibungen, p.Beginn, p.Ende, bereits);
+        return Abrechnungspflicht.Kandidaten(einschreibungen, beginn, p.Ende, bereits);
     }
 
     /// <summary>Täglicher Lauf: alle beendeten Abrechnungsperioden aktiver (oder suspendierter) Schulen der letzten zwei Jahre.</summary>

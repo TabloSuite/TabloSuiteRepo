@@ -92,6 +92,27 @@ public class PlattformRechnungTests
     }
 
     [Fact]
+    public async Task Vor_dem_Anmeldemonat_ausgetretener_Schueler_wird_nicht_berechnet()
+    {
+        // Klicktest 21.11.2026: Austritt 15.10., Anmeldung der Schule im November → stand trotzdem auf der Rechnung (2 Monate).
+        var w = await FinanzWelt.ErstelleAsync();
+        await w.MitDbAsync(async db =>
+        {
+            (await db.Schulen.SingleAsync(s => s.Id == w.Org.SchuleA)).ErstelltAmUtc = new DateTime(2026, 11, 21, 9, 30, 0, DateTimeKind.Utc);
+            var e = await db.Einschreibungen.FirstAsync(x => x.SchuelerId == w.Org.Schueler && x.Status == EinschreibungsStatus.Active);
+            (e.Bis, e.Status) = (new DateOnly(2026, 10, 15), EinschreibungsStatus.Partie);
+            return await db.SaveChangesAsync();
+        });
+        w.Heute(NachP1);
+        var vorschau = (await w.Rechnungen.AbrechenbareAsync(w.Org.Admin, w.Org.SchuleA)).Single(p => p.PeriodeId == w.Org.P1);
+        Assert.Equal(1, await w.Abrechnung.FaelligeAbrechnenAsync());
+        var r = await EinzigeAsync(w);
+        Assert.DoesNotContain(r.Positionen, p => p.SchuelerId == w.Org.Schueler);
+        Assert.NotEmpty(r.Positionen);
+        Assert.Equal(vorschau.Abrechenbar, r.Positionen.Count);
+    }
+
+    [Fact]
     public async Task Anmeldung_im_ersten_Monat_der_Periode_berechnet_die_ganze_Periode()
     {
         // Anmeldung 15.09. (P1 beginnt 01.09.) → keine Kürzung: 4 Monate wie bisher.

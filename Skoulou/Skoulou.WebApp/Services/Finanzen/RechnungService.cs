@@ -356,7 +356,7 @@ public sealed class RechnungService(
             foreach (var p in await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr).OrderBy(p => p.Beginn).ToListAsync(ct))
             {
                 var (anteil, monate, _, ab) = PlattformAbrechnung.Anteil(jahr, p, schule, einstellung);
-                var kandidaten = await PlattformAbrechnung.KandidatenAsync(db, p, mitStornierten: false, ct);
+                var kandidaten = await PlattformAbrechnung.KandidatenAsync(db, p, ab, mitStornierten: false, ct);
                 liste.Add(new AbrechenbarePeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende, p.Ende < heute, kandidaten.Count, anteil, probe.Contains(p.Id),
                     PlattformAbrechnung.VorAnmeldung(p, schule), monate, ab));
             }
