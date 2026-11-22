@@ -49,6 +49,10 @@ public class PasswordInputTests
         Assert.Contains("data-1p-ignore=\"true\"", html);
         Assert.Contains("data-bwignore=\"true\"", html);
         Assert.Contains("aria-describedby=\"besitzer-pin-hinweis\"", html);
+        // Fehlersuche 21.11.2026: Umschalter zeigte das Emoji « 👁 » (Projektregel: nur <Icon>) – jetzt SVG-Symbole
+        Assert.DoesNotContain("👁", html);
+        Assert.Contains("enote-pw-zeigen", html);
+        Assert.Contains("<svg", html);
     }
 
     [Fact]

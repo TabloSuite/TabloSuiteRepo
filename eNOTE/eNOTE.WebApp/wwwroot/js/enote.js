@@ -8,7 +8,9 @@ window.enoteTogglePassword = function (button) {
 
     var istText = input.type === 'text';
     input.type = istText ? 'password' : 'text';
-    button.textContent = istText ? '👁' : '🙈';
+    // Symbole über <Icon> statt Emojis (Projektregel; Fehlersuche 21.11.2026): beide Symbole im Knopf, eines verborgen
+    var zeigen = button.querySelector('.enote-pw-zeigen'), verbergen = button.querySelector('.enote-pw-verbergen');
+    if (zeigen && verbergen) { zeigen.hidden = !istText; verbergen.hidden = istText; }
     button.setAttribute('aria-label', istText ? 'Afficher' : 'Masquer');
 };
 
