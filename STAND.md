@@ -5,7 +5,27 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 21.11.2026 nachmittags
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 22.11.2026
+
+**>>> NEU (21./22.11.) – Klicktest « wie ein Mensch » über Jahre, VOR dem nächsten Deploy (Nutzer: « alles beheben, gründlich »;
+« wir pushen am Ende, zu master auch »). NOCH NICHT DEPLOYEN.**
+- Test-Uhr: f389aee `AppUhr` in beiden Apps (Produktion unverändert) + Startup-Hook `%TEMP%\e2e-2111\testuhr`; Regeln aller Läufe
+  `%TEMP%\e2e-2111\GEMEINSAM.md`. Vier Läufe als Agenten in Worktrees (`.claude/worktrees/agent-…`), Berichte `%TEMP%\e2e-2111\<lauf>\`.
+- **Fertig:** eNOTE-Fehlersuche (21 Fehler, 398 Versuche, 24 Monate) und SKOULOU-Fehlersuche (20 Fehler, 3 Schuljahre) – alle Fixes
+  von mir gelesen und per cherry-pick in `Etse.TabloSuite.Muster` (bis 9b4f4c4; gepusht nur bis d384b02, Rest lokal). Build + Tests grün
+  (eNOTE 642, SKOULOU 808, Home 11). Keine Migration.
+- **Pausiert (Limit), danach fortsetzen per SendMessage an die Agenten bzw. neue Agenten mit STAND-TEST.md:** eNOTE-Normaltest
+  (Worktree agent-aec3a483b371b147d, App-Zeit ab 14.08.2027; zuerst Hänger « Kasse öffnen » + PO sieht Laden nicht in « Mes
+  établissements » klären) und SKOULOU-Normaltest (agent-ac92135ac0c6f818f, ab Phase 2c, App-Zeit 27.11.2026). Beide sollen vorher
+  `git merge --ff-only Etse.TabloSuite.Muster` gemacht haben.
+- **Danach:** Fixes übernehmen, alle Tests + `SKOULOU_SQL_TESTS=1` + beide Simulationen, `git fetch` + master in den Branch, pushen,
+  master (OK liegt vor), STAND, Aufräumen (Worktrees, Test-DBs nach Rückfrage, DataProtection-Schlüssel mit Zukunftsdatum).
+- **Offene Fachfragen an den Nutzer (im Chat 22.11. gestellt):** SKOULOU 1–8 (zurückgezogenes Bulletin, Jahr nie gestartet,
+  Folgeklasse im Assistenten, Lehrkraft ohne Lehrauftrag, Messagerie Responsable, Sperre abgerechneter Periode, Verbindungsaufbau,
+  deaktivierte Klasse beim Jahreswechsel); eNOTE: gleichnamige Mitarbeiter, Bon für Admin ohne Kunde, Remise nach UTC-Tag (Kamerun),
+  gleichnamige Prestations/Remises, negativer Lagerbestand/Bruchteile, Telefon-Dublette.
+
+## 0a. Stand 21.11.2026 nachmittags
 
 **>>> NEU (21.11. später) – Startseiten animiert wie eNOTE (Nutzerwunsch mit Bild der eNOTE-Startseite):**
 - SKOULOU (1bbbbb1): Einstieg = Direktions-Karte + Handy einer Schülerin (Devoir, Date limite, Frage, Leçon en vidéo) + « Corrigé
