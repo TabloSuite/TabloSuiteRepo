@@ -575,7 +575,7 @@ public partial class Admin(
         var erfolg = await produktOwnerService.SetzeProvisionAsync(provisionZuweisung.ZuweisungId, provisionProzent, provisionFestbetrag);
         if (!erfolg)
         {
-            provisionFehler = "Valeur invalide (pourcentage 0–100, montant ≥ 0).";
+            provisionFehler = "Valeur invalide (pourcentage 0–100, montant entre 0 et 999.999.999 F).";
             return;
         }
 

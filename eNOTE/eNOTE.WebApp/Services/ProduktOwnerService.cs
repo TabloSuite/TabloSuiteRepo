@@ -241,7 +241,8 @@ public class ProduktOwnerService(IDbContextFactory<ApplicationDbContext> dbConte
             return false;
         }
 
-        if (festbetrag is < 0)
+        // Höchstbetrag wie im Katalog (Fehlersuche 21.11.2026: 17 Ziffern sprengten decimal(18,2) → Fehlergrenze)
+        if (festbetrag is < 0 or > KatalogService.BetragMax)
         {
             return false;
         }

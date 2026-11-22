@@ -168,6 +168,9 @@ public class ProduktOwnerServiceTests
 
         Assert.False(await service.SetzeProvisionAsync(z.ZuweisungId, prozent: 150m, festbetrag: null)); // > 100 %
         Assert.False(await service.SetzeProvisionAsync(z.ZuweisungId, prozent: null, festbetrag: -100m)); // negativ
+        // Fehlersuche 21.11.2026: 17 Ziffern sprengten decimal(18,2) (Datenbankfehler, Fehlergrenze im Admin)
+        Assert.False(await service.SetzeProvisionAsync(z.ZuweisungId, prozent: null, festbetrag: 99999999999999999m));
+        Assert.True(await service.SetzeProvisionAsync(z.ZuweisungId, prozent: null, festbetrag: KatalogService.BetragMax));
     }
 
     [Fact]

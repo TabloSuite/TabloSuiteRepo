@@ -223,7 +223,15 @@ public partial class Parametres(
 
     private async Task SpeichernAsync()
     {
-        await salonService.SetzeKontaktdatenAsync(salonId, slogan, telefon, adresse, bonQrLink);
+        try
+        {
+            await salonService.SetzeKontaktdatenAsync(salonId, slogan, telefon, adresse, bonQrLink);
+        }
+        catch (ArgumentException ex)
+        {
+            toast.ZeigeFehler(ex.Message);
+            return;
+        }
 
         if (ausgewaehltesLogoBytes is not null)
         {

@@ -56,10 +56,26 @@ public class SalonService(
         return await LaenderAuswahl.SetzeAsync(db, salonId, land, uhr.GetUtcNow().UtcDateTime, cancellationToken);
     }
 
-    /// <summary>Aktualisiert die Kontaktdaten (Slogan, Telefon, Adresse, QR-Link) für den Bon.</summary>
+    public const int SloganMax = 120, AdresseMax = 200, BonQrLinkMax = 500;
+
+    /// <summary>
+    /// Regeln der Kontaktdaten (Formular und Server). Fehlersuche 21.11.2026: ohne « maxlength » im Browser wurden Telefon
+    /// « abc », ein Slogan mit 500 und eine Adresse mit 3.000 Zeichen gespeichert – alles landet auf dem 80-mm-Bon.
+    /// </summary>
+    public static string? PruefeKontaktdaten(string? slogan, string? telefon, string? adresse, string? bonQrLink)
+    {
+        if (slogan?.Trim().Length > SloganMax) return $"Slogan : {SloganMax} caractères au maximum.";
+        if (adresse?.Trim().Length > AdresseMax) return $"Adresse : {AdresseMax} caractères au maximum.";
+        if (bonQrLink?.Trim().Length > BonQrLinkMax) return $"Lien du code QR : {BonQrLinkMax} caractères au maximum.";
+        if (!string.IsNullOrWhiteSpace(telefon) && TelefonRegel.Pruefe(telefon).Fehler is string telFehler) return telFehler;
+        return null;
+    }
+
+    /// <summary>Aktualisiert die Kontaktdaten (Slogan, Telefon, Adresse, QR-Link) für den Bon; ungültig → <see cref="ArgumentException"/>.</summary>
     public async Task<bool> SetzeKontaktdatenAsync(
         Guid salonId, string? slogan, string? telefon, string? adresse, string? bonQrLink, CancellationToken cancellationToken = default)
     {
+        if (PruefeKontaktdaten(slogan, telefon, adresse, bonQrLink) is string fehler) throw new ArgumentException(fehler);
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var salon = await db.Salons.FirstOrDefaultAsync(s => s.Id == salonId, cancellationToken);
         if (salon is null)

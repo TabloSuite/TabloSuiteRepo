@@ -45,8 +45,8 @@
 
                         <label>Slogan <input @bind="slogan" @bind:event="oninput" placeholder="ex. Votre beauté, notre passion" maxlength="120" /></label>
                         <div class="enote-form-grid">
-                            <label>Téléphone <input @bind="telefon" @bind:event="oninput" inputmode="tel" placeholder="ex. +228 90 00 00 00" /></label>
-                            <label>Adresse <input @bind="adresse" @bind:event="oninput" placeholder="ex. Rue de la Paix, Lomé" /></label>
+                            <label>Téléphone <input @bind="telefon" @bind:event="oninput" inputmode="tel" placeholder="ex. +228 90 00 00 00" maxlength="@ENote.WebApp.Services.TelefonRegel.MaxLaenge" /></label>
+                            <label>Adresse <input @bind="adresse" @bind:event="oninput" placeholder="ex. Rue de la Paix, Lomé" maxlength="@ENote.WebApp.Services.SalonService.AdresseMax" /></label>
                         </div>
                         <label>
                             Lien du QR-code sur le reçu <small class="enote-muted">(facultatif)</small>
