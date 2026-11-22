@@ -35,7 +35,8 @@ public sealed class FehlerProtokollSink(FehlerProtokollPuffer puffer, IHttpConte
             var user = kontext?.User;
             puffer.Schreibe(new FehlerProtokoll
             {
-                ZeitUtc = logEvent.Timestamp.UtcDateTime,
+                // App-Uhr wie überall (Aufräumdienst löscht nach 90 Tagen App-Zeit); in Produktion identisch mit der Ereigniszeit.
+                ZeitUtc = Skoulou.Core.Werkzeuge.AppUhr.UtcNow,
                 Stufe = logEvent.Level.ToString(),
                 Nachricht = Kuerze(logEvent.RenderMessage(), 4000),
                 Typ = Kuerze(logEvent.Exception.GetType().FullName ?? "Exception", 500),

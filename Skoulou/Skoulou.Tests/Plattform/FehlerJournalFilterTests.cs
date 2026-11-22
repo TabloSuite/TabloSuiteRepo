@@ -31,4 +31,15 @@ public class FehlerJournalFilterTests
         Assert.False(FehlerProtokollSink.IstVerlasseneVerbindung(RemoteNavigationManager.Werfe(new InvalidOperationException("echt"))));
         Assert.False(FehlerProtokollSink.IstVerlasseneVerbindung(new TaskCanceledException()));   // ohne Stacktrace
     }
+    [Fact]
+    public void Zeitstempel_kommt_von_der_App_Uhr_nicht_vom_Log_Ereignis()
+    {
+        // Klicktest 21.11.2026 mit Test-Uhr: Einträge trugen die Serilog-Zeit; der Aufräumdienst rechnet aber mit der App-Uhr.
+        var puffer = new FehlerProtokollPuffer();
+        var sink = new FehlerProtokollSink(puffer, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        sink.Emit(new Serilog.Events.LogEvent(new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero), Serilog.Events.LogEventLevel.Error,
+            new InvalidOperationException("x"), new Serilog.Parsing.MessageTemplateParser().Parse("Fehler"), []));
+        Assert.True(puffer.Leser.TryRead(out var eintrag));
+        Assert.True(Math.Abs((eintrag!.ZeitUtc - Skoulou.Core.Werkzeuge.AppUhr.UtcNow).TotalMinutes) < 1);
+    }
 }
