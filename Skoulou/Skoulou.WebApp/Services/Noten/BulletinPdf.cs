@@ -44,7 +44,7 @@ public static class BulletinPdf
         page.Size(PageSizes.A4);
         page.Margin(Math.Clamp(l.SeitenRand, 15, 40) * 0.55f, Unit.Millimetre);
         page.PageColor(Colors.White);
-        page.DefaultTextStyle(t => t.FontSize(groesse).FontColor(Text));
+        page.DefaultTextStyle(t => Organisation.Druck.DruckStil.OhneLigaturen(t).FontSize(groesse).FontColor(Text));
         if (s.Snapshot.Dokument?.Entwurf == true || s.Status != BulletinStatus.Publie)
             page.Foreground().AlignCenter().AlignMiddle().Rotate(-30).Text(s.Snapshot.Dokument?.Entwurf == true ? s.Snapshot.Dokument.Nummer
                 : s.Status == BulletinStatus.Remplace ? "BULLETIN REMPLACÉ" : "BULLETIN RETIRÉ").FontSize(40).Bold().FontColor("#40dc2626");

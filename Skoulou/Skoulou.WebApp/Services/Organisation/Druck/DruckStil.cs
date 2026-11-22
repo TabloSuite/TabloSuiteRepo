@@ -100,6 +100,12 @@ internal static class DruckStil
         page.Size(groesse);
         page.Margin(randMm, Unit.Millimetre);
         page.PageColor(Colors.White);
-        page.DefaultTextStyle(t => t.FontSize(9.5f).FontColor(Text));
+        page.DefaultTextStyle(t => OhneLigaturen(t).FontSize(9.5f).FontColor(Text));
     }
+
+    /// <summary>
+    /// Lato bildet sonst Ligaturen (« ti », « fi », « ffi »), deren Textebene falsch ist: Kopieren/Suchen/Vorlesen im PDF ergab
+    /// « Mathémaঞques », « Koﬃ ». Ohne Standard-Ligaturen enthält das PDF nur echte Buchstaben (Klicktest 22.11.2026).
+    /// </summary>
+    public static TextStyle OhneLigaturen(TextStyle t) => t.DisableFontFeature(FontFeatures.StandardLigatures);
 }
