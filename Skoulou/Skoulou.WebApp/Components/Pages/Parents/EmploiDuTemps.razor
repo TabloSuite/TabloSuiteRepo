@@ -51,7 +51,11 @@
 
 @code {
     /// <summary>Gewähltes Kind (?kind=…, sonst das erste).</summary>
-    [SupplyParameterFromQuery(Name = "kind")] public Guid? Kind { get; set; }
+    [SupplyParameterFromQuery(Name = "kind")] public string? KindAdresse { get; set; }
+    // Kaputter ?kind= (z. B. abgeschnittener Link) brach die Seite ab (Klicktest 21.11.2026) – selbst lesen statt Guid? binden.
+    private Guid? kindGewaehlt;
+    private bool kindGesetzt;
+    private Guid? Kind { get => kindGesetzt ? kindGewaehlt : Guid.TryParse(KindAdresse, out var g) ? g : null; set { kindGewaehlt = value; kindGesetzt = true; } }
 
     private WochenAnsicht? woche;
     private DateOnly heute;

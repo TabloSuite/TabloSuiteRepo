@@ -10,5 +10,7 @@
 
 @code {
     [Parameter] public Guid? Id { get; set; }
-    [SupplyParameterFromQuery(Name = "pour")] public Guid? Pour { get; set; }
+    [SupplyParameterFromQuery(Name = "pour")] public string? PourText { get; set; }
+    // Kaputte Adresse (?pour=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? Pour => Guid.TryParse(PourText, out var wert) ? wert : null;
 }

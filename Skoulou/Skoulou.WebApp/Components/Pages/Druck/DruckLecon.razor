@@ -8,6 +8,10 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
-    [SupplyParameterFromQuery(Name = "solutions")] public int? Solutions { get; set; }
-    [SupplyParameterFromQuery(Name = "zuweisung")] public Guid? Zuweisung { get; set; }
+    [SupplyParameterFromQuery(Name = "solutions")] public string? SolutionsText { get; set; }
+    // Kaputte Adresse (?solutions=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private int? Solutions => int.TryParse(SolutionsText, out var wert) ? wert : null;
+    [SupplyParameterFromQuery(Name = "zuweisung")] public string? ZuweisungText { get; set; }
+    // Kaputte Adresse (?zuweisung=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? Zuweisung => Guid.TryParse(ZuweisungText, out var wert) ? wert : null;
 }

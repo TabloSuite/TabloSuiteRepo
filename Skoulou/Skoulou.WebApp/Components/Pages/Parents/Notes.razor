@@ -70,7 +70,9 @@ else if (kind is not null)
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "kind")] public Guid? KindAusAdresse { get; set; }
+    [SupplyParameterFromQuery(Name = "kind")] public string? KindAusAdresseText { get; set; }
+    // Kaputte Adresse (?kind=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? KindAusAdresse => Guid.TryParse(KindAusAdresseText, out var wert) ? wert : null;
 
     private Guid? kind;
     private LiveNoten? live;

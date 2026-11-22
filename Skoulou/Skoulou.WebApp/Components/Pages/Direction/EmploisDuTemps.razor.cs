@@ -13,7 +13,9 @@ public partial class EmploisDuTemps
     [Inject] private KlassenService Klassen { get; set; } = default!;
 
     /// <summary>Vorgewählte Klasse (?classe=…), z. B. aus der Klassenseite.</summary>
-    [SupplyParameterFromQuery(Name = "classe")] public Guid? KlasseAusAdresse { get; set; }
+    [SupplyParameterFromQuery(Name = "classe")] public string? KlasseAusAdresseText { get; set; }
+    // Kaputte Adresse (?classe=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? KlasseAusAdresse => Guid.TryParse(KlasseAusAdresseText, out var wert) ? wert : null;
 
     private IReadOnlyList<AuswahlEintrag>? klassen;
     private IReadOnlyList<AuswahlOption<Guid?>> klassenOptionen = [];

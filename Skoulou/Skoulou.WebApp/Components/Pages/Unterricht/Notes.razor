@@ -114,8 +114,12 @@ else
                  PeriodeId="periodeId ?? Guid.Empty" Spalte="spalte" Komponenten="komponenten" OnClose="() => dialog = false" OnGespeichert="BewertungGespeichertAsync" />
 
 @code {
-    [SupplyParameterFromQuery(Name = "classe")] public Guid? KlasseAusAdresse { get; set; }
-    [SupplyParameterFromQuery(Name = "periode")] public Guid? PeriodeAusAdresse { get; set; }
+    [SupplyParameterFromQuery(Name = "classe")] public string? KlasseAusAdresseText { get; set; }
+    // Kaputte Adresse (?classe=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? KlasseAusAdresse => Guid.TryParse(KlasseAusAdresseText, out var wert) ? wert : null;
+    [SupplyParameterFromQuery(Name = "periode")] public string? PeriodeAusAdresseText { get; set; }
+    // Kaputte Adresse (?periode=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? PeriodeAusAdresse => Guid.TryParse(PeriodeAusAdresseText, out var wert) ? wert : null;
 
     private NotenAuswahl? auswahl;
     private Guid? klasseId, klassenfachId, periodeId;

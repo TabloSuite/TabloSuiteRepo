@@ -9,7 +9,9 @@ namespace Skoulou.WebApp.Components.Pages.Direction;
 /// <summary>Seite « Élèves »: Liste mit Filtern und Auswahl, Dossier, Einschreibungen, Freigabe, Import.</summary>
 public partial class Eleves
 {
-    [SupplyParameterFromQuery(Name = "classe")] public Guid? KlasseAusAdresse { get; set; }
+    [SupplyParameterFromQuery(Name = "classe")] public string? KlasseAusAdresseText { get; set; }
+    // Kaputte Adresse (?classe=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? KlasseAusAdresse => Guid.TryParse(KlasseAusAdresseText, out var wert) ? wert : null;
     [SupplyParameterFromQuery(Name = "filtre")] public string? FilterAusAdresse { get; set; }
 
     [Inject] private SchuljahrService Schuljahre { get; set; } = default!;

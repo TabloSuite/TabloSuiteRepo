@@ -36,7 +36,9 @@
 </div>
 
 @code {
-    [SupplyParameterFromQuery(Name = "id")] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name = "id")] public string? IdText { get; set; }
+    // Kaputte Adresse (?id=…) brach die Seite mit « Une erreur inattendue » bzw. HTTP 500 ab (Klicktest 21.11.2026) – selbst lesen.
+    private Guid? Id => Guid.TryParse(IdText, out var wert) ? wert : null;
     [SupplyParameterFromQuery(Name = "token")] public string? Token { get; set; }
     [SupplyParameterFromQuery(Name = "erreur")] public string? Erreur { get; set; }
 
