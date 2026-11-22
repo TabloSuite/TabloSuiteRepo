@@ -93,7 +93,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/auth/login";
     options.LogoutPath = "/auth/logout";
-    options.AccessDeniedPath = "/auth/login";
+    options.AccessDeniedPath = "/acces-refuse";   // angemeldet, aber ohne Recht: Hinweis statt Anmeldeformular
 
     options.Events.OnValidatePrincipal = async context =>
     {
@@ -384,6 +384,11 @@ app.MapGet("/bon/{verkaufId:guid}", async (
         return Results.NotFound();
     }
 
+    if (verkauf.Kunde is not null && !await zugriff.DarfKundenSehenAsync(httpContext.User, verkauf.SalonId, cancellationToken))
+    {
+        verkauf.Kunde = null; // Responsable/Admin: Bon ja, Kundendaten nie
+    }
+
     var salon = await db.Salons.FirstAsync(s => s.Id == verkauf.SalonId, cancellationToken);
     var logoBytes = await salonService.GetLogoBytesAsync(salon.Id, cancellationToken);
 
@@ -469,6 +474,11 @@ app.MapGet("/bon/{verkaufId:guid}/druck", async (
     if (verkauf is null || !await zugriff.HatSalonZugangAsync(httpContext.User, verkauf.SalonId, false, cancellationToken))
     {
         return Results.NotFound();
+    }
+
+    if (verkauf.Kunde is not null && !await zugriff.DarfKundenSehenAsync(httpContext.User, verkauf.SalonId, cancellationToken))
+    {
+        verkauf.Kunde = null; // Responsable/Admin: Bon ja, Kundendaten nie
     }
 
     var salon = await db.Salons.FirstAsync(s => s.Id == verkauf.SalonId, cancellationToken);

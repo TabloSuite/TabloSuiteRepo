@@ -29,6 +29,17 @@ public class MedienZugriff(IDbContextFactory<ApplicationDbContext> factory)
         return await HatZugangAsync(db, principal, salonId, finanzen, ct);
     }
 
+    /// <summary>
+    /// Kundendaten (Name auf dem Bon) nur für Mitglieder des Ladens (Besitzer, Employés). Responsable/Admin dürfen den Bon
+    /// eines Ladens sehen, aber nie den Kunden (Fehlersuche 21.11.2026: PO sah « Client : … » in /bon/{id}/druck).
+    /// </summary>
+    public async Task<bool> DarfKundenSehenAsync(ClaimsPrincipal principal, Guid salonId, CancellationToken ct = default)
+    {
+        if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return false;
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.UserSalons.AnyAsync(us => us.AppUserId == userId && us.SalonId == salonId && !us.AppUser.IsBlocked, ct);
+    }
+
     private static async Task<bool> HatZugangAsync(ApplicationDbContext db, ClaimsPrincipal principal,
         Guid? salonId, bool finanzen, CancellationToken ct)
     {

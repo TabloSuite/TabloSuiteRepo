@@ -1,0 +1,16 @@
+@page "/acces-refuse"
+@layout Layout.AuthLayout
+@attribute [AllowAnonymous]
+
+@* Fehlersuche 21.11.2026: AccessDeniedPath war « /auth/login » – ein angemeldeter Responsable oder Employé, der eine Seite
+   ohne Recht aufrief, sah « Ravi de vous revoir. Connectez-vous » und glaubte, abgemeldet zu sein. *@
+<PageTitle>Accès refusé · eNOTE</PageTitle>
+
+<div class="enote-hinweisseite">
+    <div class="enote-card enote-hinweisseite-karte">
+        <span class="enote-hinweisseite-icon"><Icon Name="lock" Groesse="28" /></span>
+        <h1>Accès refusé</h1>
+        <p>Cette page n'est pas disponible pour votre compte. Vous restez connecté.</p>
+        <a class="enote-btn enote-btn-primary" href="/">Retour à l'accueil</a>
+    </div>
+</div>
