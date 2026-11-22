@@ -58,7 +58,10 @@ public class TeamService(
             .ToHashSetAsync(cancellationToken);
 
         // Aktivität an der Kasse: letzte Sitzung und Verkäufe im laufenden Monat (ohne Rückerstattungen).
-        var monatsAnfang = new DateTime(uhr.GetUtcNow().UtcDateTime.Year, uhr.GetUtcNow().UtcDateTime.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        // Monatsanfang in der Ortszeit des Ladens (Bénin/Cameroun UTC+1: Verkäufe am 1. zwischen 00:00 und 01:00 gehören zum neuen Monat).
+        var zone = ENote.Core.Services.Zeitzonen.Fuer(await db.Salons.Where(s => s.Id == salonId).Select(s => s.Land).FirstOrDefaultAsync(cancellationToken));
+        var heute = ENote.Core.Services.Zeitzonen.Heute(zone, uhr.GetUtcNow().UtcDateTime);
+        var monatsAnfang = ENote.Core.Services.Zeitzonen.NachUtc(new DateTime(heute.Year, heute.Month, 1), zone);
         var letzteKasse = await db.KassenSitzungen.AsNoTracking()
             .Where(k => k.SalonId == salonId && userIds.Contains(k.KassiererId))
             .GroupBy(k => k.KassiererId)

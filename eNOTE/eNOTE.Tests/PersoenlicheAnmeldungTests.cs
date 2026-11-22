@@ -172,6 +172,35 @@ public class PersoenlicheAnmeldungTests
     }
 
     [Fact]
+    public async Task Equipe_Ventes_Ce_Mois_Nach_Ortszeit_Des_Ladens()
+    {
+        // Klicktest 22.11.: Cameroun (UTC+1) – Verkauf am 01.01. um 00:10 Ortszeit (= 31.12. 23:10 UTC) fehlte im Januar.
+        var factory = TestDbContextFactory.Create();
+        var (provider, _, users, salon, besitzer) = await BasisAsync(factory);
+        await using var _ = provider;
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            (await db.Salons.SingleAsync(s => s.Id == salon)).Land = "Cameroun";
+            var sitzung = new ENote.Core.DataModels.Kasse.KassenSitzung { SalonId = salon, KassiererId = besitzer.Id };
+            db.KassenSitzungen.Add(sitzung);
+            db.Verkaeufe.AddRange(
+                new ENote.Core.DataModels.Kasse.Verkauf { SalonId = salon, KassenSitzung = sitzung, KassiererId = besitzer.Id, ZeitUtc = new DateTime(2027, 12, 31, 22, 50, 0, DateTimeKind.Utc), GesamtSumme = 100 },
+                new ENote.Core.DataModels.Kasse.Verkauf { SalonId = salon, KassenSitzung = sitzung, KassiererId = besitzer.Id, ZeitUtc = new DateTime(2027, 12, 31, 23, 10, 0, DateTimeKind.Utc), GesamtSumme = 200 },
+                new ENote.Core.DataModels.Kasse.Verkauf { SalonId = salon, KassenSitzung = sitzung, KassiererId = besitzer.Id, ZeitUtc = new DateTime(2028, 1, 15, 9, 0, 0, DateTimeKind.Utc), GesamtSumme = 300 });
+            await db.SaveChangesAsync();
+        }
+        var team = new TeamService(factory, users, Microsoft.Extensions.Logging.Abstractions.NullLogger<TeamService>.Instance, null,
+            new FesteZeit(new DateTime(2028, 1, 20, 12, 0, 0, DateTimeKind.Utc)));
+        var ich = (await team.GetTeamAsync(salon)).Single(m => m.UserId == besitzer.Id);
+        Assert.Equal(2, ich.VerkaeufeMonat);   // 01.01. 00:10 Ortszeit und 15.01. – nicht 31.12. 23:50 Ortszeit
+    }
+
+    private sealed class FesteZeit(DateTime jetzt) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(DateTime.SpecifyKind(jetzt, DateTimeKind.Utc));
+    }
+
+    [Fact]
     public async Task Anlage_Mit_Passwort_Gibt_Gleich_Die_Persoenliche_Anmeldung()
     {
         var factory = TestDbContextFactory.Create();
