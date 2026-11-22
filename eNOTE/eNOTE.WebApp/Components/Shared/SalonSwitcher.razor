@@ -8,7 +8,7 @@
 @if (optionen.Count > 1)
 {
     <div class="enote-salon-switcher" title="Choisir l'établissement">
-        <span class="enote-salon-switcher-ico">🏪</span>
+        <span class="enote-salon-switcher-ico" aria-hidden="true"><Icon Name="store" Groesse="16" /></span>
         <EnoteSelect TValue="string" Value="@aktiveId" ValueChanged="WaehleAsync" Options="optionen" />
     </div>
 }

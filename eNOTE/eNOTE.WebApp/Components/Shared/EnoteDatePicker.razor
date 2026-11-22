@@ -2,7 +2,7 @@
 <div class="enote-datepicker @(offen ? "offen" : "")">
     <button type="button" class="enote-datepicker-trigger" @onclick="() => SetzeOffenAsync(!offen)" disabled="@Disabled">
         <span>@(Value?.ToString("dd.MM.yyyy") ?? Placeholder)</span>
-        <span class="enote-datepicker-ico">📅</span>
+        <span class="enote-datepicker-ico"><Icon Name="calendar" Groesse="16" /></span>
     </button>
 
     @if (offen)

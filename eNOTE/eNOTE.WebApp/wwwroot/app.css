@@ -1262,7 +1262,7 @@ button.enote-laedt { cursor: progress; }
     background: var(--enote-surface); color: var(--enote-text); font-size: .95rem; cursor: pointer;
 }
 .enote-datepicker-trigger:disabled { opacity: .5; }
-.enote-datepicker-ico { font-size: 1rem; }
+.enote-datepicker-ico { display: inline-flex; color: var(--enote-text-muted); }
 .enote-datepicker-popup {
     position: absolute; z-index: 1500; top: calc(100% + .4rem); left: 0; min-width: 17rem;
     background: var(--enote-surface); border-radius: var(--enote-radius-lg);
