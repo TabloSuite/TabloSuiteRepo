@@ -181,8 +181,9 @@ public sealed class MedienService(IDbContextFactory<SkoulouDbContext> dbFactory,
         var gewuenscht = bilder.ToHashSet();
         if (video is { } v) gewuenscht.Add(v);
         var gueltig = await db.Medien.Where(m => gewuenscht.Contains(m.Id) && m.SchuleId == schuleId)
-            .Select(m => new { m.Id, m.Art }).ToListAsync(ct);
-        if (bilder.Any(b => !gueltig.Any(g => g.Id == b && g.Art == MedienArt.Bild)))
+            .Select(m => new { m.Id, m.Art, m.Zweck }).ToListAsync(ct);
+        // Nur Bilder der Médiathèque: kein Kassenbeleg, Schülerfoto oder Logo, das Schüler sonst über die Freigabe sähen.
+        if (bilder.Any(b => !gueltig.Any(g => g.Id == b && g.Art == MedienArt.Bild && g.Zweck == MedienZweck.Inhalt)))
             throw new FachFehler("Une image du contenu n'est pas disponible dans votre établissement. Choisissez-la dans la médiathèque.");
 
         var vorhanden = await db.MedienNutzungen.Where(n => n.Typ == typ && n.ZielId == zielId).ToListAsync(ct);

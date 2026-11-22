@@ -288,6 +288,23 @@ public class InhaltServiceTests
     }
 
     [Fact]
+    public async Task Kassenbeleg_nicht_ueber_medien_und_nicht_in_Inhalten()
+    {
+        // Klicktest 21.11.2026: /medien/{beleg} lieferte Lehrkraft und Koordinator ohne Finanzrecht den Kassenbeleg.
+        await using var u = await PaedagogikUmgebung.ErstelleAsync();
+        var beleg = new Medium { SchuleId = u.Schule, BesitzerId = u.FremdDirektor.Id, Art = MedienArt.Bild, Zweck = MedienZweck.Beleg, BlobName = "b", Dateiname = "b.png", ContentType = "image/png" };
+        Assert.False(Skoulou.WebApp.Services.Infrastruktur.Medien.MedienEndpunkte.DarfSehen(Skoulou.Core.Rechte.Rollen.Lehrer, u.Schule, u.Lehrer.Id, beleg));
+        Assert.False(Skoulou.WebApp.Services.Infrastruktur.Medien.MedienEndpunkte.DarfSehen(Skoulou.Core.Rechte.Rollen.Koordinator, u.Schule, u.Lehrer2.Id, beleg));
+        Assert.True(Skoulou.WebApp.Services.Infrastruktur.Medien.MedienEndpunkte.DarfSehen(Skoulou.Core.Rechte.Rollen.SuperAdmin, null, Guid.NewGuid(), beleg));
+        Assert.True(Skoulou.WebApp.Services.Infrastruktur.Medien.MedienEndpunkte.DarfSehen(Skoulou.Core.Rechte.Rollen.Direktor, u.Schule, u.FremdDirektor.Id, beleg)); // eigener Upload
+
+        await using (var db = await u.Env.Db.CreateDbContextAsync()) { db.Medien.Add(beleg); await db.SaveChangesAsync(); }
+        var f = u.Formular(InhaltsArt.Lecon, "Avec justificatif");
+        f.Seiten[0].Html = $"<p><img src=\"/medien/{beleg.Id}\"></p>";
+        await Assert.ThrowsAsync<FachFehler>(() => u.Inhalte.SpeichernAsync(u.Lehrer.Id, f));
+    }
+
+    [Fact]
     public async Task Formeln_je_Konto_ohne_Duplikat_mit_Grenze()
     {
         await using var u = await PaedagogikUmgebung.ErstelleAsync();

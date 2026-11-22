@@ -44,9 +44,13 @@ public static class MedienEndpunkte
         return app;
     }
 
-    /// <summary>Grundregel der Sichtbarkeit (ohne Nutzungsprüfung).</summary>
+    /// <summary>
+    /// Grundregel der Sichtbarkeit (ohne Nutzungsprüfung). Kassenbelege nie über diese Regel: sie gibt es nur über
+    /// /finances/justificatif mit Finanzrecht (Klicktest 21.11.2026: Lehrkraft und Koordinator ohne Finanzrecht luden
+    /// den Beleg hier, obwohl /finances/justificatif 403 lieferte).
+    /// </summary>
     public static bool DarfSehen(string rolle, Guid? schuleId, Guid kontoId, Medium medium)
         => rolle == Rollen.SuperAdmin
            || medium.BesitzerId == kontoId
-           || (medium.SchuleId is not null && medium.SchuleId == schuleId && Rollen.Lehrkraefte.Contains(rolle));
+           || (medium.Zweck != MedienZweck.Beleg && medium.SchuleId is not null && medium.SchuleId == schuleId && Rollen.Lehrkraefte.Contains(rolle));
 }
