@@ -224,12 +224,11 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
         PruefeZuweisung(akteur, z);
         var kopf = await KopfAsync(db, z, ct);
 
-        // Ohne Lehrauftrag: nur wer schon gearbeitet hat, nicht die aktuelle Klassenliste (R3).
-        var inKlasse = await UnterrichtetAsync(db, akteur, z, ct)
-            ? await SchulAbfragen.AktiveEinschreibungen(db).Where(e => e.KlasseId == z.KlasseId).Select(e => e.SchuelerId).ToListAsync(ct)
-            : [];
+        // Ohne Lehrauftrag: nur wer schon gearbeitet hat, nicht die aktuelle Klassenliste (R3). Ob ein Schüler noch in der Klasse
+        // ist, gilt trotzdem für alle Zeilen (Nachtest 22.11.: sonst stand bei jedem « a quitté la classe » und « Élèves 0 »).
+        var inKlasse = await SchulAbfragen.AktiveEinschreibungen(db).Where(e => e.KlasseId == z.KlasseId).Select(e => e.SchuelerId).ToListAsync(ct);
         var mitVersuch = await db.Versuche.Where(v => v.ZuweisungId == z.Id).Select(v => v.SchuelerId).Distinct().ToListAsync(ct);
-        var alle = inKlasse.Union(mitVersuch).ToList();
+        var alle = (await UnterrichtetAsync(db, akteur, z, ct) ? inKlasse.Union(mitVersuch) : mitVersuch).ToList();
         var namen = await db.Users.AsNoTracking().Where(k => alle.Contains(k.Id))
             .Select(k => new { k.Id, k.Vorname, k.Nachname }).ToListAsync(ct);
         var staende = await db.LernStaende.AsNoTracking().Where(s => s.ZuweisungId == z.Id).ToDictionaryAsync(s => s.SchuelerId, ct);

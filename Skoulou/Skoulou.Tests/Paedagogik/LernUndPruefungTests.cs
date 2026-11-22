@@ -312,6 +312,8 @@ public class LernUndPruefungTests
         Assert.Equal(KorrekturService.MeldungOhneLehrauftrag, fehler.Message);
         var ergebnisse = await u.Korrektur.ErgebnisseAsync(u.Lehrer.Id, z);
         Assert.Equal([u.SchuelerA.Id], ergebnisse.Zeilen.Select(x => x.SchuelerId));
+        // Nachtest 22.11.: der Schüler ist weiter in der Klasse – kein « a quitté la classe » nur wegen des fehlenden Lehrauftrags.
+        Assert.True(ergebnisse.Zeilen.Single().InKlasse);
         // Die Direktion korrigiert und sieht die ganze Klasse.
         await u.Korrektur.KorrigierenAsync(u.Direktor.Id, zeile.AntwortId, 3, null);
         Assert.Equal(2, (await u.Korrektur.ErgebnisseAsync(u.Direktor.Id, z)).Zeilen.Count);
