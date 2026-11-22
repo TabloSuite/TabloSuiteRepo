@@ -17,13 +17,24 @@ public partial class AsyncActionButton
     [Parameter] public string BasisKlasse { get; set; } = "enote-btn";
 
     [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Ladezustand von außen (22.11.2026): für Formulare, die per Enter oder Klick über ihr <c>onsubmit</c> absenden
+    /// (<see cref="Type"/> = « submit », ohne <see cref="OnClick"/>). Zeigt den Spinner und sperrt den Knopf wie ein Klick –
+    /// ein gesperrter Submit-Knopf verhindert auch ein zweites Absenden per Enter.
+    /// </summary>
+    [Parameter] public bool Busy { get; set; }
+
     [Parameter] public EventCallback OnClick { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>Weitere Attribute wie title oder aria-label.</summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
-    private bool IsBusy { get; set; }
+    private bool klickLaeuft;
+
+    /// <summary>Läuft gerade eine Aktion – über den eigenen Klick oder von außen (<see cref="Busy"/>)?</summary>
+    private bool IsBusy => klickLaeuft || Busy;
 
     private string KlassenListe => string.Join(' ', new[] { BasisKlasse, CssClass, IsBusy ? "enote-laedt" : null }.Where(k => !string.IsNullOrWhiteSpace(k)));
 
@@ -37,14 +48,14 @@ public partial class AsyncActionButton
             return;
         }
 
-        IsBusy = true;
+        klickLaeuft = true;
         try
         {
             await OnClick.InvokeAsync();
         }
         finally
         {
-            IsBusy = false;
+            klickLaeuft = false;
         }
     }
 }

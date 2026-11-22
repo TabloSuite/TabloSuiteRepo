@@ -150,7 +150,8 @@
                     <div class="alert alert-success" role="status">Mot de passe modifié. Reconnectez-vous.</div>
                 }
 
-                <EditForm Model="this" OnValidSubmit="AenderePasswortAsync" FormName="pw-form" class="enote-form">
+                @* 22.11.2026 (Befund B-8): Enter in einem der Felder sendet ab – Submit-Knopf im Formular, Sperre gegen Doppel-Absenden. *@
+                <EditForm Model="this" OnValidSubmit="SendePasswortAsync" FormName="pw-form" class="enote-form" novalidate>
                     <label>
                         <span class="enote-pflicht">Mot de passe actuel</span>
                         <PasswordInput @bind-Value="aktuellesPasswort" Required="true" Autocomplete="current-password" />
@@ -160,7 +161,7 @@
                         <PasswordInput @bind-Value="neuesPasswort" Required="true" Autocomplete="new-password" />
                         <small class="enote-muted">Au moins 6 caractères, dont 1 chiffre et 1 lettre minuscule.</small>
                     </label>
-                    <div><AsyncActionButton Text="Changer le mot de passe" OnClick="AenderePasswortAsync" CssClass="enote-btn-primary" Disabled="@(!PasswortVollstaendig)" /></div>
+                    <div><AsyncActionButton Type="submit" Text="Changer le mot de passe" Busy="pwLaeuft" CssClass="enote-btn-primary" Disabled="@(!PasswortVollstaendig)" /></div>
                 </EditForm>
             </section>
             </div>
@@ -170,24 +171,25 @@
 
 <ModalDialog Open="emailDialogOffen" Title="Changer l'adresse e-mail" ErrorMessage="@emailFehler" OnClose="() => emailDialogOffen = false">
     <ChildContent>
-        <div class="enote-form">
+        @* Enter sendet ab: der Knopf in der Fußzeile gehört über form="…" zu diesem Formular. *@
+        <form id="pf-email-form" class="enote-form" novalidate @onsubmit="SendeEmailAsync" @onsubmit:preventDefault>
             <label><span class="enote-pflicht">Nouvelle adresse e-mail</span> <input @bind="neueEmail" @bind:event="oninput" type="email" autocomplete="email" maxlength="256" /></label>
             <label>
                 <span class="enote-pflicht">Mot de passe actuel</span>
                 <PasswordInput @bind-Value="emailPasswort" Required="true" Autocomplete="current-password" />
             </label>
             <p class="enote-muted pf-hinweis"><Icon Name="info" Groesse="16" /> Un message de sécurité est envoyé à l'ancienne adresse.</p>
-        </div>
+        </form>
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => emailDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Enregistrer" OnClick="AendereEmailAsync" CssClass="enote-btn-primary" Disabled="@(!EmailVollstaendig)" />
+        <button type="button" class="enote-btn enote-btn-ghost" @onclick="() => emailDialogOffen = false">Annuler</button>
+        <AsyncActionButton Type="submit" form="pf-email-form" Text="Enregistrer" Busy="emailLaeuft" CssClass="enote-btn-primary" Disabled="@(!EmailVollstaendig)" />
     </Footer>
 </ModalDialog>
 
 <ModalDialog Open="pseudonymDialogOffen" Title="Changer l'identifiant" ErrorMessage="@pseudonymFehler" OnClose="() => pseudonymDialogOffen = false">
     <ChildContent>
-        <div class="enote-form">
+        <form id="pf-pseudonym-form" class="enote-form" novalidate @onsubmit="SendePseudonymAsync" @onsubmit:preventDefault>
             <label>
                 <span class="enote-pflicht">Nouvel identifiant</span>
                 <input @bind="neuesPseudonym" @bind:event="oninput" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="64" />
@@ -198,10 +200,10 @@
                 <PasswordInput @bind-Value="pseudonymPasswort" Required="true" Autocomplete="current-password" />
             </label>
             <p class="enote-muted pf-hinweis"><Icon Name="info" Groesse="16" /> Vous serez ensuite déconnecté et vous reconnecterez avec le nouvel identifiant.</p>
-        </div>
+        </form>
     </ChildContent>
     <Footer>
-        <button class="enote-btn enote-btn-ghost" @onclick="() => pseudonymDialogOffen = false">Annuler</button>
-        <AsyncActionButton Text="Changer l'identifiant" OnClick="AenderePseudonymAsync" CssClass="enote-btn-primary" Disabled="@(!PseudonymVollstaendig)" />
+        <button type="button" class="enote-btn enote-btn-ghost" @onclick="() => pseudonymDialogOffen = false">Annuler</button>
+        <AsyncActionButton Type="submit" form="pf-pseudonym-form" Text="Changer l'identifiant" Busy="pseudonymLaeuft" CssClass="enote-btn-primary" Disabled="@(!PseudonymVollstaendig)" />
     </Footer>
 </ModalDialog>

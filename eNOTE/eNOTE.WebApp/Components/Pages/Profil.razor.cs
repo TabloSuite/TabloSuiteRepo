@@ -57,6 +57,10 @@ public partial class Profil(
     private string? pwFehler;
     private bool pwGeaendert;
 
+    // 22.11.2026 (Befund B-8): Die drei Formulare mit Passwort senden per Enter oder Klick über ihr onsubmit ab.
+    // Je Formular läuft höchstens ein Absenden (Doppel-Enter, Enter + Klick); unvollständig wird nichts gesendet.
+    private bool pwLaeuft, emailLaeuft, pseudonymLaeuft;
+
     private string? profilBildUrl;
     private string? bildFehler;
     private bool bildErfolg;
@@ -149,6 +153,30 @@ public partial class Profil(
         emailPasswort = string.Empty;
         emailFehler = null;
         emailDialogOffen = true;
+    }
+
+    private async Task SendeEmailAsync()
+    {
+        if (emailLaeuft || !EmailVollstaendig) return;
+        emailLaeuft = true;
+        try { await AendereEmailAsync(); }
+        finally { emailLaeuft = false; }
+    }
+
+    private async Task SendePseudonymAsync()
+    {
+        if (pseudonymLaeuft || !PseudonymVollstaendig) return;
+        pseudonymLaeuft = true;
+        try { await AenderePseudonymAsync(); }
+        finally { pseudonymLaeuft = false; }
+    }
+
+    private async Task SendePasswortAsync()
+    {
+        if (pwLaeuft || !PasswortVollstaendig) return;
+        pwLaeuft = true;
+        try { await AenderePasswortAsync(); }
+        finally { pwLaeuft = false; }
     }
 
     private async Task AendereEmailAsync()

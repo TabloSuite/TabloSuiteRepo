@@ -34,7 +34,8 @@
             }
             else
             {
-                <div class="auth-form">
+                @* 22.11.2026 (Befund B-8): Enter sendet ab (Submit-Knopf im Formular); EnregistrerAsync läuft nie doppelt. *@
+                <form class="auth-form" novalidate @onsubmit="EnregistrerAsync" @onsubmit:preventDefault>
                     <label>
                         <span class="enote-pflicht">Nouveau mot de passe</span>
                         <PasswordInput @bind-Value="passwort" Autocomplete="new-password" />
@@ -44,7 +45,7 @@
                         <span class="enote-pflicht">Confirmer le mot de passe</span>
                         <PasswordInput @bind-Value="confirmation" Autocomplete="new-password" />
                     </label>
-                    <button type="button" class="btn-primary" disabled="@(laeuft || string.IsNullOrWhiteSpace(passwort) || string.IsNullOrWhiteSpace(confirmation))" @onclick="EnregistrerAsync">
+                    <button type="submit" class="btn-primary" disabled="@(laeuft || !Vollstaendig)">
                         @if (laeuft)
                         {
                             <span class="btn-spinner"></span>
@@ -55,7 +56,7 @@
                             <span>Enregistrer</span>
                         }
                     </button>
-                </div>
+                </form>
             }
         </div>
     </div>
@@ -70,8 +71,10 @@
     private string passwort = "", confirmation = "";
     private string? message;
     private bool ok, laeuft;
+    private bool Vollstaendig => !string.IsNullOrWhiteSpace(passwort) && !string.IsNullOrWhiteSpace(confirmation);
     private async Task EnregistrerAsync()
     {
+        if (laeuft || ok || !Vollstaendig) return;
         if (passwort.Length < 6 || passwort != confirmation) { message = "Les mots de passe doivent correspondre et respecter les règles : au moins 6 caractères, un chiffre et une minuscule."; return; }
         laeuft = true;
         try
