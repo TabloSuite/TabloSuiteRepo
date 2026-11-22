@@ -21,4 +21,13 @@ public static class EnoteKultur
         zahlen.PercentDecimalSeparator = ",";
         return kultur;
     }
+
+    /// <summary>Unveränderliche Instanz für Texte außerhalb einer Anfrage (Mails, Banner, PDFs).</summary>
+    public static CultureInfo Standard { get; } = CultureInfo.ReadOnly(Erstelle());
+
+    /// <summary>
+    /// Betrag wie überall in der App: « 38.880 F » (Punkt als Tausendertrenner, ohne Nachkommastellen). Seit 22.11.2026 auch in
+    /// Mails und Tarif-Bannern (vorher « 38 880 F CFA » mit dem Leerzeichen von fr-FR; Nutzerentscheidung, Befund B-7).
+    /// </summary>
+    public static string Betrag(decimal betrag) => betrag.ToString("N0", Standard) + " F";
 }

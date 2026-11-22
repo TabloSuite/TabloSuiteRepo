@@ -424,7 +424,7 @@ app.MapGet("/etiketten", async (
         return Results.NotFound();
 
     var etikett = new EtikettPdfService.Etikett(leistung.StrichCode, leistung.Name,
-        leistung.Preis.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + " F");
+        ENote.Core.Services.EnoteKultur.Betrag(leistung.Preis));
     var stueck = Math.Clamp(anzahl ?? 1, 1, 48);
     var pdf = format == "einzel"
         ? EtikettPdfService.ErzeugeEinzelEtikett(etikett, stueck)

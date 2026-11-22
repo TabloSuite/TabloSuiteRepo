@@ -388,7 +388,8 @@ public static class TabloSuiteMails
         return sb.Append("</table>").ToString();
     }
 
-    public static string Betrag(decimal betrag) => betrag.ToString("N0", Fr) + " F CFA";
+    /// <summary>Wie in der App: « 38.880 F » (<see cref="ENote.Core.Services.EnoteKultur.Betrag"/>, Nutzerentscheidung 22.11.2026).</summary>
+    public static string Betrag(decimal betrag) => ENote.Core.Services.EnoteKultur.Betrag(betrag);
 
     private static string Datum(DateTime utc, bool mitZeit = false)
     {

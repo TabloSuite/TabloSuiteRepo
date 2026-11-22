@@ -170,7 +170,8 @@ public class EmailBenachrichtigungTests
 
         Assert.DoesNotContain("<", text);
         Assert.Contains("Bonjour Ama,", text);
-        Assert.Contains("F CFA", text);
+        Assert.Contains("5.000 F", text);                         // wie in der App (22.11.2026), nicht « 5 000 F CFA »
+        Assert.DoesNotContain("CFA", text);
         Assert.Contains("(https://enote.tablosuite.com/abonnement)", text);
         Assert.Contains("Montant : ", text);                       // Label und Wert getrennt
         Assert.DoesNotContain(text.Split('\n'), zeile => zeile.Trim() == "T");   // keine Logo-Kachel

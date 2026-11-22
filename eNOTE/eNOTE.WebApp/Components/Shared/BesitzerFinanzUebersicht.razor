@@ -140,7 +140,7 @@ else if (bericht is not null)
         .Select(j => new EnoteSelectOption<int> { Value = j, Label = j.ToString() }).ToList();
     private IReadOnlyList<EnoteSelectOption<Guid?>> BesitzerOptionen => besitzer.Select(b => new EnoteSelectOption<Guid?> { Value = b.Id, Label = $"{b.Name} · {b.Email}" }).ToList();
     private IReadOnlyList<EnoteSelectOption<Guid?>> SalonOptionen => laeden.Select(s => new EnoteSelectOption<Guid?> { Value = s.Id, Label = $"{s.Name} · {s.Vertragsart}" }).ToList();
-    private static string Geld(decimal betrag) => betrag.ToString("N0", francais) + " F";
+    private static string Geld(decimal betrag) => ENote.Core.Services.EnoteKultur.Betrag(betrag);
     private static string Status(AboZahlungStatus status) => status switch
     {
         AboZahlungStatus.Bestaetigt => "Confirmé", AboZahlungStatus.Gemeldet => "Paiement signalé",

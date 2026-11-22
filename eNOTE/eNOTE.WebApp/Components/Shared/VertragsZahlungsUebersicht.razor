@@ -75,7 +75,7 @@ else if (fehler is null)
         && (status == "alle" || status == "bezahlt" && a.Status == AboZahlungStatus.Bestaetigt
             || status == "offen" && a.Status != AboZahlungStatus.Bestaetigt || status == "gemeldet" && a.Status == AboZahlungStatus.Gemeldet
             || status == "gesperrt" && a.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt && a.SperreAb <= ENote.Core.Services.AppUhr.UtcNow));
-    private static string Geld(decimal p) => p.ToString("N0", new System.Globalization.CultureInfo("fr-FR")) + " F";
+    private static string Geld(decimal p) => ENote.Core.Services.EnoteKultur.Betrag(p);
     protected override async Task OnInitializedAsync()
     {
         var auth = await Auth.GetAuthenticationStateAsync();

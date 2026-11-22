@@ -103,7 +103,8 @@ public class PreisAnpassungService(IDbContextFactory<ApplicationDbContext> facto
     public static string Fuelle(string vorlage, decimal alt, decimal neu, DateTime? abUtc)
     {
         var mitPlatzhalterAmAnfang = vorlage.TrimStart().StartsWith('{');
-        static string F(decimal betrag) => betrag.ToString("N0", Fr) + " F";
+        // Wie in der App « 4.000 F » – Banner und Mail « changement-tarif » (22.11.2026, vorher « 4 000 F » mit fr-FR).
+        static string F(decimal betrag) => ENote.Core.Services.EnoteKultur.Betrag(betrag);
         var quand = abUtc is DateTime ab ? "à partir du " + DatumText(ab) : "dès maintenant";
         var text = vorlage
             .Replace("{ancien}", F(alt)).Replace("{nouveau}", F(neu)).Replace("{ecart}", F(Math.Abs(neu - alt)))

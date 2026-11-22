@@ -85,7 +85,7 @@ public class PreisAnpassungTests
             var banner = await db.Ankuendigungen.SingleAsync();
             Assert.Equal(AnkuendigungArt.Tarif, banner.Art);
             Assert.Equal(AnkuendigungZiel.Proprietaires, banner.Ziel);
-            Assert.Contains("4 100", banner.Text.Replace(' ', ' ').Replace(' ', ' '));
+            Assert.Contains("4.100 F", banner.Text); // wie in der App (22.11.2026)
         }
 
         // … die Dezember-Periode wird mit dem neuen Preis erzeugt.
@@ -221,7 +221,7 @@ public class PreisAnpassungTests
             Assert.Contains("Bonjour Ama", entwarnungen.Single(m => m.Empfaenger == "ama@exemple.com").HtmlInhalt);
             var banner = await db.Ankuendigungen.SingleAsync(a => a.Id == ergebnis.EntwarnungId);
             Assert.Equal((AnkuendigungArt.Tarif, AnkuendigungZiel.Proprietaires, true), (banner.Art, banner.Ziel, banner.IstAktiv));
-            Assert.Equal("Bonne nouvelle : 4 100 F n'aura pas lieu, vous restez à 3 600 F.", banner.Text.Replace(" ", " ").Replace(" ", " "));
+            Assert.Equal("Bonne nouvelle : 4.100 F n'aura pas lieu, vous restez à 3.600 F.", banner.Text);
             Assert.Equal(Dezember, banner.SichtbarBisUtc);
         }
 
@@ -357,9 +357,9 @@ public class PreisAnpassungTests
         await service.PlaneAsync(w.Admin, 4100, Dezember, false, "Hausse de {ecart}", "Dès le {date} : {ancien} → {nouveau}.");
         await using var db = await w.F.CreateDbContextAsync();
         var banner = await db.Ankuendigungen.SingleAsync();
-        static string N(string s) => s.Replace(' ', ' ').Replace(' ', ' ');
+        static string N(string s) => s;
         Assert.Equal("Hausse de 500 F", N(banner.Titel));
-        Assert.Equal("Dès le 1er décembre 2026 : 3 600 F → 4 100 F.", N(banner.Text));
+        Assert.Equal("Dès le 1er décembre 2026 : 3.600 F → 4.100 F.", N(banner.Text));
     }
 
     [Fact]
