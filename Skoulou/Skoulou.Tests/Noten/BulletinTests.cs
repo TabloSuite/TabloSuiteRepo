@@ -417,4 +417,47 @@ public class BulletinTests
         Assert.Equal(("12,00", "2e ex"), (alt.Moyenne, alt.Rang));
         Assert.DoesNotContain(alt.Perioden, p => p.Rang == "non inscrit(e)");
     }
+
+    [Fact]
+    public async Task Eintrittsperiode_ohne_Note_zaehlt_nicht_fuer_das_Jahresmittel()
+    {
+        // Nutzer 22.11.2026: Eintritt am 01.02. (im 2e trimestre), dort keine einzige Note → T2 zählt für ihn nicht.
+        var w = await NotenWelt.ErstelleAsync();
+        var neu = Guid.NewGuid();
+        await w.AendernAsync(db =>
+        {
+            db.Einschreibungen.Add(new Einschreibung
+            {
+                Id = neu, SchuleId = w.O.SchuleA, SchuelerId = w.O.SchuelerOhne, SchuljahrId = w.O.Jahr, KlasseId = w.O.Klasse6A,
+                Von = new DateOnly(2027, 2, 1), Status = EinschreibungsStatus.Active
+            });
+            return Task.CompletedTask;
+        });
+        foreach (var p in new[] { w.O.P1, w.O.P2, w.O.P3 })
+        {
+            var b = await w.BewertungAsync(w.O.Kf6AMath, p, "Composition");   // ohne Datum: auch vom Neuzugang erwartet
+            await w.NoteAsync(b, w.E1, p == w.O.P3 ? "16" : "10");
+            if (p != w.O.P2) await w.NoteAsync(b, w.E2, "12");               // E2 von Anfang an da, T2 ohne Note
+            if (p == w.O.P3) await w.NoteAsync(b, neu, "15");
+        }
+
+        var bilan = (await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P3, neu)).Snapshot.Inhalt.Bilan!;
+        Assert.Equal(("15,00", "1er"), (bilan.Moyenne, bilan.Rang));
+        Assert.Equal(("—", "non inscrit(e)"), (bilan.Perioden[0].Moyenne, bilan.Perioden[0].Rang));
+        Assert.Equal(("2e trimestre", "—", "arrivé(e) en cours de période, sans note"),
+            (bilan.Perioden[1].Titel, bilan.Perioden[1].Moyenne, bilan.Perioden[1].Rang));
+        Assert.Equal("15,00", bilan.Perioden[2].Moyenne);
+
+        // Wer von Anfang an da war, bleibt bei fehlenden Noten unvollständig.
+        var e2 = (await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P3, w.E2)).Snapshot.Inhalt.Bilan!;
+        Assert.Equal(("Notes incomplètes", "Non classé"), (e2.Moyenne, e2.Rang));
+        Assert.DoesNotContain(e2.Perioden, p => p.Rang.StartsWith("arrivé"));
+
+        // Mit einer Note in der Eintrittsperiode bleibt alles wie bisher: die fehlende macht ihn unvollständig.
+        var zweite = await w.BewertungAsync(w.O.Kf6AMath, w.O.P2, "Devoir 2");
+        await w.NoteAsync(zweite, neu, "18");
+        var mitNote = (await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P3, neu)).Snapshot.Inhalt.Bilan!;
+        Assert.Equal(("Notes incomplètes", "Non classé"), (mitNote.Moyenne, mitNote.Rang));
+        Assert.Equal("incomplet", mitNote.Perioden[1].Moyenne);
+    }
 }

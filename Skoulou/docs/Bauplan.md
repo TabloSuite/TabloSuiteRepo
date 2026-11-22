@@ -188,7 +188,7 @@ Alle Entitäten: `Id` (Guid, sequenziell erzeugt), `ErstelltAmUtc`, `GeaendertAm
    - « Compte comme une matière normale »: wie ein Pflichtfach mit Koeffizient ((64 + 32) / 7 = 13,71).
    - « Ne compte pas (information seulement) »: steht auf dem Bulletin, zählt nie (auch unvollständig nicht).
    Ein unvollständiges Wahlfach, das zählt (Bonus oder « normale »), macht die Moyenne unvollständig. Jahresmittel und Rang wirken über die Periodenmoyennes (Regeln 3 und 5). Bulletin: Zeile « TOTAUX » = Σ Koeff. (ohne Bonus-Koeffizienten) und Σ Punkte inkl. Bonus (`NotenRechner.Beitrag`); Bereich « MATIÈRES FACULTATIVES » mit kurzer Regel nur, wenn der Schüler mindestens ein Wahlfach gewählt hat; Gruppenköpfe (« MATIÈRES LITTÉRAIRES » …) und Gruppen-Bilan nur mit der Vorlage « ZeigeFachGruppen » und nur über Pflichtfächer. Ohne Wahlfächer bleiben Inhalt und Hash eines Bulletins wie bisher.
-3. **Jahresmittel** = Σ(Periodenmittel·Jahresgewicht)/ΣJahresgewicht über Perioden mit `ZaehltFuerJahr`; fehlt eine → `null`. **Seit 22.11.2026 (Nutzer):** Perioden, in denen der Schüler in keiner Klasse der Schule eingeschrieben war (Neuzugang im Lauf des Jahres, Lücke zwischen Abgang und Rückkehr), zählen für ihn nicht – Jahresmittel und Jahresrang nur aus seinen Perioden; im Bilan steht die Periode als « — (non inscrit(e)) ». Fehlt in einer eingeschriebenen Periode eine Note, bleibt er « Notes incomplètes »; ein Klassenwechsel innerhalb der Schule zählt als eingeschrieben.
+3. **Jahresmittel** = Σ(Periodenmittel·Jahresgewicht)/ΣJahresgewicht über Perioden mit `ZaehltFuerJahr`; fehlt eine → `null`. **Seit 22.11.2026 (Nutzer):** Perioden, in denen der Schüler in keiner Klasse der Schule eingeschrieben war (Neuzugang im Lauf des Jahres, Lücke zwischen Abgang und Rückkehr), zählen für ihn nicht – Jahresmittel und Jahresrang nur aus seinen Perioden; im Bilan steht die Periode als « — (non inscrit(e)) ». Fehlt in einer eingeschriebenen Periode eine Note, bleibt er « Notes incomplètes »; ein Klassenwechsel innerhalb der Schule zählt als eingeschrieben. **Eintrittsperiode** (eingeschrieben erst nach Periodenbeginn, zu Periodenbeginn in keiner Klasse der Schule) **ohne eine einzige eingetragene Note** zählt ebenfalls nicht (« — (arrivé(e) en cours de période, sans note) »); mit mindestens einer Note zählt sie wie jede andere (`KlassenRechner.Teilnahme`).
 4. **Rundung:** intern ungerundet; Anzeige und **Schwellen** auf `Round(x, 2, AwayFromZero)` (gleicher Wert für Anzeige, Rang, Distinktion, Appréciation).
 5. **Rang (eine Regel überall):** Wettbewerbsrang über die gerundeten Werte der **klassierten** Schüler (vollständige Werte); Gleichstand gleicher Rang mit « ex » (« 3e ex »), nächster übersprungen; Unvollständige « Non classé ». Effectif = aktive Einschreibungen der Klasse am Periodenende.
 6. **Appréciation/Distinktion-Schwellen** wie Alt-App (Fachkonzept 04 §3.10).
@@ -357,6 +357,13 @@ Von mir entschieden (änderbar):
     Dialog « Réponse (lecture seule) » ohne Eingabe; « À corriger » zählt wie die Startseite nur, was sie korrigieren darf
     (`KorrekturService.ZaehlerAsync`, `KorrekturFilter.OhneLehrauftrag`). Serverseitige Rechte unverändert.
 44. Texte à trous: « 6 / 7 » (mit Leerzeichen) zählt wie « 6/7 » – bleibt so (Leerzeichen werden normalisiert).
+
+**Vom Nutzer entschieden 22.11.2026 (Rückfragen R5–R9 aus dem Normaltest):**
+45. **Eintrittsperiode ohne Note** (Ergänzung zu Nr. 35): Kommt ein Schüler erst im Lauf einer Periode in die Schule und hat er
+    darin keine einzige eingetragene Note (auch « abs. »/« disp. » zählen als eingetragen), zählt diese Periode für sein
+    Jahresmittel und seinen Jahresrang nicht – wie eine Periode ohne Einschreibung; im Bilan « — (arrivé(e) en cours de période,
+    sans note) ». Mit mindestens einer Note bleibt alles wie bisher (fehlende Noten → « Notes incomplètes »). Gilt nur, wenn die
+    Einschreibung nach dem Periodenbeginn beginnt und er zu Periodenbeginn in keiner Klasse der Schule war (`KlassenRechner.Teilnahme`).
 
 ---
 

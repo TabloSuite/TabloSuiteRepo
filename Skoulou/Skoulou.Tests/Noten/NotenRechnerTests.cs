@@ -243,6 +243,27 @@ public class NotenRechnerTests
     }
 
     [Fact]
+    public void Eintrittsperiode_ohne_Note_zaehlt_nicht_mit_Note_wie_bisher()
+    {
+        // Nutzer 22.11.2026: Eintritt im Lauf der Periode und darin keine einzige Note → zählt nicht fürs Jahresmittel.
+        DateOnly beginn = new(2027, 1, 4), ende = new(2027, 3, 26);
+        (DateOnly, DateOnly?)[] eintritt = [(new(2027, 2, 1), null)];
+        Assert.Equal(PeriodenTeilnahme.EintrittOhneNote, KlassenRechner.Teilnahme(beginn, ende, eintritt, hatNote: false));
+        Assert.Equal(PeriodenTeilnahme.Zaehlt, KlassenRechner.Teilnahme(beginn, ende, eintritt, hatNote: true));
+        // Von Anfang an da (auch am ersten Tag eingeschrieben): fehlende Noten bleiben unvollständig.
+        Assert.Equal(PeriodenTeilnahme.Zaehlt, KlassenRechner.Teilnahme(beginn, ende, [(new(2026, 9, 1), null)], hatNote: false));
+        Assert.Equal(PeriodenTeilnahme.Zaehlt, KlassenRechner.Teilnahme(beginn, ende, [(beginn, null)], hatNote: false));
+        // Klassenwechsel im Lauf der Periode ist kein Eintritt.
+        Assert.Equal(PeriodenTeilnahme.Zaehlt, KlassenRechner.Teilnahme(beginn, ende,
+            [(new(2026, 9, 1), new(2027, 2, 9)), (new(2027, 2, 10), null)], hatNote: false));
+        // Ohne Einschreibung in der Periode (noch nicht da oder schon weg).
+        Assert.Equal(PeriodenTeilnahme.NichtEingeschrieben, KlassenRechner.Teilnahme(beginn, ende, [(new(2027, 4, 6), null)], hatNote: false));
+        Assert.Equal(PeriodenTeilnahme.NichtEingeschrieben, KlassenRechner.Teilnahme(beginn, ende, [(new(2026, 9, 1), new(2026, 12, 20))], hatNote: true));
+        Assert.Equal("arrivé(e) en cours de période, sans note", NotenTexte.Teilnahme(PeriodenTeilnahme.EintrittOhneNote));
+        Assert.Equal("non inscrit(e)", NotenTexte.Teilnahme(PeriodenTeilnahme.NichtEingeschrieben));
+    }
+
+    [Fact]
     public void Letzte_Periode_ist_die_letzte_zaehlende()
     {
         Guid p1 = Guid.NewGuid(), p2 = Guid.NewGuid(), blanc = Guid.NewGuid();

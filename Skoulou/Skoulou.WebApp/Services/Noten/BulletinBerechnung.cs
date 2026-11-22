@@ -52,8 +52,12 @@ internal sealed class BulletinBerechnung
     /// <summary>Gewählte Wahlfächer (FachIds der Klasse) je Schüler; fehlt ein Schüler, hat er keines gewählt.</summary>
     public required IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> Wahlen { get; init; }
 
-    /// <summary>(Schüler, Periode) ohne Einschreibung in der Schule – zählt nicht fürs Jahresmittel (Neuzugang, 22.11.2026).</summary>
-    public IReadOnlySet<(Guid Schueler, Guid Periode)> OhneEinschreibung { get; init; } = new HashSet<(Guid, Guid)>();
+    /// <summary>
+    /// (Schüler, Periode), die nicht fürs Jahresmittel zählen: ohne Einschreibung in der Schule oder Eintrittsperiode ohne eine
+    /// einzige Note (Neuzugang, Nutzer 22.11.2026). Alle übrigen zählen.
+    /// </summary>
+    public IReadOnlyDictionary<(Guid Schueler, Guid Periode), PeriodenTeilnahme> ZaehltNicht { get; init; }
+        = new Dictionary<(Guid, Guid), PeriodenTeilnahme>();
 
     public KlassenErgebnis Ergebnis => Ergebnisse[Periode.Id];
 
@@ -104,6 +108,7 @@ internal sealed class BulletinBerechnung
             .Where(x => x.Faecher.Count > 0).ToDictionary(x => x.SchuelerId, x => x.Faecher);
 
         var ergebnisse = new Dictionary<Guid, KlassenErgebnis>();
+        var mitNote = new HashSet<(Guid Schueler, Guid Periode)>();   // mindestens eine eingetragene Note (auch « abs. »/« disp. »)
         var fehlend = new List<FehlendeNote>();
         var teilnoten = new Dictionary<(Guid, Guid), string>();
         var spalten = faecher.Select(f => new FachSpalte(f.FachId, f.Koeffizient, f.Wahlfach)).ToList();
@@ -129,6 +134,7 @@ internal sealed class BulletinBerechnung
                         var note = inKlasse.Select(e => noten.GetValueOrDefault((b.Id, e.Id))).FirstOrDefault(n => n is not null && n.Status != NotenStatus.Leer);
                         if (note is not null)
                         {
+                            mitNote.Add((s.SchuelerId, p.Id));
                             liste.Add(new Wertung(b.Bareme, b.Gewicht, note.Status, note.Punkte));
                             texte.Add(note.Status == NotenStatus.Notee && note.Punkte is { } pk
                                 ? NotenTexte.Punkte(NotenRechner.Runde(NotenRechner.AufZwanzig(pk, b.Bareme)))
@@ -151,14 +157,19 @@ internal sealed class BulletinBerechnung
         }
 
         // Nutzer 22.11.2026: Wer im Lauf des Jahres in die Schule kommt, bekommt Jahresmittel und Jahresrang nur aus den Perioden,
-        // in denen er eingeschrieben war (irgendeine Klasse der Schule, auch vor einem Klassenwechsel).
-        var ohneEinschreibung = relevant
-            .SelectMany(p => schuelerIds.Where(id => !einschreibungen.Any(e => e.SchuelerId == id && e.Von <= p.Ende && (e.Bis == null || e.Bis >= p.Beginn)))
-                .Select(id => (id, p.Id)))
-            .ToHashSet();
+        // in denen er eingeschrieben war (irgendeine Klasse der Schule, auch vor einem Klassenwechsel). Seine Eintrittsperiode
+        // (eingeschrieben erst nach Periodenbeginn) zählt nur, wenn er darin mindestens eine Note hat.
+        var zaehltNicht = new Dictionary<(Guid Schueler, Guid Periode), PeriodenTeilnahme>();
+        foreach (var p in relevant)
+            foreach (var id in schuelerIds)
+            {
+                var teilnahme = KlassenRechner.Teilnahme(p.Beginn, p.Ende,
+                    einschreibungen.Where(e => e.SchuelerId == id).Select(e => (e.Von, e.Bis)), mitNote.Contains((id, p.Id)));
+                if (teilnahme != PeriodenTeilnahme.Zaehlt) zaehltNicht[(id, p.Id)] = teilnahme;
+            }
         var bilan = istLetzte
             ? KlassenRechner.Bilan(schuelerIds, fachIds, relevant.Select(p => (ergebnisse[p.Id], p.Jahresgewicht, p.ZaehltFuerJahr)).ToList(),
-                (id, i) => !ohneEinschreibung.Contains((id, relevant[i].Id)))
+                (id, i) => !zaehltNicht.ContainsKey((id, relevant[i].Id)))
             : null;
 
         var kohortenIds = kohorte.Select(k => k.EinschreibungId).ToList();
@@ -190,7 +201,7 @@ internal sealed class BulletinBerechnung
             Schule = schule, Jahr = jahr, Klasse = klasse, Periode = periode, Perioden = perioden, Faecher = faecher, Kohorte = kohorte,
             Ergebnisse = ergebnisse, Bilan = bilan, IstLetztePeriode = istLetzte, Fehlend = fehlend, Teilnoten = teilnoten, Bemerkungen = bemerkungen,
             Conseil = conseil, Entscheidungen = entscheidungen, Anwesenheit = anwesenheit, Vorlage = vorlage, Klassenlehrer = klassenlehrer,
-            Wahlen = wahlen, OhneEinschreibung = ohneEinschreibung
+            Wahlen = wahlen, ZaehltNicht = zaehltNicht
         };
     }
 
@@ -292,7 +303,7 @@ internal sealed class BulletinBerechnung
                 NotenTexte.Zahl(stat.ProzentUeber10!.Value), stat.Klassiert),
             vorperioden,
             bilan is null ? null : new SnapshotBilan(NotenTexte.Mittel(bilan.Moyenne), bilan.Rang.Text, NotenTexte.Entscheidung(entscheidung),
-                [.. BilanPerioden(s, vorperioden), new SnapshotPeriode(Periode.Titel, NotenTexte.MittelKurz(e.Moyenne), e.Rang.Text)]),
+                BilanPerioden(s, [.. vorperioden, new SnapshotPeriode(Periode.Titel, NotenTexte.MittelKurz(e.Moyenne), e.Rang.Text)])),
             distinktion, NotenTexte.DistinktionText(distinktion), conseil?.Sanktionen ?? Sanktionen.Keine,
             NotenTexte.SanktionenTexte(conseil?.Sanktionen ?? Sanktionen.Keine), conseil?.Bemerkung,
             new SnapshotAnwesenheit(erfasst, summe.Absences, summe.AbsencesJustifiees, summe.Retards, summe.RetardMinuten),
@@ -300,14 +311,15 @@ internal sealed class BulletinBerechnung
     }
 
     /// <summary>
-    /// Vorperioden im Bilan: eine Periode ohne Einschreibung erklärt sich als « non inscrit(e) » (zählt nicht fürs Jahresmittel).
-    /// Nur im Bilan – Bulletins früherer Perioden bleiben unverändert (gleicher Hash).
+    /// Perioden im Bilan (Vorperioden und die aktuelle): eine Periode, die für den Schüler nicht zählt, erklärt sich als
+    /// « non inscrit(e) » bzw. « arrivé(e) en cours de période, sans note ». Nur im Bilan – Bulletins früherer Perioden bleiben
+    /// unverändert (gleicher Hash).
     /// </summary>
-    private IEnumerable<SnapshotPeriode> BilanPerioden(KohortenSchueler s, IReadOnlyList<SnapshotPeriode> vorperioden)
+    private List<SnapshotPeriode> BilanPerioden(KohortenSchueler s, IReadOnlyList<SnapshotPeriode> perioden)
     {
-        var titel = Perioden.Where(p => p.ZaehltFuerJahr && p.Ende < Periode.Ende && Ergebnisse.ContainsKey(p.Id)).ToList();
-        return vorperioden.Select((v, i) => i < titel.Count && OhneEinschreibung.Contains((s.SchuelerId, titel[i].Id))
-            ? v with { Moyenne = "—", Rang = NotenTexte.NichtEingeschrieben } : v);
+        var ids = Perioden.Where(p => p.ZaehltFuerJahr && p.Ende < Periode.Ende && Ergebnisse.ContainsKey(p.Id)).Select(p => p.Id).Append(Periode.Id).ToList();
+        return perioden.Select((v, i) => i < ids.Count && ZaehltNicht.TryGetValue((s.SchuelerId, ids[i]), out var t)
+            ? v with { Moyenne = "—", Rang = NotenTexte.Teilnahme(t) } : v).ToList();
     }
 
     /// <summary>Inhalte und Hashes aller Schüler der Kohorte (in fester Reihenfolge) und der Klassen-Hash.</summary>
