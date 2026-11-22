@@ -199,4 +199,34 @@ public class SchuljahrRegelnTests
         Assert.False(await w.MitDbAsync(db => db.Schuljahre.AnyAsync(j => j.Id == w.JahrVorb)));
         Assert.False(await w.MitDbAsync(db => db.Perioden.AnyAsync(p => p.SchuljahrId == w.JahrVorb)));
     }
+    [Fact]
+    public async Task Daten_einer_abgerechneten_Periode_bleiben_fest()
+    {
+        // Fehlersuche 21.11.2026 (A4), Nutzerentscheidung 22.11.: nach der Abrechnung entstanden durch geänderte Daten Lücken
+        // zwischen den Perioden (nie berechnete Tage). Titel und Koeffizient bleiben änderbar; eine annullierte Rechnung sperrt nicht.
+        var w = await OrgWelt.ErstelleAsync();
+        var rechnungId = Guid.NewGuid();
+        await using (var db = await w.D.Db.CreateDbContextAsync())
+        {
+            db.Plattformrechnungen.Add(new Plattformrechnung
+            {
+                Id = rechnungId, Nummer = "SKL-2026-0001", SchuleId = w.SchuleA, SchuljahrId = w.Jahr, PeriodeId = w.P1,
+                Datum = new(2026, 12, 19), Faellig = new(2027, 1, 18), Anzahl = 1, Betrag = 5_000, Status = RechnungsStatus.Ouverte
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var fehler = await Assert.ThrowsAsync<FachFehler>(() => w.D.Jahre.PeriodeAendernAsync(w.Direktor, w.P1,
+            new PeriodeEingabe("1er trimestre", new(2026, 9, 1), new(2026, 12, 11), 1, true)));
+        Assert.Contains("déjà facturée", fehler.Message);
+        await w.D.Jahre.PeriodeAendernAsync(w.Direktor, w.P1, new PeriodeEingabe("Trimestre 1", new(2026, 9, 1), new(2026, 12, 18), 2, true));
+        Assert.Equal(("Trimestre 1", 2), await w.MitDbAsync(db => db.Perioden.Where(p => p.Id == w.P1).Select(p => ValueTuple.Create(p.Titel, p.Jahresgewicht)).SingleAsync()));
+
+        await using (var db = await w.D.Db.CreateDbContextAsync())
+        {
+            (await db.Plattformrechnungen.SingleAsync(r => r.Id == rechnungId)).Status = RechnungsStatus.Annulee;
+            await db.SaveChangesAsync();
+        }
+        await w.D.Jahre.PeriodeAendernAsync(w.Direktor, w.P1, new PeriodeEingabe("Trimestre 1", new(2026, 9, 1), new(2026, 12, 11), 2, true));
+    }
 }

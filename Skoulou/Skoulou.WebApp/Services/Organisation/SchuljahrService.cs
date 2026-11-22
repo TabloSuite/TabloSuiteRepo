@@ -221,6 +221,11 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
             OrgAbfragen.PruefeOffen(jahr);
             if (periode.ZaehltFuerJahr != e.ZaehltFuerJahr && jahr.Status != SchuljahrStatus.Vorbereitung)
                 throw new FachFehler("Après le démarrage de l'année, une période ne peut plus changer entre « compte pour l'année » et « examen blanc » (facturation).");
+            // Fehlersuche 21.11.2026 (A4), Nutzerentscheidung 22.11.: nach der Abrechnung bleiben die Daten fest – sonst entstehen
+            // Lücken zwischen den Perioden (nie berechnete Tage) oder die Rechnung passt nicht mehr zum Zeitraum.
+            if ((periode.Beginn != zeitraum.Beginn || periode.Ende != zeitraum.Ende)
+                && await db.Plattformrechnungen.AnyAsync(r => r.PeriodeId == periode.Id && r.Status != RechnungsStatus.Annulee, ct))
+                throw new FachFehler("Cette période est déjà facturée : ses dates ne peuvent plus changer. Le titre et le coefficient restent modifiables.");
             var perioden = await db.Perioden.Where(p => p.SchuljahrId == jahr.Id).ToListAsync(ct);
             PruefeTitelFrei(perioden, titel, periode.Id);
             periode.Titel = titel;
