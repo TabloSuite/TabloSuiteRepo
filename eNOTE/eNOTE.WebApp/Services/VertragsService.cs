@@ -1,5 +1,4 @@
-﻿using System.Data;
-using ENote.Core.DataModels.Abo;
+﻿using ENote.Core.DataModels.Abo;
 using ENote.Core.DataModels.Identity;
 using ENote.Core.Services;
 using ENote.WebApp.Data;
@@ -96,15 +95,14 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         return fehler;
     }
 
-    public async Task SynchronisiereAsync(Guid salonId, CancellationToken ct = default)
-    {
-        await using var vorbereitung = await factory.CreateDbContextAsync(ct);
-        var strategie = vorbereitung.Database.CreateExecutionStrategy();
-        await strategie.ExecuteAsync(async () =>
+    /// <summary>
+    /// Legt fällige Abrechnungsperioden an. Läuft unter der Vertragssperre des Ladens (<see cref="VertragsSperre"/>):
+    /// gleichzeitige Aufrufe für denselben Laden (Kasse auf mehreren Geräten, Hintergrunddienst) warten aufeinander und
+    /// erzeugen keine doppelte Periode; verschiedene Läden behindern sich nicht.
+    /// </summary>
+    public Task SynchronisiereAsync(Guid salonId, CancellationToken ct = default)
+        => VertragsSperre.MitLadenAsync(factory, salonId, async db =>
         {
-            await using var db = await factory.CreateDbContextAsync(ct);
-            await using var transaktion = db.Database.IsRelational()
-                ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct) : null;
             var salon = await db.Salons.SingleOrDefaultAsync(s => s.Id == salonId, ct);
             var jetzt = zeit.GetUtcNow().UtcDateTime;
             if (salon is null || !salon.IstAktiv || !salon.IstFreigegeben || salon.ProbeBisUtc > jetzt) return;
@@ -160,9 +158,7 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
             }
 
             await db.SaveChangesAsync(ct);
-            if (transaktion is not null) await transaktion.CommitAsync(ct);
-        });
-    }
+        }, ct);
 
     private static async Task<(decimal Preis, bool Individuell)> MonatsBasisAsync(ApplicationDbContext db, Guid salonId, DateTime datum, CancellationToken ct)
     {
@@ -254,7 +250,13 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         _ = VertragsRegeln.Monate(intervall);
         await using (var pruefung = await factory.CreateDbContextAsync(ct)) await PruefeBesitzerAsync(pruefung, user, salonId, ct);
         await SynchronisiereAsync(salonId, ct);
-        await using var db = await factory.CreateDbContextAsync(ct);
+        // Unter der Vertragssperre: eine gleichzeitige Synchronisierung (anderes Gerät, Hintergrunddienst) überschreibt
+        // den Wechsel nicht und legt keine Periode dazwischen an.
+        return await VertragsSperre.MitLadenAsync(factory, salonId, db => WechsleGesperrtAsync(db, user, salonId, intervall, ct), ct);
+    }
+
+    private async Task<WechselArt> WechsleGesperrtAsync(ApplicationDbContext db, Guid user, Guid salonId, AboIntervall intervall, CancellationToken ct)
+    {
         await PruefeBesitzerAsync(db, user, salonId, ct);
         var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
         var jetzt = zeit.GetUtcNow().UtcDateTime;

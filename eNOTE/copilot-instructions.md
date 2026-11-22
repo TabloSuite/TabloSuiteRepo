@@ -27,6 +27,7 @@
 
 ## Technische Regeln
 - Pro DB-Operation `IDbContextFactory`; Rechte serverseitig im Service prüfen. Neue Services in `Program.cs` registrieren (fehlende Registrierung fällt in Unit-Tests nicht auf – Seite einmal live öffnen).
+- Gleichzeitigkeit je Laden über SQL-Anwendungssperren (`KassenSperre` für Kasse/Lager, `VertragsSperre` für Perioden, Formelwechsel, Kündigung, Löschantrag), nie `Serializable`/`RepeatableRead`/`Snapshot` (Deadlocks über Ladengrenzen, Stufe bleibt an der gepoolten Verbindung; Test `KeineStrengeIsolationTests`). SQL-Tests laufen nur mit `ENOTE_SIM=1`.
 - Code/Core-Modelle **deutsch**, alle sichtbaren Nutzertexte **französisch** (« vous »). Kommunikation und Entwicklerdoku deutsch.
 - IDs: `Id` für Basis, zusammengesetzt mit `…Id` (z. B. `SalonId`, `VerkaufId`).
 - Modelländerung → EF-Migration (`dotnet ef migrations add … --project eNOTE/eNOTE.WebApp --configuration Release`), lokal anwenden mit `--database-admin=migrate --database-target=localhost/ENOTEDB`. Der normale App-Start migriert und seedet nie.

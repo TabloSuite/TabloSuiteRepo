@@ -45,6 +45,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 var administration = DatenbankAdministration.Pruefe(args, builder.Configuration, builder.Environment, connectionString);
 
+// Keine Transaktion mit Serializable/RepeatableRead/Snapshot: die Stufe bliebe an der gepoolten Verbindung hängen (18.11.2026).
+// Gleichzeitigkeit je Laden über Anwendungssperren (KassenSperre, VertragsSperre); Test KeineStrengeIsolationTests.
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, sqlOptions =>
     {
@@ -58,9 +60,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     })
     // Kassen-Transaktionen verwerfen bei Fehlern alles und brauchen keine Savepoints; mit MARS (lokal) käme sonst je
     // Verkauf die Warnung « Savepoints are disabled because MARS is enabled » ins Log.
-    .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.SqlServerEventId.SavepointsDisabledBecauseOfMARS))
-    // Nach Serializable-Transaktionen Isolationsstufe zurücksetzen, sonst erbt die nächste Abfrage sie aus dem Pool (18.11.2026).
-    .AddInterceptors(new ENote.WebApp.Data.IsolationsRuecksetzer()));
+    .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.SqlServerEventId.SavepointsDisabledBecauseOfMARS)));
 
 builder.Services.AddTransient<ApplicationDbContext>(provider =>
     provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());

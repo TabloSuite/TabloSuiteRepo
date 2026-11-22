@@ -85,40 +85,44 @@ public class KuendigungService(
         await using (var pruefung = await factory.CreateDbContextAsync(ct)) await PruefeBesitzerAsync(pruefung, user, salonId, ct);
         await SynchronisiereAsync(salonId, ct);
 
-        await using var db = await factory.CreateDbContextAsync(ct);
-        var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
-        if (salon.LoeschungBeantragtUtc is not null) throw new InvalidOperationException("La suppression du compte est déjà demandée.");
-        if (salon.GekuendigtZumUtc is not null) throw new InvalidOperationException("L'abonnement est déjà résilié.");
-        var jetzt = Jetzt;
-        var perioden = await db.NutzungsAbos.Where(a => a.SalonId == salonId).Select(a => new { a.ZeitraumVonUtc, a.ZeitraumBisUtc }).ToListAsync(ct);
-        var zum = KuendigungsRegeln.WirksamZum(jetzt, salon.ProbeBisUtc, perioden.Select(p => (p.ZeitraumVonUtc, p.ZeitraumBisUtc)));
-        salon.GekuendigtAmUtc = jetzt;
-        salon.GekuendigtZumUtc = zum;
-        salon.KuendigungGrund = bereinigt;
-        salon.NaechstesVertragsIntervall = null;
-        salon.VertragsWechselAbUtc = null;
-        salon.UpdatedAtUtc = jetzt;
-        await db.SaveChangesAsync(ct);
+        // Unter der Vertragssperre (wie die Synchronisierung): keine Periode entsteht zwischen Lesen und Kündigen.
+        var zum = await VertragsSperre.MitLadenAsync(factory, salonId, async db =>
+        {
+            var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
+            if (salon.LoeschungBeantragtUtc is not null) throw new InvalidOperationException("La suppression du compte est déjà demandée.");
+            if (salon.GekuendigtZumUtc is not null) throw new InvalidOperationException("L'abonnement est déjà résilié.");
+            var jetzt = Jetzt;
+            var perioden = await db.NutzungsAbos.Where(a => a.SalonId == salonId).Select(a => new { a.ZeitraumVonUtc, a.ZeitraumBisUtc }).ToListAsync(ct);
+            var wirksam = KuendigungsRegeln.WirksamZum(jetzt, salon.ProbeBisUtc, perioden.Select(p => (p.ZeitraumVonUtc, p.ZeitraumBisUtc)));
+            salon.GekuendigtAmUtc = jetzt;
+            salon.GekuendigtZumUtc = wirksam;
+            salon.KuendigungGrund = bereinigt;
+            salon.NaechstesVertragsIntervall = null;
+            salon.VertragsWechselAbUtc = null;
+            salon.UpdatedAtUtc = jetzt;
+            await db.SaveChangesAsync(ct);
+            return wirksam;
+        }, ct);
         if (mails is not null) await mails.KuendigungAsync(salonId, user, ct);
         return zum;
     }
 
     /// <summary>Nimmt die Kündigung zurück. War sie schon wirksam, beginnt die Abrechnung ab heute neu (keine Nachberechnung).</summary>
-    public async Task NimmKuendigungZurueckAsync(Guid user, Guid salonId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        await PruefeBesitzerAsync(db, user, salonId, ct);
-        var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
-        if (salon.GekuendigtZumUtc is null) return;
-        if (salon.LoeschungBeantragtUtc is not null) throw new InvalidOperationException("Annulez d'abord la suppression du compte.");
-        var jetzt = Jetzt;
-        await NeustartOhneNachberechnungAsync(db, salon, jetzt, ct);
-        salon.GekuendigtAmUtc = null;
-        salon.GekuendigtZumUtc = null;
-        salon.KuendigungGrund = null;
-        salon.UpdatedAtUtc = jetzt;
-        await db.SaveChangesAsync(ct);
-    }
+    public Task NimmKuendigungZurueckAsync(Guid user, Guid salonId, CancellationToken ct = default)
+        => VertragsSperre.MitLadenAsync(factory, salonId, async db =>
+        {
+            await PruefeBesitzerAsync(db, user, salonId, ct);
+            var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
+            if (salon.GekuendigtZumUtc is null) return;
+            if (salon.LoeschungBeantragtUtc is not null) throw new InvalidOperationException("Annulez d'abord la suppression du compte.");
+            var jetzt = Jetzt;
+            await NeustartOhneNachberechnungAsync(db, salon, jetzt, ct);
+            salon.GekuendigtAmUtc = null;
+            salon.GekuendigtZumUtc = null;
+            salon.KuendigungGrund = null;
+            salon.UpdatedAtUtc = jetzt;
+            await db.SaveChangesAsync(ct);
+        }, ct);
 
     /// <summary>Lag das Ende der letzten Periode in der Vergangenheit, startet die Abrechnung jetzt (Pause wird nicht berechnet).</summary>
     private static async Task NeustartOhneNachberechnungAsync(ApplicationDbContext db, Core.DataModels.Salons.Salon salon, DateTime jetzt, CancellationToken ct)
@@ -140,36 +144,40 @@ public class KuendigungService(
         if (!await users.CheckPasswordAsync(konto, passwort ?? "")) throw new ArgumentException("Le mot de passe est incorrect.");
         await SynchronisiereAsync(salonId, ct);
 
-        await using var db = await factory.CreateDbContextAsync(ct);
-        var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
-        if (salon.LoeschungBeantragtUtc is not null) return salon.LoeschungAbUtc!.Value;
-        var offen = await OffeneRechnungen(db, salonId).Select(a => a.PreisSnapshot).ToListAsync(ct);
-        if (offen.Count > 0)
-            throw new InvalidOperationException($"Réglez d'abord {(offen.Count == 1 ? "la facture ouverte" : $"les {offen.Count} factures ouvertes")} ({offen.Sum():N0} F) : la suppression n'est possible que sans facture impayée.");
-        var jetzt = Jetzt;
-        salon.LoeschungBeantragtUtc = jetzt;
-        salon.LoeschungAbUtc = KuendigungsRegeln.LoeschungAb(jetzt);
-        salon.UpdatedAtUtc = jetzt;
-        await db.SaveChangesAsync(ct);
-        if (mails is not null) await mails.LoeschungGeplantAsync(salonId, user, ct);
-        return salon.LoeschungAbUtc.Value;
+        // Unter der Vertragssperre: zwischen « keine offene Rechnung » und dem Antrag entsteht keine neue Periode.
+        var (ab, neu) = await VertragsSperre.MitLadenAsync(factory, salonId, async db =>
+        {
+            var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
+            if (salon.LoeschungBeantragtUtc is not null) return (salon.LoeschungAbUtc!.Value, false);
+            var offen = await OffeneRechnungen(db, salonId).Select(a => a.PreisSnapshot).ToListAsync(ct);
+            if (offen.Count > 0)
+                throw new InvalidOperationException($"Réglez d'abord {(offen.Count == 1 ? "la facture ouverte" : $"les {offen.Count} factures ouvertes")} ({offen.Sum():N0} F) : la suppression n'est possible que sans facture impayée.");
+            var jetzt = Jetzt;
+            salon.LoeschungBeantragtUtc = jetzt;
+            salon.LoeschungAbUtc = KuendigungsRegeln.LoeschungAb(jetzt);
+            salon.UpdatedAtUtc = jetzt;
+            await db.SaveChangesAsync(ct);
+            return (salon.LoeschungAbUtc.Value, true);
+        }, ct);
+        if (neu && mails is not null) await mails.LoeschungGeplantAsync(salonId, user, ct);
+        return ab;
     }
 
     /// <summary>Löschung zurücknehmen (innerhalb der Bedenkzeit). Die gesperrte Zeit wird nicht berechnet.</summary>
-    public async Task NimmLoeschungZurueckAsync(Guid user, Guid salonId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        await PruefeBesitzerAsync(db, user, salonId, ct);
-        var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
-        if (salon.LoeschungBeantragtUtc is null) return;
-        var jetzt = Jetzt;
-        if (salon.GekuendigtZumUtc is null || salon.GekuendigtZumUtc > jetzt)
-            await NeustartOhneNachberechnungAsync(db, salon, jetzt, ct);
-        salon.LoeschungBeantragtUtc = null;
-        salon.LoeschungAbUtc = null;
-        salon.UpdatedAtUtc = jetzt;
-        await db.SaveChangesAsync(ct);
-    }
+    public Task NimmLoeschungZurueckAsync(Guid user, Guid salonId, CancellationToken ct = default)
+        => VertragsSperre.MitLadenAsync(factory, salonId, async db =>
+        {
+            await PruefeBesitzerAsync(db, user, salonId, ct);
+            var salon = await db.Salons.SingleAsync(s => s.Id == salonId, ct);
+            if (salon.LoeschungBeantragtUtc is null) return;
+            var jetzt = Jetzt;
+            if (salon.GekuendigtZumUtc is null || salon.GekuendigtZumUtc > jetzt)
+                await NeustartOhneNachberechnungAsync(db, salon, jetzt, ct);
+            salon.LoeschungBeantragtUtc = null;
+            salon.LoeschungAbUtc = null;
+            salon.UpdatedAtUtc = jetzt;
+            await db.SaveChangesAsync(ct);
+        }, ct);
 
     // ------------------------------------------------------------------ Ausführung nach der Bedenkzeit
 
