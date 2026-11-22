@@ -35,8 +35,8 @@ Projektmappe `TabloSuiteMappe.slnx`, .NET 10, Blazor (Interactive Server), EF Co
 | `docs/` | Allgemeine Anleitungen, u. a. Claude in Visual Studio einrichten | `docs/Claude-in-Visual-Studio-einrichten.md` |
 
 - `STAND.md` ist der Arbeitsstand von Chris – nur nach Absprache ändern.
-- `.github/copilot-instructions.md` beschreibt überwiegend das frühere SKOULOUAPP, das nicht mehr im Repository ist.
-  Bei Widersprüchen gelten der Code, die Dokumente aus der Tabelle und diese Datei.
+- Gesamtüberblick über alle Apps: `docs/Projektuebersicht.md`. `.github/copilot-instructions.md` verweist nur noch auf diese Dokumente
+  (die frühere SKOULOUAPP-Anleitung steht in der Git-Historie). Bei Widersprüchen gelten der Code, die Dokumente aus der Tabelle und diese Datei.
 
 ## Konventionen
 

@@ -1,7 +1,7 @@
 # 04 – Noten, Bulletins & Schuljahreswechsel
 
 Fachkonzept für den Neubau von SKOULOU, abgeleitet aus der alten App (Stand Quellcode 13.11.2026).
-Maßgeblich ist der Code; die alten Dokumente (`docs/Stundenplan-und-Bulletin.md`, `SKOULOUAPP.WebApp/Projektuebersicht.md`) beschreiben teilweise Funktionen, die in der UI nicht mehr erreichbar sind (siehe Abschnitt 7).
+Maßgeblich ist der Code; die alten Dokumente der früheren SKOULOUAPP (`docs/Stundenplan-und-Bulletin.md`, `SKOULOUAPP.WebApp/Projektuebersicht.md`, seit 22.11.2026 nur noch in der Git-Historie) beschreiben teilweise Funktionen, die in der UI nicht mehr erreichbar sind (siehe Abschnitt 7).
 UI-Texte stehen in « » exakt wie in der App.
 
 **Pfadkürzel für Referenzen (`Kürzel:Zeile`)**

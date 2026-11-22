@@ -19,7 +19,7 @@ Alle Beträge in FCFA. Französische UI-Begriffe stehen in « … » exakt wie i
 
 Es gibt **keinen Zahlungsanbieter**, kein Mobile Money, keinen Zahlungs-Webhook (einziger Webhook ist Postmark-Inbound-Mail, `Web/Program.cs:332`). Jeder Geldeingang wird von Menschen manuell erfasst bzw. bestätigt. Es gibt **keine Hintergrundjobs** (kein `AddHostedService`), keine automatischen Mahnungen.
 
-Verbindliche Fachentscheidung (Doc `docs/Automatischer-Schuelerzugang-und-Zyklusabrechnung.md`): Schülerzugang hängt **nicht** von Zahlungen ab; die Schule schuldet pro Zyklusteilnehmer den vollen, beim Start eingefrorenen Plattformpreis; Schul-/Lehrerprovisionen entfallen; die ProductOwner-Vergütung betrifft nur die Plattform intern und mindert nie die Schulrechnung.
+Verbindliche Fachentscheidung (früher `docs/Automatischer-Schuelerzugang-und-Zyklusabrechnung.md`, seit 22.11.2026 nur noch in der Git-Historie): Schülerzugang hängt **nicht** von Zahlungen ab; die Schule schuldet pro Zyklusteilnehmer den vollen, beim Start eingefrorenen Plattformpreis; Schul-/Lehrerprovisionen entfallen; die ProductOwner-Vergütung betrifft nur die Plattform intern und mindert nie die Schulrechnung.
 
 ### 1.2 Rechteprüfung (wie im Code erzwungen)
 
