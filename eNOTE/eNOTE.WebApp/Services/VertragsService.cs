@@ -63,8 +63,13 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         await using var db = await factory.CreateDbContextAsync(ct);
         var salon = await db.Salons.AsNoTracking().SingleAsync(s => s.Id == salonId, ct);
         var jetzt = zeit.GetUtcNow().UtcDateTime;
-        var perioden = await db.NutzungsAbos.AsNoTracking().Where(a => a.SalonId == salonId)
+        // Letzte 12 Perioden + JEDE noch nicht bestätigte (Fehlersuche 21.11.2026: eine 13 Perioden alte offene Rechnung
+        // fiel aus der Liste – der Besitzer konnte sie nicht mehr melden, die Kasse blieb für immer gesperrt).
+        var letzte = await db.NutzungsAbos.AsNoTracking().Where(a => a.SalonId == salonId)
             .OrderByDescending(a => a.ZeitraumVonUtc).Take(12).ToListAsync(ct);
+        var unbezahlt = await db.NutzungsAbos.AsNoTracking()
+            .Where(a => a.SalonId == salonId && a.ZahlungStatus != AboZahlungStatus.Bestaetigt).ToListAsync(ct);
+        var perioden = letzte.UnionBy(unbezahlt, a => a.Id).OrderByDescending(a => a.ZeitraumVonUtc).ToList();
         var empfaenger = await GetZahlungsempfaengerAsync(user, salonId, ct);
         return new LadenVertrag(salon.ProbeBisUtc > jetzt, salon.ProbeBisUtc, salon.VertragsIntervall,
             salon.NaechstesVertragsIntervall, salon.VertragsWechselAbUtc, empfaenger,
