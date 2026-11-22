@@ -93,5 +93,12 @@ public class PasswortFormularEnterTests
         Assert.Contains("<button type=\"submit\" class=\"btn-primary\" disabled=\"@(laeuft || !Vollstaendig)\">", seite);
         Assert.DoesNotContain("@onclick=\"EnregistrerAsync\"", seite);
         Assert.Contains("if (laeuft || ok || !Vollstaendig) return;", seite);
+
+        // « Mot de passe oublié » (Pseudonym eingeben) ebenso
+        var vergessen = Seite("PasswortVergessen.razor");
+        Assert.Contains("<form class=\"auth-form\" novalidate @onsubmit=\"EnvoyerAsync\" @onsubmit:preventDefault>", vergessen);
+        Assert.Contains("<button type=\"submit\" class=\"btn-primary\" disabled=\"@(laeuft || string.IsNullOrWhiteSpace(pseudonym))\">", vergessen);
+        Assert.DoesNotContain("@onclick=\"EnvoyerAsync\"", vergessen);
+        Assert.Contains("if (laeuft) return;", vergessen);
     }
 }

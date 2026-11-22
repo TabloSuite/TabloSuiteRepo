@@ -29,12 +29,13 @@
             {
                 <div class="alert @(erfolg ? "alert-success" : "alert-error")" role="status">@message</div>
             }
-            <div class="auth-form">
+            @* 22.11.2026: Enter sendet ab (wie die Passwortformulare); EnvoyerAsync läuft nie doppelt. *@
+            <form class="auth-form" novalidate @onsubmit="EnvoyerAsync" @onsubmit:preventDefault>
                 <label>
                     <span class="enote-pflicht">Pseudonyme</span>
                     <input @bind="pseudonym" @bind:event="oninput" autocomplete="username" maxlength="256" />
                 </label>
-                <button type="button" class="btn-primary" disabled="@(laeuft || string.IsNullOrWhiteSpace(pseudonym))" @onclick="EnvoyerAsync">
+                <button type="submit" class="btn-primary" disabled="@(laeuft || string.IsNullOrWhiteSpace(pseudonym))">
                     @if (laeuft)
                     {
                         <span class="btn-spinner"></span>
@@ -45,7 +46,7 @@
                         <span>Envoyer le lien</span>
                     }
                 </button>
-            </div>
+            </form>
             @* Kassierer-Konten bekommen bewusst keinen Link (KontoWiederherstellung) – sonst warten sie auf eine Mail, die nie kommt (18.11.2026). *@
             <p class="auth-hinweis-employe">Vous êtes employé(e) d'un établissement ? Votre mot de passe se change par le propriétaire : <strong>Équipe › Droits</strong>.</p>
             <p class="auth-footer">Vous vous souvenez ? <a href="/auth/login">Se connecter</a></p>
@@ -61,6 +62,7 @@
     protected override void OnInitialized() => anschluss = ENote.WebApp.Services.Sicherheit.Anschluss.Adresse(HttpZugriff.HttpContext);
     private async Task EnvoyerAsync()
     {
+        if (laeuft) return;
         if (string.IsNullOrWhiteSpace(pseudonym)) { erfolg = false; message = "Veuillez indiquer le pseudonyme."; return; }
         laeuft = true;
         try
