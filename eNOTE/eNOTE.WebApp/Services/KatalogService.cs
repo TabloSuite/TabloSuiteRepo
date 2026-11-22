@@ -360,6 +360,94 @@ public class KatalogService(
         => string.IsNullOrWhiteSpace(name) ? "Veuillez saisir un nom."
             : name.Trim().Length > KategorieNameMax ? $"Nom de catégorie : {KategorieNameMax} caractères au maximum." : null;
 
+    // ---------------- Geprüfte Varianten für die Seiten (Recht bei jedem Speichern, LadenZugriff.PruefeRechtAsync) ----------------
+
+    private async Task PruefeRechtAsync(Guid benutzerId, Guid salonId, LadenZugriff.Recht recht, CancellationToken ct)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        await LadenZugriff.PruefeRechtAsync(db, benutzerId, salonId, recht, ct);
+    }
+
+    private async Task<Guid?> SalonVonLeistungAsync(Guid leistungId, CancellationToken ct)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        return await db.Leistungen.AsNoTracking().Where(l => l.Id == leistungId).Select(l => (Guid?)l.SalonId).FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<Leistung> SpeichereLeistungAsync(Guid benutzerId, Leistung leistung, decimal? stueckzahlBeimOeffnen, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, leistung.SalonId, LadenZugriff.Recht.Leistungen, ct);
+        if (leistung.Id != Guid.Empty && await SalonVonLeistungAsync(leistung.Id, ct) is Guid alt && alt != leistung.SalonId)
+            throw new UnauthorizedAccessException(LadenZugriff.RechtEntzogenText);
+        return await SpeichereLeistungAsync(leistung, ct, stueckzahlBeimOeffnen);
+    }
+
+    public async Task<bool> LoescheLeistungAsync(Guid benutzerId, Guid id, CancellationToken ct = default)
+    {
+        if (await SalonVonLeistungAsync(id, ct) is not Guid salonId) return true;
+        await PruefeRechtAsync(benutzerId, salonId, LadenZugriff.Recht.Leistungen, ct);
+        return await LoescheLeistungAsync(id, ct);
+    }
+
+    public async Task<bool> SetzeLeistungKategorieAsync(Guid benutzerId, Guid leistungId, Guid salonId, Guid? kategorieId, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, salonId, LadenZugriff.Recht.Leistungen, ct);
+        return await SetzeLeistungKategorieAsync(leistungId, salonId, kategorieId, ct);
+    }
+
+    public async Task<LeistungKategorie> SpeichereKategorieAsync(Guid benutzerId, Guid salonId, string name, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, salonId, LadenZugriff.Recht.Leistungen, ct);
+        return await SpeichereKategorieAsync(salonId, name, ct);
+    }
+
+    public async Task<(bool Erfolg, string? Fehler, LeistungKategorie? Kategorie)> SpeichereUnterkategorieAsync(
+        Guid benutzerId, Guid salonId, Guid parentId, string name, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, salonId, LadenZugriff.Recht.Leistungen, ct);
+        return await SpeichereUnterkategorieAsync(salonId, parentId, name, ct);
+    }
+
+    public async Task<(bool Erfolg, string? Fehler)> AktualisiereKategorieAsync(Guid benutzerId, Guid kategorieId, Guid salonId, string neuerName, string? farbe, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, salonId, LadenZugriff.Recht.Leistungen, ct);
+        return await AktualisiereKategorieAsync(kategorieId, salonId, neuerName, farbe, ct);
+    }
+
+    public async Task<(bool Erfolg, string? Fehler)> LoescheKategorieAsync(Guid benutzerId, Guid kategorieId, Guid salonId, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, salonId, LadenZugriff.Recht.Leistungen, ct);
+        return await LoescheKategorieAsync(kategorieId, salonId, ct);
+    }
+
+    public async Task<Rabatt> SpeichereRabattAsync(Guid benutzerId, Rabatt rabatt, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, rabatt.SalonId, LadenZugriff.Recht.Rabatte, ct);
+        if (rabatt.Id != Guid.Empty)
+        {
+            await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+            if (await db.Rabatte.AsNoTracking().Where(r => r.Id == rabatt.Id).Select(r => (Guid?)r.SalonId).FirstOrDefaultAsync(ct) is Guid alt && alt != rabatt.SalonId)
+                throw new UnauthorizedAccessException(LadenZugriff.RechtEntzogenText);
+        }
+        return await SpeichereRabattAsync(rabatt, ct);
+    }
+
+    public async Task<bool> SetzeRabattAktivAsync(Guid benutzerId, Guid id, Guid salonId, bool aktiv, CancellationToken ct = default)
+    {
+        await PruefeRechtAsync(benutzerId, salonId, LadenZugriff.Recht.Rabatte, ct);
+        return await SetzeRabattAktivAsync(id, salonId, aktiv, ct);
+    }
+
+    public async Task<bool> LoescheRabattAsync(Guid benutzerId, Guid id, CancellationToken ct = default)
+    {
+        Guid? salonId;
+        await using (var db = await dbContextFactory.CreateDbContextAsync(ct))
+            salonId = await db.Rabatte.AsNoTracking().Where(r => r.Id == id).Select(r => (Guid?)r.SalonId).FirstOrDefaultAsync(ct);
+        if (salonId is null) return true;
+        await PruefeRechtAsync(benutzerId, salonId.Value, LadenZugriff.Recht.Rabatte, ct);
+        return await LoescheRabattAsync(id, ct);
+    }
+
     public async Task<Leistung> SpeichereLeistungAsync(Leistung leistung, CancellationToken cancellationToken = default,
         decimal? stueckzahlBeimOeffnen = null)
     {

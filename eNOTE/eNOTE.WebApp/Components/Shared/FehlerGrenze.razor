@@ -15,8 +15,17 @@ else
     <div class="enote-fehlergrenze" role="alert">
         <Icon Name="alert" Groesse="22" />
         <div>
-            <strong>Un problème est survenu.</strong>
-            <p>L'action n'a pas abouti. Ce qui était déjà enregistré n'est pas perdu.</p>
+            @if (CurrentException is UnauthorizedAccessException verweigert)
+            {
+                @* Recht entzogen / aus dem Laden entfernt / Laden deaktiviert, während die Seite offen war (Fehlersuche 21.11.2026) *@
+                <strong>Action non autorisée.</strong>
+                <p>@verweigert.Message</p>
+            }
+            else
+            {
+                <strong>Un problème est survenu.</strong>
+                <p>L'action n'a pas abouti. Ce qui était déjà enregistré n'est pas perdu.</p>
+            }
             <div class="enote-item-actions">
                 <button type="button" class="enote-btn enote-btn-primary" @onclick="Recover">Réessayer</button>
                 <button type="button" class="enote-btn enote-btn-ghost" onclick="location.reload()">Recharger la page</button>

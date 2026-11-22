@@ -376,7 +376,7 @@ public partial class Leistungen(
             return;
         }
 
-        var (erfolg, fehler) = await katalogService.AktualisiereKategorieAsync(aktiveKategorie.Id, salonId, kategorieNeuerName, kategorieNeueFarbe);
+        var (erfolg, fehler) = await katalogService.AktualisiereKategorieAsync(aktuellerBenutzerId, aktiveKategorie.Id, salonId, kategorieNeuerName, kategorieNeueFarbe);
         if (!erfolg)
         {
             kategorieFehler = fehler;
@@ -401,7 +401,7 @@ public partial class Leistungen(
             return;
         }
 
-        var (erfolg, fehler) = await katalogService.LoescheKategorieAsync(zuLoeschendeKategorie.Id, salonId);
+        var (erfolg, fehler) = await katalogService.LoescheKategorieAsync(aktuellerBenutzerId, zuLoeschendeKategorie.Id, salonId);
         if (!erfolg)
         {
             kategorieLoeschenOffen = false;
@@ -426,7 +426,7 @@ public partial class Leistungen(
             return;
         }
 
-        await katalogService.SpeichereKategorieAsync(salonId, neueKategorieName);
+        await katalogService.SpeichereKategorieAsync(aktuellerBenutzerId, salonId, neueKategorieName);
         neueKategorieName = string.Empty;
         toast.ZeigeErfolg("Catégorie ajoutée.");
         await LadeAsync();
@@ -503,7 +503,12 @@ public partial class Leistungen(
         Leistung gespeichert;
         try
         {
-            gespeichert = await katalogService.SpeichereLeistungAsync(bearbeitungsLeistung, default, stueckzahlBeimOeffnen);
+            gespeichert = await katalogService.SpeichereLeistungAsync(aktuellerBenutzerId, bearbeitungsLeistung, stueckzahlBeimOeffnen);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            editorFehler = ex.Message;
+            return;
         }
         catch (InvalidOperationException ex)
         {
@@ -540,10 +545,10 @@ public partial class Leistungen(
         {
             try
             {
-                if (await katalogService.LoescheLeistungAsync(zuLoeschendeLeistung.Id)) toast.ZeigeErfolg("Prestation supprimée.");
+                if (await katalogService.LoescheLeistungAsync(aktuellerBenutzerId, zuLoeschendeLeistung.Id)) toast.ZeigeErfolg("Prestation supprimée.");
                 else toast.ZeigeInfo("Prestation déjà utilisée (ventes, stock ou remise) : elle a été désactivée et n'apparaît plus à la caisse. Vos chiffres restent justes.");
             }
-            catch (ArgumentException ex)
+            catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
             {
                 toast.ZeigeFehler(ex.Message);
             }
@@ -578,7 +583,7 @@ public partial class Leistungen(
             return;
         }
 
-        var (erfolg, fehler, _) = await katalogService.SpeichereUnterkategorieAsync(salonId, parentId, neueUnterkategorieName);
+        var (erfolg, fehler, _) = await katalogService.SpeichereUnterkategorieAsync(aktuellerBenutzerId, salonId, parentId, neueUnterkategorieName);
         if (!erfolg)
         {
             unterkategorieFehler = fehler;
@@ -630,7 +635,7 @@ public partial class Leistungen(
     {
         if (zuordnungLeistung is null) return;
         Guid? katId = Guid.TryParse(zuordnungEntwurf, out var g) && g != Guid.Empty ? g : null;
-        var erfolg = await katalogService.SetzeLeistungKategorieAsync(zuordnungLeistung.Id, salonId, katId);
+        var erfolg = await katalogService.SetzeLeistungKategorieAsync(aktuellerBenutzerId, zuordnungLeistung.Id, salonId, katId);
         if (erfolg)
         {
             zuordnungLeistung.KategorieId = katId;

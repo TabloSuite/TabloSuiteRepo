@@ -21,6 +21,22 @@ public class AusgabenService(IDbContextFactory<ApplicationDbContext> dbContextFa
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>Seiten-Variante: prüft das Recht « Finances » bei jedem Speichern (<see cref="LadenZugriff.PruefeRechtAsync"/>).</summary>
+    public async Task<AusgabenKategorie> SpeichereKategorieAsync(Guid benutzerId, Guid salonId, Guid? id, string name, bool istAktiv, CancellationToken cancellationToken = default)
+    {
+        await using (var db = await dbContextFactory.CreateDbContextAsync(cancellationToken))
+            await LadenZugriff.PruefeRechtAsync(db, benutzerId, salonId, LadenZugriff.Recht.Finanzen, cancellationToken);
+        return await SpeichereKategorieAsync(salonId, id, name, istAktiv, cancellationToken);
+    }
+
+    /// <summary>Seiten-Variante: prüft das Recht « Finances » bei jedem Löschen.</summary>
+    public async Task<bool> LoescheAusgabeAsync(Guid benutzerId, Guid id, Guid salonId, CancellationToken cancellationToken = default)
+    {
+        await using (var db = await dbContextFactory.CreateDbContextAsync(cancellationToken))
+            await LadenZugriff.PruefeRechtAsync(db, benutzerId, salonId, LadenZugriff.Recht.Finanzen, cancellationToken);
+        return await LoescheAusgabeAsync(id, salonId, cancellationToken);
+    }
+
     public async Task<AusgabenKategorie> SpeichereKategorieAsync(Guid salonId, Guid? id, string name, bool istAktiv, CancellationToken cancellationToken = default)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -76,6 +92,10 @@ public class AusgabenService(IDbContextFactory<ApplicationDbContext> dbContextFa
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Recht bei jeder Erfassung prüfen (vorher nur mit Beleg): nach Entzug « Finances » speicherte die offene Seite weiter.
+        try { await LadenZugriff.PruefeRechtAsync(db, erfasstVonId, salonId, LadenZugriff.Recht.Finanzen, cancellationToken); }
+        catch (UnauthorizedAccessException ex) { return (false, ex.Message, null); }
+
         var kategorie = await db.AusgabenKategorien
             .FirstOrDefaultAsync(k => k.Id == kategorieId && k.SalonId == salonId && k.IstAktiv, cancellationToken);
         if (kategorie is null)
@@ -86,11 +106,6 @@ public class AusgabenService(IDbContextFactory<ApplicationDbContext> dbContextFa
         Guid? belegAssetId = null;
         if (beleg is not null)
         {
-            if (!await LadenZugriff.HatZugangAsync(db, erfasstVonId, salonId, cancellationToken)
-                || !await db.UserSalons.AnyAsync(us => us.AppUserId == erfasstVonId && us.SalonId == salonId
-                    && us.KannFinanzenSehen, cancellationToken)
-                    && !await LadenZugriff.IstBesitzerAsync(db, erfasstVonId, salonId, cancellationToken))
-                return (false, "Accès non autorisé.", null);
 
             var ergebnis = await mediaStorage.SaveAsync(new MediaSaveRequest
             {

@@ -44,6 +44,31 @@ public static class LadenZugriff
             || await db.UserSalons.AnyAsync(us => us.AppUserId == benutzerId && us.SalonId == salonId && us.KannKundenAktenFuehren
                 && !us.AppUser.IsBlocked && us.Salon.IstAktiv, ct);
 
+    /// <summary>Delegierbare Rechte einer Verwaltungsseite.</summary>
+    public enum Recht { Leistungen, Rabatte, Finanzen }
+
+    public const string RechtEntzogenText =
+        "Vous n'avez pas (ou plus) ce droit dans cet établissement. Rechargez la page.";
+
+    /// <summary>
+    /// Prüft bei JEDER schreibenden Aktion (nicht nur beim Seitenaufbau): Besitzer oder Mitglied mit dem Recht, Konto nicht
+    /// gesperrt, Laden aktiv. Fehlersuche 21.11.2026: nach Entzug des Rechts, Entfernen aus dem Laden oder Deaktivieren des
+    /// Ladens speicherte die noch offene Seite weiter (Prestations, Remises, Dépenses). Sonst <see cref="UnauthorizedAccessException"/>.
+    /// </summary>
+    public static async Task PruefeRechtAsync(ApplicationDbContext db, Guid benutzerId, Guid salonId, Recht recht, CancellationToken ct = default)
+    {
+        if (benutzerId != Guid.Empty && await IstBesitzerAsync(db, benutzerId, salonId, ct)) return;
+        var mitglied = db.UserSalons.Where(us => us.AppUserId == benutzerId && us.SalonId == salonId
+            && !us.AppUser.IsBlocked && us.Salon.IstAktiv);
+        var erlaubt = recht switch
+        {
+            Recht.Leistungen => await mitglied.AnyAsync(us => us.KannLeistungenVerwalten, ct),
+            Recht.Rabatte => await mitglied.AnyAsync(us => us.KannRabatteVerwalten, ct),
+            _ => await mitglied.AnyAsync(us => us.KannFinanzenSehen, ct)
+        };
+        if (!erlaubt) throw new UnauthorizedAccessException(RechtEntzogenText);
+    }
+
     public static Task<bool> IstBesitzerAsync(ApplicationDbContext db, Guid benutzerId, Guid salonId, CancellationToken ct = default)
         => db.UserSalons.AnyAsync(us => us.AppUserId == benutzerId && us.SalonId == salonId
             && !us.AppUser.IsBlocked && us.Salon.IstAktiv && db.UserRoles.Any(ur => ur.UserId == benutzerId

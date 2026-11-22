@@ -100,7 +100,7 @@ public partial class Ausgaben(
 
     private async Task SetzeKategorieAktivAsync(AusgabenKategorie kategorie, bool aktiv)
     {
-        await ausgabenService.SpeichereKategorieAsync(salonId, kategorie.Id, kategorie.Name, aktiv);
+        await ausgabenService.SpeichereKategorieAsync(benutzerId, salonId, kategorie.Id, kategorie.Name, aktiv);
         await LadeAsync();
     }
 
@@ -207,7 +207,7 @@ public partial class Ausgaben(
             return;
         }
 
-        var neu = await ausgabenService.SpeichereKategorieAsync(salonId, null, name, istAktiv: true);
+        var neu = await ausgabenService.SpeichereKategorieAsync(benutzerId, salonId, null, name, istAktiv: true);
         neueKategorieName = string.Empty;
         toast.ZeigeErfolg("Catégorie ajoutée.");
         await LadeAsync();
@@ -282,7 +282,7 @@ public partial class Ausgaben(
 
     private async Task LoescheAusgabeAsync(Guid id)
     {
-        await ausgabenService.LoescheAusgabeAsync(id, salonId);
+        await ausgabenService.LoescheAusgabeAsync(benutzerId, id, salonId);
         toast.ZeigeInfo("Dépense supprimée.");
         await LadeAsync();
     }

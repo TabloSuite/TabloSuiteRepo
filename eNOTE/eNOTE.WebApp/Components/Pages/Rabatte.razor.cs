@@ -181,9 +181,9 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
 
         try
         {
-            await katalogService.SpeichereRabattAsync(bearbeitungsRabatt);
+            await katalogService.SpeichereRabattAsync(benutzerId, bearbeitungsRabatt);
         }
-        catch (ArgumentException ex)
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
         {
             editorFehler = ex.Message;
             return;
@@ -197,7 +197,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     private async Task SetzeAktivAsync(Rabatt rabatt, bool aktiv)
     {
         if (!darfVerwalten) return;
-        if (!await katalogService.SetzeRabattAktivAsync(rabatt.Id, rabatt.SalonId, aktiv)) return;
+        if (!await katalogService.SetzeRabattAktivAsync(benutzerId, rabatt.Id, rabatt.SalonId, aktiv)) return;
         rabatt.IstAktiv = aktiv;
         toast.ZeigeInfo(aktiv ? $"« {rabatt.Name} » est active en caisse." : $"« {rabatt.Name} » est désactivée.");
     }
@@ -235,7 +235,7 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     {
         if (zuLoeschenderRabatt is not null)
         {
-            var geloescht = await katalogService.LoescheRabattAsync(zuLoeschenderRabatt.Id);
+            var geloescht = await katalogService.LoescheRabattAsync(benutzerId, zuLoeschenderRabatt.Id);
             if (geloescht) toast.ZeigeErfolg("Remise supprimée.");
             else toast.ZeigeInfo("Remise déjà utilisée sur des reçus : elle a été désactivée.");
         }
