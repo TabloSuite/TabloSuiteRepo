@@ -156,6 +156,9 @@ if (administration is null)
     builder.Services.AddScoped<AnmeldeSitzungen>();
     // Offene Blazor-Verbindungen prüfen ihre Anmeldung alle 30 s (« Déconnecter » ein Gerät wirkt ohne Neuladen).
     builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider, SitzungsRevalidierung>();
+    // Verbindungsstatus des Kreislaufs: Umleitung zur Anmeldung nur mit verbundenem Browser (sonst Journal-Fehler)
+    builder.Services.AddScoped<VerbindungsStatus>();
+    builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<VerbindungsStatus>());
     builder.Services.AddScoped<KatalogService>();
     builder.Services.AddScoped<KassenService>();
     builder.Services.AddScoped<MobileMoneyService>();

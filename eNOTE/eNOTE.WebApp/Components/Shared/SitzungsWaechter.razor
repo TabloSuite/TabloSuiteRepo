@@ -8,6 +8,7 @@
 @inject NavigationManager Nav
 @inject ENote.WebApp.Services.AnmeldeSitzungen Sitzungen
 @inject ILogger<SitzungsWaechter> Logger
+@inject ENote.WebApp.Services.VerbindungsStatus Verbindung
 
 @code {
     /// <summary>Beim Seitenwechsel höchstens so oft prüfen (dazwischen genügt die 30-s-Prüfung).</summary>
@@ -31,6 +32,7 @@
             letztePruefungUtc = ENote.Core.Services.AppUhr.UtcNow;
             AuthProvider.AuthenticationStateChanged += ZustandGeaendert;
             Nav.LocationChanged += SeiteGewechselt;
+            Verbindung.WiederVerbunden += NachWiederverbindung;
             abonniert = true;
         }
         catch (Exception ex)
@@ -75,9 +77,20 @@
         });
     }
 
+    private bool umleitungAusstehend;
+
+    /// <summary>Browser wieder verbunden: eine aufgeschobene Umleitung jetzt ausführen.</summary>
+    private void NachWiederverbindung()
+    {
+        if (umleitungAusstehend) _ = InvokeAsync(ZurAnmeldung);
+    }
+
     private void ZurAnmeldung()
     {
         if (umgeleitet) return;
+        // Tab geschlossen / Verbindung weg: NavigateTo würde im Journal als « Unhandled exception in circuit » enden.
+        if (!Verbindung.Verbunden) { umleitungAusstehend = true; return; }
+        umleitungAusstehend = false;
         umgeleitet = true;
         var pfad = "/" + Nav.ToBaseRelativePath(Nav.Uri);
         // Neu laden: die Cookie-Prüfung meldet das Gerät dabei ab, die Anmeldeseite zeigt den Hinweis.
@@ -89,5 +102,6 @@
         if (!abonniert) return;
         AuthProvider.AuthenticationStateChanged -= ZustandGeaendert;
         Nav.LocationChanged -= SeiteGewechselt;
+        Verbindung.WiederVerbunden -= NachWiederverbindung;
     }
 }
