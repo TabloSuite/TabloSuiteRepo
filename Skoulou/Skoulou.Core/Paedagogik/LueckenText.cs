@@ -13,6 +13,19 @@ public static partial class LueckenText
 {
     public const int MaxLuecken = 30;
 
+    /// <summary>
+    /// Trennt mehrere akzeptierte Antworten einer Lücke im Editor. Früher « / » – damit war ein Bruch wie « 6/7 » als
+    /// Antwort unmöglich (Normaltest 21.11.2026, Nutzerentscheidung 22.11.). Gespeichert wird ohnehin eine Liste.
+    /// </summary>
+    public const char AntwortTrenner = '|';
+
+    /// <summary>Eingabe « Paris | Lutèce » → [« Paris », « Lutèce »]; « 6/7 » bleibt eine Antwort.</summary>
+    public static List<string> Antworten(string? eingabe)
+        => (eingabe ?? string.Empty).Split(AntwortTrenner, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    /// <summary>Akzeptierte Antworten einer Lücke zum Bearbeiten und Anzeigen (« Paris | Lutèce »).</summary>
+    public static string AlsText(IEnumerable<string>? antworten) => string.Join($" {AntwortTrenner} ", antworten ?? []);
+
     /// <summary>Gefundene Marker in Textreihenfolge.</summary>
     public static IReadOnlyList<int> Marker(string? text)
         => string.IsNullOrEmpty(text) ? [] : MarkerRegex().Matches(text).Select(m => int.Parse(m.Groups[1].Value)).ToList();

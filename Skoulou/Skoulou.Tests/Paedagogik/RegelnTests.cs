@@ -101,6 +101,21 @@ public class RegelnTests
     }
 
     [Fact]
+    public void Lueckentext_Brueche_als_Antwort_Alternativen_mit_Strich()
+    {
+        // Normaltest 21.11.2026 + Nutzerentscheidung 22.11.: « / » trennte Alternativen, « 6/7 » war als Antwort unmöglich.
+        Assert.Equal(["6/7", "12/14"], LueckenText.Antworten(" 6/7 | 12/14 |"));
+        Assert.Equal(["Paris"], LueckenText.Antworten("Paris"));
+        Assert.Empty(LueckenText.Antworten("  |  "));
+        Assert.Equal("6/7 | 12/14", LueckenText.AlsText(["6/7", "12/14"]));
+        Assert.Equal(LueckenText.Antworten("a | b"), LueckenText.Antworten(LueckenText.AlsText(LueckenText.Antworten("a | b"))));
+        // Der Schüler tippt « 6/7 » – die Lücke zählt als richtig
+        var frage = new FrageDefinition(FragenTyp.TexteATrous, 2, [], [], [LueckenText.Antworten("6/7 | 12/14")]);
+        var ergebnis = BewertungsEngine.Bewerte(frage, new AntwortEingabe { Luecken = ["6/7"] });
+        Assert.Equal(2, ergebnis.Punkte);
+    }
+
+    [Fact]
     public void Medien_Typ_ueber_Magic_Bytes_und_Groesse()
     {
         Assert.Equal("image/png", MedienPruefung.Erkenne([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0])!.ContentType);

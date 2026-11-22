@@ -14,7 +14,7 @@
                 {
                     var i = nr - 1;
                     var wert = Eingabe is not null && i < Eingabe.Luecken.Count ? Eingabe.Luecken[i] : null;
-                    <span class="sk-luecke-lesen @LueckeKlasse(i, wert)">@(Eingabe is not null ? (string.IsNullOrWhiteSpace(wert) ? "—" : wert) : MitLoesungen && i < Frage.Luecken.Count ? string.Join(" / ", Frage.Luecken[i]) : "________")</span>
+                    <span class="sk-luecke-lesen @LueckeKlasse(i, wert)">@(Eingabe is not null ? (string.IsNullOrWhiteSpace(wert) ? "—" : wert) : MitLoesungen && i < Frage.Luecken.Count ? LueckenText.AlsText(Frage.Luecken[i]) : "________")</span>
                 }
                 else
                 {
@@ -86,7 +86,7 @@
         <p class="sk-loesung-luecken">
             @for (var i = 0; i < Frage.Luecken.Count; i++)
             {
-                <span><span class="sk-leise">Trou @(i + 1) :</span> @string.Join(" / ", Frage.Luecken[i])</span>
+                <span><span class="sk-leise">Trou @(i + 1) :</span> @LueckenText.AlsText(Frage.Luecken[i])</span>
             }
         </p>
     }

@@ -104,7 +104,7 @@
                     <p class="sk-loesung-luecken">
                         @for (var i = 0; i < l.Luecken.Count; i++)
                         {
-                            <span><span class="sk-leise">Trou @(i + 1) :</span> @string.Join(" / ", l.Luecken[i])</span>
+                            <span><span class="sk-leise">Trou @(i + 1) :</span> @LueckenText.AlsText(l.Luecken[i])</span>
                         }
                     </p>
                 }

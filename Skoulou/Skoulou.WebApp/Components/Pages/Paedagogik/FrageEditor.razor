@@ -24,8 +24,8 @@
                 var index = i;
                 <div class="sk-editor-zeile">
                     <span class="sk-editor-marke">[[@(index + 1)]]</span>
-                    <input class="sk-eingabe" aria-label="@($"Réponses du trou {index + 1}")" placeholder="Réponse(s) acceptée(s), séparées par /"
-                           value="@string.Join(" / ", Frage.Luecken[index])" @onchange="e => Aendern(() => Frage.Luecken[index] = Teile(e.Value?.ToString(), '/'))" />
+                    <input class="sk-eingabe" aria-label="@($"Réponses du trou {index + 1}")" placeholder="Réponse(s) acceptée(s), séparées par |  (ex. : 6/7 | 12/14)"
+                           value="@LueckenText.AlsText(Frage.Luecken[index])" @onchange="e => Aendern(() => Frage.Luecken[index] = LueckenText.Antworten(e.Value?.ToString()))" />
                     <button type="button" class="sk-icon-knopf" aria-label="Supprimer le trou" disabled="@(Frage.Luecken.Count == 1)"
                             @onclick="() => Aendern(() => Frage.Luecken.RemoveAt(index))"><Icon Name="trash" Groesse="16" /></button>
                 </div>
