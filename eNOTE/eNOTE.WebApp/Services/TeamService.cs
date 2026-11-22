@@ -97,26 +97,37 @@ public class TeamService(
             us.KannKundenAktenFuehren)).ToList();
     }
 
-    /// <summary>
-    /// Legt einen Kassierer an (Identity-Konto + Rolle) und ordnet ihn dem Salon mit einer Kassen-PIN zu. Die E-Mail ist nur
-    /// Kontaktadresse und darf mehrfach verwendet werden. Seit 17.11.2026 standardmäßig OHNE Passwort: Der Mitarbeiter kassiert
-    /// am Gerät des Besitzers mit Name + PIN. Mit <paramref name="initialPasswort"/> erhält er zugleich « Connexion personnelle ».
-    /// </summary>
+    /// <summary>Name für den Vergleich im Team: Groß-/Kleinschreibung und mehrfache Leerzeichen zählen nicht.</summary>
+    internal static string NameFuerVergleich(string? name) => string.Join(' ', (name ?? string.Empty)
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToLowerInvariant();
+
     /// <summary>Trägt schon ein Mitglied des Ladens (auch der Besitzer) diesen Namen? Groß-/Kleinschreibung und
     /// mehrfache Leerzeichen zählen nicht.</summary>
     private async Task<bool> NameImLadenVergebenAsync(Guid salonId, string? vorname, string? nachname, CancellationToken ct)
     {
-        static string Normal(string? t) => string.Join(' ', (t ?? string.Empty)
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToLowerInvariant();
-        var neu = Normal($"{vorname} {nachname}");
-        if (neu.Length == 0) return false;
         await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        return await IstNameImLadenVergebenAsync(db, salonId, vorname, nachname, null, ct);
+    }
+
+    /// <summary>
+    /// Gemeinsame Regel für Anlegen (Équipe) und Umbenennen (« Mon profil » des Besitzers): An der Kasse wählt man die Person
+    /// nach ihrem Namen, zwei gleichnamige Mitglieder eines Ladens wären nicht zu unterscheiden. <paramref name="ausserUserId"/>:
+    /// die Person selbst zählt beim Umbenennen nicht mit.
+    /// </summary>
+    internal static async Task<bool> IstNameImLadenVergebenAsync(ApplicationDbContext db, Guid salonId, string? vorname, string? nachname,
+        Guid? ausserUserId, CancellationToken ct)
+    {
+        var neu = NameFuerVergleich($"{vorname} {nachname}");
+        if (neu.Length == 0) return false;
         var namen = await db.UserSalons.AsNoTracking()
-            .Where(us => us.SalonId == salonId)
+            .Where(us => us.SalonId == salonId && (ausserUserId == null || us.AppUserId != ausserUserId))
             .Select(us => new { us.AppUser.Vorname, us.AppUser.Nachname, us.AppUser.FullName })
             .ToListAsync(ct);
-        return namen.Any(n => Normal(n.FullName) == neu || Normal($"{n.Vorname} {n.Nachname}") == neu);
+        return namen.Any(n => NameFuerVergleich(n.FullName) == neu || NameFuerVergleich($"{n.Vorname} {n.Nachname}") == neu);
     }
+
+    /// <summary>Meldung, wenn ein Name im Laden schon vergeben ist (Anlegen und Umbenennen).</summary>
+    internal const string NameVergebenText = "Une personne de l'équipe porte déjà ce nom. Ajoutez par exemple une initiale pour la distinguer.";
 
     /// <summary>« prenom.nom » ohne Akzente (nur a–z, 0–9, Punkt); belegt → « prenom.nom2 », « prenom.nom3 » …</summary>
     private async Task<string> FreierPseudonymAsync(string? vorname, string? nachname)
@@ -144,6 +155,11 @@ public class TeamService(
         return basis + "." + Guid.NewGuid().ToString("N")[..6];
     }
 
+    /// <summary>
+    /// Legt einen Kassierer an (Identity-Konto + Rolle) und ordnet ihn dem Salon mit einer Kassen-PIN zu. Die E-Mail ist nur
+    /// Kontaktadresse und darf mehrfach verwendet werden. Seit 17.11.2026 standardmäßig OHNE Passwort: Der Mitarbeiter kassiert
+    /// am Gerät des Besitzers mit Name + PIN. Mit <paramref name="initialPasswort"/> erhält er zugleich « Connexion personnelle ».
+    /// </summary>
     public async Task<(bool Erfolg, string? Fehler, AppUser? Kassierer)> LegeKassiererAnAsync(
         Guid salonId,
         string vorname,
@@ -169,7 +185,7 @@ public class TeamService(
         // Mitglieder im selben Laden wären dort nicht zu unterscheiden.
         if (await NameImLadenVergebenAsync(salonId, vorname, nachname, cancellationToken))
         {
-            return (false, "Une personne de l'équipe porte déjà ce nom. Ajoutez par exemple une initiale pour la distinguer.", null);
+            return (false, NameVergebenText, null);
         }
 
         var bereinigtPseudonym = (pseudonym ?? string.Empty).Trim();

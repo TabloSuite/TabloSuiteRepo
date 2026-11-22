@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 using ENote.Core.DataModels.Identity;
+using ENote.WebApp.Data;
 using ENote.WebApp.Services.Mails;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace ENote.WebApp.Services;
 
@@ -10,7 +12,8 @@ namespace ENote.WebApp.Services;
 /// Eigene Kontodaten für Administrateur, Responsable (PO) und Propriétaire: Name, Telefon, E-Mail, Identifiant.
 /// Kassierer-Konten werden vom Besitzer verwaltet und sind hier ausgeschlossen.
 /// </summary>
-public class KontoProfilService(UserManager<AppUser> users, MailBenachrichtigungen? mails = null)
+public class KontoProfilService(UserManager<AppUser> users, MailBenachrichtigungen? mails = null,
+    IDbContextFactory<ApplicationDbContext>? dbFactory = null)
 {
     public const int MaxNamenLaenge = 60;
     public const int MaxTelefonLaenge = 30;
@@ -53,6 +56,18 @@ public class KontoProfilService(UserManager<AppUser> users, MailBenachrichtigung
         var tel = string.IsNullOrWhiteSpace(telefon) ? null : Regex.Replace(telefon.Trim(), @"\s+", " ");
         if (tel is not null && (tel.Length > MaxTelefonLaenge || !Regex.IsMatch(tel, @"\A\+?[0-9 ()./-]{6,}\z") || tel.Count(char.IsDigit) < 6))
             return (false, "Numéro de téléphone invalide (chiffres, espaces et + uniquement).");
+
+        // Nachtest 22.11.2026: Der Besitzer steht in « Qui encaisse ? » neben seinem Team. Dieselbe Regel wie beim Anlegen
+        // (TeamService, Nutzerentscheidung 22.11.): kein Name, den schon ein anderes Mitglied eines seiner Läden trägt.
+        // Nur bei geändertem Namen – wer nur das Telefon ändert, wird von Altbeständen nicht blockiert.
+        if (dbFactory is not null && TeamService.NameFuerVergleich($"{v} {n}") != TeamService.NameFuerVergleich(user.FullName))
+        {
+            await using var db = await dbFactory.CreateDbContextAsync();
+            var laeden = await db.UserSalons.AsNoTracking().Where(us => us.AppUserId == user.Id).Select(us => us.SalonId).ToListAsync();
+            foreach (var salonId in laeden)
+                if (await TeamService.IstNameImLadenVergebenAsync(db, salonId, v, n, user.Id, CancellationToken.None))
+                    return (false, TeamService.NameVergebenText);
+        }
 
         user.Vorname = v;
         user.Nachname = n;

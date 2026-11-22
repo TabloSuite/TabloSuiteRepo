@@ -116,6 +116,45 @@ public class NutzerAnlageTests
         Assert.False((await service.AenderePseudonymAsync(user.Id, "nouveau", "Initial123!Ab")).Erfolg);
     }
 
+    /// <summary>
+    /// Nachtest 22.11.2026: Der Besitzer konnte sich in « Mon profil » « Carine Mballa » nennen, obwohl eine Mitarbeiterin seines
+    /// Ladens so heißt – an der Kasse (« Qui encaisse ? ») standen dann zwei gleiche Namen. Gleiche Regel wie beim Anlegen:
+    /// abgelehnt (Schreibweise egal); Name eines anderen Ladens frei; nur Telefon ändern bleibt trotz Altbestand möglich.
+    /// </summary>
+    [Fact]
+    public async Task Profil_Lehnt_Namen_Eines_Teammitglieds_Ab()
+    {
+        var factory = TestDbContextFactory.Create();
+        await using var provider = Dienste(factory);
+        await using var scope = provider.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var besitzer = await NutzerAsync(scope.ServiceProvider, AppRollen.Besitzer);
+        besitzer.Vorname = "Jean-Paul"; besitzer.Nachname = "Nkoulou"; besitzer.FullName = "Jean-Paul Nkoulou";
+        await users.UpdateAsync(besitzer);
+        var laden = new Salon { Name = "Boutique" };
+        var andererLaden = new Salon { Name = "Ailleurs" };
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var carine = new AppUser { Id = Guid.NewGuid(), UserName = "carine", FullName = "Carine Mballa", Vorname = "Carine", Nachname = "Mballa" };
+            var fremd = new AppUser { Id = Guid.NewGuid(), UserName = "awa", FullName = "Awa Koffi", Vorname = "Awa", Nachname = "Koffi" };
+            db.Users.AddRange(carine, fremd);
+            db.UserSalons.AddRange(new UserSalon { AppUserId = besitzer.Id, Salon = laden }, new UserSalon { AppUser = carine, Salon = laden },
+                new UserSalon { AppUser = fremd, Salon = andererLaden });
+            await db.SaveChangesAsync();
+        }
+        var service = new KontoProfilService(users, null, factory);
+
+        var (ok, fehler) = await service.AenderePersoenlicheDatenAsync(besitzer.Id, " carine ", "MBALLA", null);
+        Assert.False(ok);
+        Assert.Contains("porte déjà ce nom", fehler);
+        await using (var db = await factory.CreateDbContextAsync())
+            Assert.Equal("Jean-Paul Nkoulou", (await db.Users.SingleAsync(u => u.Id == besitzer.Id)).FullName);
+
+        // eigener Name in anderer Schreibweise und Telefon: erlaubt; Name aus einem fremden Laden: erlaubt
+        Assert.True((await service.AenderePersoenlicheDatenAsync(besitzer.Id, "Jean-Paul", "NKOULOU", "+237 6 77 88 99 01")).Erfolg);
+        Assert.True((await service.AenderePersoenlicheDatenAsync(besitzer.Id, "Awa", "Koffi", null)).Erfolg);
+    }
+
     [Fact]
     public async Task Profil_Aendert_Name_Und_Telefon_Ohne_Abmeldung()
     {
