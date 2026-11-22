@@ -31,7 +31,7 @@ else if (ergebnis is not null || v.BereitsAusgefuehrt)
     <Hinweis Art="erfolg" Titel="Passage effectué">
         @if (ergebnis is not null)
         {
-            <text>@ergebnis.Einschreibungen élève(s) inscrit(s) en @ergebnis.NeuesJahr, @ergebnis.NeueKlassen classe(s) créée(s), @ergebnis.Sortants départ(s). </text>
+            <text>@ergebnis.Einschreibungen élève(s) inscrit(s) en @ergebnis.NeuesJahr, @ergebnis.NeueKlassen classe(s) créée(s), @ergebnis.Sortants départ(s)@(ergebnis.Archiviert > 0 ? $", {ergebnis.Archiviert} compte(s) d'élève archivé(s)" : null). </text>
         }
         L'année @v.AltesJahr est clôturée. Démarrez la nouvelle année dans « Année scolaire » le jour de la rentrée, puis inscrivez les nouveaux élèves.
     </Hinweis>
@@ -64,6 +64,8 @@ else
             <Schalter Wert="plan.LehrauftraegeKopieren" WertChanged="b => plan.LehrauftraegeKopieren = b" Label="Reprendre les enseignants de chaque matière"
                       Hinweis="Les matières et coefficients sont toujours repris." />
             <Schalter Wert="plan.KomponentenKopieren" WertChanged="b => plan.KomponentenKopieren = b" Label="Reprendre les composantes des périodes" />
+            <Schalter Wert="plan.AbgaengerArchivieren" WertChanged="b => plan.AbgaengerArchivieren = b" Label="Archiver les comptes des élèves qui quittent l'établissement"
+                      Hinweis="Ils ne pourront plus se connecter ; leurs notes et bulletins restent conservés. « Réintégrer » (fiche de l'élève) réactive un compte. Les comptes des parents ne changent pas." />
         </div>
     </Karte>
 
@@ -133,7 +135,7 @@ else
 <BestaetigungsDialog Open="bestaetigen" Titel="Effectuer le passage ?" BestaetigenText="Effectuer le passage" Fehler="@Fehlermeldung"
                      Gesperrt="@(v?.AdmisOhneKlasse > 0 && plan?.AbgaengeBestaetigt != true)"
                      OnAbbrechen="() => bestaetigen = false" OnBestaetigen="PassageAsync">
-    <p>@v?.Eingeschrieben élève(s) seront inscrits en @v?.NeuesJahr et @v?.Sortants quitteront l'établissement. L'année @v?.AltesJahr sera ensuite clôturée (le directeur peut la rouvrir avec un motif).</p>
+    <p>@v?.Eingeschrieben élève(s) seront inscrits en @v?.NeuesJahr et @v?.Sortants quitteront l'établissement@(plan?.AbgaengerArchivieren == true && v?.Sortants > 0 ? " (leurs comptes seront archivés)" : null). L'année @v?.AltesJahr sera ensuite clôturée (le directeur peut la rouvrir avec un motif).</p>
     @foreach (var u in v?.Ueberbelegt ?? [])
     {
         <Hinweis Art="warn">Capacité dépassée : « @u.Klasse » aura <strong>@u.Gesamt élèves</strong> pour @u.Kapazitaet places (@(u.Gesamt - u.Kapazitaet) de trop).</Hinweis>

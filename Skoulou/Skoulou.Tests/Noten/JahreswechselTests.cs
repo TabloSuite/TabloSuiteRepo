@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
+using Skoulou.Core.Rechte;
+using Skoulou.Tests.Organisation;
 using Skoulou.WebApp.Services.Infrastruktur;
 using Skoulou.WebApp.Services.Noten;
+using Skoulou.WebApp.Services.Plattform;
 
 namespace Skoulou.Tests.Noten;
 
@@ -228,6 +231,55 @@ public class JahreswechselTests
         // Nur eine Warnung: die Ausführung bleibt möglich.
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
         Assert.Equal(2, ergebnis.Einschreibungen);
+    }
+
+    [Fact]
+    public async Task Konten_der_Abgaenger_werden_archiviert_Eltern_nicht()
+    {
+        // Nutzer 22.11.2026 (Normaltest: ehemalige Schüler meldeten sich nach dem Passage weiter an).
+        var w = await NotenWelt.ErstelleAsync();
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Exclu);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Admis);
+        var vorher = await w.MitDbAsync(db => db.Users.Where(k => k.Rolle == Rollen.Eltern).ToDictionaryAsync(k => k.Id, k => k.Status));
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        Assert.True(plan.AbgaengerArchivieren);
+
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal((1, 1, 1), (ergebnis.Einschreibungen, ergebnis.Sortants, ergebnis.Archiviert));
+        var schueler = await w.MitDbAsync(db => db.Users.SingleAsync(k => k.Id == w.O.Schueler));
+        Assert.Equal(KontoStatus.Archive, schueler.Status);
+        Assert.Equal(KontoStatus.Actif, await w.MitDbAsync(db => db.Users.Where(k => k.Id == w.O.SchuelerZiel).Select(k => k.Status).SingleAsync()));
+        Assert.Equal(vorher, await w.MitDbAsync(db => db.Users.Where(k => k.Rolle == Rollen.Eltern).ToDictionaryAsync(k => k.Id, k => k.Status)));
+        Assert.True(await w.MitDbAsync(db => db.AuditEintraege.AnyAsync(a => a.Aktion == AuditAktionen.KontoArchiviert && a.ZielId == w.O.Schueler)));
+        // Daten bleiben: alte Einschreibung (mit Noten/Bulletins) unverändert vorhanden; Anmeldung mit eigener Meldung abgewiesen.
+        Assert.Equal(EinschreibungsStatus.Partie, await w.MitDbAsync(db => db.Einschreibungen.Where(e => e.Id == w.E1).Select(e => e.Status).SingleAsync()));
+        Assert.Equal(AnmeldeErgebnis.KontoArchiviert, AnmeldeRegeln.Pruefe(schueler.Status, schueler.Rolle, SchulStatus.Active));
+
+        // Wieder aktivierbar (« Réintégrer »), dann einschreibbar.
+        await w.O.D.Konten.ReintegrierenAsync(w.D, w.O.Schueler);
+        Assert.Equal(KontoStatus.Actif, await w.MitDbAsync(db => db.Users.Where(k => k.Id == w.O.Schueler).Select(k => k.Status).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task Ohne_Schalter_bleiben_die_Konten_der_Abgaenger_aktiv()
+    {
+        var w = await NotenWelt.ErstelleAsync();
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Partie);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        plan.AbgaengerArchivieren = false;
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal((1, 0), (ergebnis.Sortants, ergebnis.Archiviert));
+        Assert.Equal(KontoStatus.Actif, await w.MitDbAsync(db => db.Users.Where(k => k.Id == w.O.Schueler).Select(k => k.Status).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task Archiviertes_Konto_wird_vor_dem_Einschreiben_reintegriert()
+    {
+        var w = await NotenWelt.ErstelleAsync();
+        await w.AendernAsync(async db => (await db.Users.SingleAsync(k => k.Id == w.O.SchuelerOhne)).Status = KontoStatus.Archive);
+        var f = await Assert.ThrowsAsync<FachFehler>(() => w.O.D.Einschreibung.EinschreibenAsync(w.D, w.O.SchuelerOhne, w.O.Klasse6A, OrgWelt.Heute, false));
+        Assert.Contains("réintégrez-le d'abord", f.Message);
     }
 
     [Fact]

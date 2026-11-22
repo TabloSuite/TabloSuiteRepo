@@ -14,6 +14,9 @@ public enum AnmeldeErgebnis
     FalscheDaten,
     Verriegelt,
     KontoGesperrt,
+
+    /// <summary>Archiviertes Konto (z. B. Schüler nach dem Abgang beim Passage): eigene, verständliche Meldung (22.11.2026).</summary>
+    KontoArchiviert,
     KontoInPruefung,
     SchuleSuspendiert,
     SchuleInPruefung,
@@ -29,7 +32,8 @@ public static class AnmeldeRegeln
 {
     public static AnmeldeErgebnis Pruefe(KontoStatus status, string rolle, SchulStatus? schulStatus)
     {
-        if (status is KontoStatus.Bloque or KontoStatus.Archive) return AnmeldeErgebnis.KontoGesperrt;
+        if (status == KontoStatus.Bloque) return AnmeldeErgebnis.KontoGesperrt;
+        if (status == KontoStatus.Archive) return Rollen.IstSchulRolle(rolle) ? AnmeldeErgebnis.KontoArchiviert : AnmeldeErgebnis.KontoGesperrt;
         if (Rollen.IstSchulRolle(rolle))
         {
             switch (schulStatus)
@@ -54,6 +58,7 @@ public static class AnmeldeRegeln
         AnmeldeErgebnis.FalscheDaten => "identifiants",
         AnmeldeErgebnis.Verriegelt => "verrouille",
         AnmeldeErgebnis.KontoGesperrt => "compte-bloque",
+        AnmeldeErgebnis.KontoArchiviert => "compte-archive",
         AnmeldeErgebnis.KontoInPruefung => "compte-en-attente",
         AnmeldeErgebnis.SchuleSuspendiert => "ecole-suspendue",
         AnmeldeErgebnis.SchuleInPruefung => "ecole-en-attente",
@@ -70,6 +75,7 @@ public static class AnmeldeRegeln
         "identifiants" => "L'identifiant ou le mot de passe est incorrect.",
         "verrouille" => "Trop de tentatives incorrectes. Pour votre sécurité, la connexion est bloquée pendant 15 minutes.",
         "compte-bloque" => "Votre compte a été bloqué. Contactez la direction de votre établissement.",
+        "compte-archive" => "Votre compte a été archivé par votre établissement, par exemple après votre départ. Vos notes et bulletins y restent conservés. Si vous y êtes de nouveau inscrit(e), demandez à la direction de réactiver votre compte.",
         "compte-en-attente" => "Votre inscription n'a pas encore été validée par votre établissement.",
         "ecole-suspendue" => "L'accès à votre établissement est suspendu. Veuillez contacter la direction de votre établissement.",
         "ecole-en-attente" => "Votre établissement est en cours de validation par SKOULOU. Vous pourrez vous connecter dès sa validation.",

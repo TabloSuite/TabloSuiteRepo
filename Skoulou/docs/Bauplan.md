@@ -330,6 +330,11 @@ Von mir entschieden (änderbar):
 35. **Jahresmittel bei Neuzugängen** nur aus den Perioden mit Einschreibung, normaler Jahresrang (§5 Regel 3).
 36. **Passage – Kapazität:** Käme eine Zielklasse des neuen Jahres mit Bestand + Zugängen über ihre Kapazität, zeigt die Seite eine
     deutliche Warnung mit Zahlen (Liste oben, Hinweis an der Klasse, Bestätigungsdialog) – keine Sperre (`PassageUeberbelegung`).
+37. **Passage – Konten der Abgänger:** Schalter « Archiver les comptes des élèves qui quittent l'établissement » (Standard an,
+    `PassagePlan.AbgaengerArchivieren`): Schülerkonten ohne weitere aktive Einschreibung werden wie bei « Départ de l'élève »
+    archiviert (Status `Archive`, Sitzung beendet, Journal). Anmeldung danach mit eigener Meldung (« compte archivé … demandez à la
+    direction de le réactiver »); Noten/Bulletins bleiben für die Schule; « Réintégrer » macht das Konto wieder aktiv (Einschreiben
+    verlangt das zuerst). Eltern-Konten bleiben unberührt. Keine Migration.
 
 ---
 

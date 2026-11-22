@@ -14,7 +14,9 @@ public class AnmeldungTests
     [Theory]
     [InlineData(KontoStatus.Actif, Rollen.Lehrer, SchulStatus.Active, AnmeldeErgebnis.Erlaubt)]
     [InlineData(KontoStatus.Bloque, Rollen.Lehrer, SchulStatus.Active, AnmeldeErgebnis.KontoGesperrt)]
-    [InlineData(KontoStatus.Archive, Rollen.Schueler, SchulStatus.Active, AnmeldeErgebnis.KontoGesperrt)]
+    [InlineData(KontoStatus.Archive, Rollen.Schueler, SchulStatus.Active, AnmeldeErgebnis.KontoArchiviert)]
+    [InlineData(KontoStatus.Archive, Rollen.Lehrer, SchulStatus.Active, AnmeldeErgebnis.KontoArchiviert)]
+    [InlineData(KontoStatus.Archive, Rollen.Responsable, SchulStatus.Active, AnmeldeErgebnis.KontoGesperrt)]
     [InlineData(KontoStatus.EnAttente, Rollen.Schueler, SchulStatus.Active, AnmeldeErgebnis.KontoInPruefung)]
     [InlineData(KontoStatus.Actif, Rollen.Lehrer, SchulStatus.Suspendue, AnmeldeErgebnis.SchuleSuspendiert)]
     [InlineData(KontoStatus.Actif, Rollen.Lehrer, SchulStatus.EnAttente, AnmeldeErgebnis.SchuleInPruefung)]
@@ -33,6 +35,9 @@ public class AnmeldungTests
         Assert.Equal(AnmeldeErgebnis.KontoGesperrt, AnmeldeRegeln.Pruefe(KontoStatus.Actif, Rollen.Lehrer, null));
         foreach (var e in Enum.GetValues<AnmeldeErgebnis>().Where(e => !AnmeldeRegeln.IstZugelassen(e)))
             Assert.NotNull(AnmeldeRegeln.Meldung(AnmeldeRegeln.Code(e)));
+        // Nutzer 22.11.2026: beim Passage archivierte Schüler bekommen eine verständliche Meldung statt « bloqué ».
+        Assert.Contains("archivé", AnmeldeRegeln.Meldung(AnmeldeRegeln.Code(AnmeldeErgebnis.KontoArchiviert)));
+        Assert.False(AnmeldeRegeln.IstZugelassen(AnmeldeErgebnis.KontoArchiviert));
     }
 
     [Fact]

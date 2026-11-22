@@ -43,6 +43,12 @@ public sealed class PassagePlan
     /// Nutzerentscheidung 22.11.: deutlich warnen und bestätigen lassen, statt sie still als « Fin de cycle » abzumelden).
     /// </summary>
     public bool AbgaengeBestaetigt { get; set; }
+
+    /// <summary>
+    /// Konten der Schüler, die die Schule verlassen, archivieren (Nutzer 22.11.2026, Standard an): keine Anmeldung mehr, Noten und
+    /// Bulletins bleiben für die Schule erhalten; « Réintégrer » macht das Konto wieder aktiv. Eltern-Konten bleiben unberührt.
+    /// </summary>
+    public bool AbgaengerArchivieren { get; set; } = true;
 }
 
 public sealed record PassageSchueler(Guid EinschreibungId, string Name, JahresEntscheidungsArt Entscheidung, string? Ziel);
@@ -82,7 +88,7 @@ public sealed record PassageVorschau(Guid AltesJahrId, string AltesJahr, Schulja
     public bool Bereit => !BereitsAusgefuehrt && Offen == 0 && Klassen.Count > 0;
 }
 
-public sealed record PassageErgebnis(Guid NeuesJahrId, string NeuesJahr, int NeueKlassen, int Einschreibungen, int Sortants);
+public sealed record PassageErgebnis(Guid NeuesJahrId, string NeuesJahr, int NeueKlassen, int Einschreibungen, int Sortants, int Archiviert = 0);
 
 /// <summary>
 /// Assistent « Passage à l'année suivante » (Bauplan §6, §11.17; Fachkonzept 04 §4.7/4.8, §7.1.2): Vorschlag je Klasse aus den
@@ -90,8 +96,8 @@ public sealed record PassageErgebnis(Guid NeuesJahrId, string NeuesJahr, int Neu
 /// kopierter Periodenstruktur, neue Klassen (Namen änderbar), Fächer/Koeffizienten und optional Lehraufträge kopieren,
 /// Einschreibungen in einer Transaktion, altes Jahr abschließen, Audit. Idempotent: Vorhandenes wird erkannt und nicht doppelt angelegt.
 /// </summary>
-public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, AuditService audit, TimeProvider zeit,
-    IEnumerable<IJahreswechselTeilnehmer> teilnehmer)
+public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbFactory, Zugriff zugriff, AuditService audit,
+    Plattform.SitzungsPruefung sitzungen, TimeProvider zeit, IEnumerable<IJahreswechselTeilnehmer> teilnehmer)
 {
     private sealed record AltSchueler(Guid EinschreibungId, Guid SchuelerId, Guid KlasseId, string Name, JahresEntscheidungsArt Entscheidung, Guid? ZielStufeId);
 
@@ -241,8 +247,10 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
     public async Task<PassageErgebnis> AusfuehrenAsync(Guid akteurId, Guid altesJahrId, PassagePlan plan, CancellationToken ct = default)
     {
         var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.SchuljahrVerwalten, ct: ct);
-        return await dbFactory.TransaktionAsync(async db =>
+        var archiviert = new List<Guid>();
+        var ergebnis = await dbFactory.TransaktionAsync(async db =>
         {
+            archiviert.Clear();
             var alt = await OrgAbfragen.SchuljahrAsync(db, a, altesJahrId, ct);
             if (alt.Status == SchuljahrStatus.Vorbereitung) throw new FachFehler("Cette année n'a pas encore démarré : le passage se fait à la fin d'une année en cours.");
             var vorschau = await RechneAsync(db, alt, plan, ct);
@@ -332,6 +340,9 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             await UnterrichtService.FachwahlenVorjahrUebernehmenAsync(db, a.SchuleId, klassenWechsel, a.Id, ct);
             await db.SaveChangesAsync(ct);
 
+            if (plan.AbgaengerArchivieren)
+                archiviert.AddRange(await AbgaengerArchivierenAsync(db, a, alt, plaene.Where(p => p.Ziel is null).Select(p => alte[p.EinschreibungId].SchuelerId).ToList(), ct));
+
             if (plan.KomponentenKopieren) await KomponentenKopierenAsync(db, a.SchuleId, alt.Id, neuePerioden, ct);
             var kontext = new JahreswechselKontext(a.SchuleId, a.Id, alt.Id, neu.Id, neueEinschreibungen);
             foreach (var t in teilnehmer) await t.NachWechselAsync(db, kontext, ct);
@@ -344,10 +355,38 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             }
             var sortants = plaene.Count(p => p.Ziel is null);
             audit.Erfasse(db, a.Id, a.SchuleId, AuditAktionen.Jahreswechsel, nameof(Schuljahr), alt.Id,
-                $"Passage {alt.Bezeichnung} → {neu.Bezeichnung} : {angelegt} classe(s) créée(s), {neueEinschreibungen.Count} inscription(s), {sortants} départ(s).");
+                $"Passage {alt.Bezeichnung} → {neu.Bezeichnung} : {angelegt} classe(s) créée(s), {neueEinschreibungen.Count} inscription(s), {sortants} départ(s)"
+                + (archiviert.Count > 0 ? $", {archiviert.Count} compte(s) d'élève archivé(s)." : "."));
             await db.SaveChangesAsync(ct);
-            return new PassageErgebnis(neu.Id, neu.Bezeichnung, angelegt, neueEinschreibungen.Count, sortants);
+            return new PassageErgebnis(neu.Id, neu.Bezeichnung, angelegt, neueEinschreibungen.Count, sortants, archiviert.Count);
         }, ct);
+        foreach (var id in archiviert) sitzungen.Vergessen(id);
+        return ergebnis;
+    }
+
+    /// <summary>
+    /// Konten der Abgänger archivieren wie « Départ de l'élève » mit Archivierung (Status, Sitzung beendet, Journal). Übersprungen:
+    /// wer noch eine aktive Einschreibung hat (z. B. schon im neuen Jahr eingeschrieben), wartende und schon archivierte Konten.
+    /// Nur Schülerkonten – Eltern bleiben unberührt.
+    /// </summary>
+    private async Task<List<Guid>> AbgaengerArchivierenAsync(SkoulouDbContext db, SchulAkteur a, Schuljahr alt, List<Guid> schuelerIds, CancellationToken ct)
+    {
+        if (schuelerIds.Count == 0) return [];
+        var nochAktiv = await SchulAbfragen.AktiveEinschreibungen(db).Where(e => schuelerIds.Contains(e.SchuelerId)).Select(e => e.SchuelerId).ToListAsync(ct);
+        var konten = await db.Users.Where(k => schuelerIds.Contains(k.Id) && k.SchuleId == a.SchuleId && k.Rolle == Rollen.Schueler
+                && (k.Status == KontoStatus.Actif || k.Status == KontoStatus.Bloque))
+            .ToListAsync(ct);
+        var liste = new List<Guid>();
+        foreach (var konto in konten.Where(k => !nochAktiv.Contains(k.Id)))
+        {
+            konto.Status = KontoStatus.Archive;
+            konto.AktiveSitzungId = Guid.NewGuid();
+            audit.Erfasse(db, a.Id, a.SchuleId, AuditAktionen.KontoArchiviert, nameof(Konto), konto.Id,
+                $"Élève {konto.VollerName} archivé(e) au passage de l'année {alt.Bezeichnung} (départ de l'établissement).");
+            liste.Add(konto.Id);
+        }
+        await db.SaveChangesAsync(ct);
+        return liste;
     }
 
     /// <summary>« Admis » (bzw. die gewählte Entscheidung) für alle Schüler einer Klasse ohne Entscheidung. Anzahl gesetzt.</summary>

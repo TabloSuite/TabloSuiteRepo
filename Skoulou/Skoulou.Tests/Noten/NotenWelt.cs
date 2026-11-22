@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Skoulou.Core.Entitaeten;
@@ -43,7 +44,8 @@ internal sealed class NotenWelt
         Bulletins = new BulletinService(db, zugriff, audit, new NummernkreisService(zeit), mails, zeit);
         Lesen = new BulletinLeseService(db, zugriff, zeit);
         Vorlagen = new VorlagenService(db, zugriff, zeit);
-        Wechsel = new JahreswechselService(db, zugriff, audit, zeit, [Teilnehmer]);
+        Wechsel = new JahreswechselService(db, zugriff, audit, new Skoulou.WebApp.Services.Plattform.SitzungsPruefung(db, new MemoryCache(new MemoryCacheOptions())),
+            zeit, [Teilnehmer]);
         Pdf = new BulletinPdfService(db, o.D.Speicher, Lesen, Vorlagen, app);
     }
 

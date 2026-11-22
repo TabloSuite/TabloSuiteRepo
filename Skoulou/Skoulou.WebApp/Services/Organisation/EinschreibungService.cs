@@ -156,7 +156,11 @@ public sealed class EinschreibungService(
             {
                 if (konto.SchuleId != a.SchuleId) throw new KeinZugriffFehler(Zugriff.MeldungAndereSchule);
                 if (konto.Rolle != Rollen.Schueler) continue;
-                if (konto.Status != KontoStatus.Actif) { uebersprungen.Add($"{konto.VollerName} (compte non actif)"); continue; }
+                if (konto.Status != KontoStatus.Actif)
+                {
+                    uebersprungen.Add($"{konto.VollerName} ({(konto.Status == KontoStatus.Archive ? "compte archivé : réintégrez-le d'abord" : "compte non actif")})");
+                    continue;
+                }
                 if (mitKlasse.Contains(konto.Id)) { uebersprungen.Add($"{konto.VollerName} (déjà inscrit)"); continue; }
                 if (Ueberlappung(enden, konto.Id, von) is { } grund) { uebersprungen.Add($"{konto.VollerName} ({grund})"); continue; }
                 db.Einschreibungen.Add(new Einschreibung
@@ -178,7 +182,13 @@ public sealed class EinschreibungService(
         PruefeKlasseOffen(klasse, jahr);
         PruefeDatum(jahr, von);
         if (konto.Status != KontoStatus.Actif)
-            throw new FachFehler(konto.Status == KontoStatus.EnAttente ? "Validez d'abord l'inscription de cet élève." : "Le compte de cet élève n'est pas actif.");
+            throw new FachFehler(konto.Status switch
+            {
+                KontoStatus.EnAttente => "Validez d'abord l'inscription de cet élève.",
+                // z. B. beim Passage archiviert (22.11.2026): erst « Réintégrer » in der Fiche, dann einschreiben.
+                KontoStatus.Archive => "Le compte de cet élève est archivé : réintégrez-le d'abord (fiche de l'élève › « Réintégrer »).",
+                _ => "Le compte de cet élève n'est pas actif."
+            });
         await SessionEndenAbschliessenAsync(db, [konto.Id], von, ct);
         var aktiv = await (from e in SchulAbfragen.AktiveEinschreibungen(db)
                            join k in db.Klassen on e.KlasseId equals k.Id
