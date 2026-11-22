@@ -12,27 +12,26 @@ Die ausführliche Fassung dieser Datei bis 22.11. nachmittags steht in der Git-H
 (`81cba64`). Seit dem letzten Deploy gibt es **keine neue Migration**: Azure `ENote-Database` und `Skoulou-Database` bleiben
 unverändert. TabloSuiteHome ist seit dem letzten Deploy unverändert.
 
+**Beim Nutzer offen (22.11. spät, Freigabe « alle A–D nach Empfehlung »; beides von der Sicherheitsprüfung für Claude gesperrt):**
+- **master:** `git push origin Etse.TabloSuite.Muster:master` im Projektordner (Fast-Forward, master hat nichts Eigenes) – oder in
+  Visual Studio zu master wechseln, `Etse.TabloSuite.Muster` hineinführen, pushen.
+- **Test-Datenbanken löschen:** `TabloSuiteData\Infos\Test-Datenbanken-loeschen.ps1` (13 Test-DBs, fragt vorher; `ENOTEDB`, `SkoulouDB`,
+  `SkoulouDB_VIDEO` geschützt).
+
 **Nächster Schritt – beim Nutzer:** kompletter Menschentest beider Apps (nicht mehr am 22.11.). Nutzer: « Solange Tests Fehler
 liefern, kann ich die Apps nicht in Produktion nehmen. » Gefundene Fehler gründlich beheben (mit Test, auch in der Oberfläche prüfen).
 Danach deployt der Nutzer **eNOTE und SKOULOU** aus Visual Studio; anschließend lesend prüfen (Startseiten, Anmeldung,
 ExceptionLogs/FehlerProtokolle).
 
-**Offene Rückfragen (aus der Umsetzung vom 22.11. abends, nichts davon gebaut – erst nach Antwort):**
+**Rückfragen R1–R10 entschieden (22.11. spät, alle nach Empfehlung):** R5, R7, R8, R9 umgesetzt (Bauplan §11 Nr. 45–48):
+Eintrittsperiode eines Neuzugangs ohne jede Note zählt nicht fürs Jahresmittel (« arrivé(e) en cours de période, sans note »);
+Warnung « l'année n'est pas terminée » nach dem Ende der letzten zählenden Periode; Hinweis, die Rückzahlung einer stornierten
+bezahlten Rechnung nicht doppelt zu buchen (Mail + Rechnungsdetail); Menüeintrag lädt die offene Seite auch mit anderen
+Adressparametern neu. So gelassen: R1 (kein Knopf « Nouveau lien »), R2, R3, R4, R6, R10.
+Kleine Annahmen dabei (nur bei Bedarf ändern): « abs. »/« disp. » zählen als Note; Rückkehr nach einer Lücke in der Periode gilt als
+Eintritt; wer wenige Tage nach Periodenbeginn eingeschrieben wird, gilt formal als eingetreten (wirkt nur ohne jede Note).
 
-| Nr | App | Frage | Empfehlung |
-|---|---|---|---|
-| R1 | eNOTE | Écran client: zusätzlicher Knopf « Nouveau lien », um einen weitergegebenen Link am selben Gerät zu sperren (bräuchte Migration) | erst einmal nicht |
-| R2 | eNOTE | Ausgeschriebene Daten im Fließtext (« 1er octobre 2027 ») auch auf « 01/10/2027 » umstellen? | so lassen |
-| R3 | eNOTE | Katalog-Namen: Akzente zählen dort weiter als Unterschied (« Coupe » ≠ « Coupé »), im Team nicht mehr | so lassen |
-| R4 | eNOTE | Enter auch in Löschantrag mit Passwort, « Code PIN oublié », « Nouvel établissement », Admin-Konten anlegen? | so lassen |
-| R5 | SKOULOU | Jahresmittel: Neuzugang kurz vor Periodenende ohne jede Note gilt dort als eingeschrieben → « incomplet ». Diese Eintrittsperiode überspringen? | ja, überspringen |
-| R6 | SKOULOU | Eltern sehen archivierte Kinder (nach dem Abgang) nicht mehr, also auch deren alte Bulletins nicht | so lassen |
-| R7 | SKOULOU | Warnung « l'année n'est pas terminée »: maßgeblich ist heute « Fin » des Schuljahres – bei Jahresende 31.07. und Conseil Anfang Juli kommt sie bei jeder Passage. Stattdessen Ende der letzten Periode? | ja, Ende der letzten Periode |
-| R8 | SKOULOU | Storno bezahlter Plattformrechnung: Gegenbuchung zählt als Einnahme, bevor das Geld zurück ist – Hinweis « nicht ein zweites Mal buchen » bei der echten Rückzahlung? | ja, Hinweis |
-| R9 | SKOULOU | Menüeintrag lädt neu nur bei exakt gleicher Adresse; von `/notes?classe=…` auf `/notes` lädt nicht neu. Erweitern auf « gleiche Seite, egal welche Parameter »? | ja |
-| R10 | SKOULOU | Suche über alle Status gilt in allen Rechnungslisten (auch Schule und Responsable) | passt so |
-
-**Was seit dem letzten Deploy (21.11.) dazukam – rund 80 Commits, alle mit Tests:**
+**Was seit dem letzten Deploy (21.11.) dazukam – rund 90 Commits, alle mit Tests:**
 1. **Klicktest « wie ein Mensch » über Jahre** (21./22.11., Playwright, Test-Uhr): eNOTE 23.11.2026–02.01.2029 (Normaltest + Fehlersuche),
    SKOULOU 3 Schuljahre (Normaltest + Fehlersuche). Kein fataler Fehler, kein Datenverlust; alle Rechnungen, Provisionen, Bulletins und
    PDFs nachgerechnet. Rund 45 Fehler gefunden und behoben. Berichte und Skripte: `TabloSuiteData\Infos\Klicktests-2026-11\`.
@@ -53,7 +52,8 @@ ExceptionLogs/FehlerProtokolle).
      standardmäßig an, Ladenwechsler bleibt.
 4. Beide Runden in der Oberfläche nachgetestet (eNOTE 51 Schritte, SKOULOU 36 Schritte, je ohne App-Fehler).
 
-**Tests am 22.11. abends – alles grün:** `dotnet test TabloSuiteMappe.slnx` (Home 11, eNOTE 684, SKOULOU 838);
+**Tests am 22.11. abends – alles grün** (nach R5–R9 erneut: Mappe Home 11, eNOTE 684, SKOULOU 845; SKOULOU-SQL 866; SKOULOU-Simulation
+mit diesem Code grün). Erster Gesamtlauf: `dotnet test TabloSuiteMappe.slnx` (Home 11, eNOTE 684, SKOULOU 838);
 SKOULOU mit `SKOULOU_SQL_TESTS=1` + `SKOULOU_SIM=1` 861 bestanden (22 min); eNOTE mit `ENOTE_SIM=1` (SQL-Tests + Simulation)
 690 bestanden (13 min). Aufgeräumt: Worktrees der Agenten, alte Testreste in `%TEMP%` (Papierkorb).
 
