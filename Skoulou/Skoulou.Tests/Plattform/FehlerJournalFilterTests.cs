@@ -31,6 +31,17 @@ public class FehlerJournalFilterTests
         Assert.False(FehlerProtokollSink.IstVerlasseneVerbindung(RemoteNavigationManager.Werfe(new InvalidOperationException("echt"))));
         Assert.False(FehlerProtokollSink.IstVerlasseneVerbindung(new TaskCanceledException()));   // ohne Stacktrace
     }
+    private static Serilog.Events.LogEvent EfFehler(Exception ex) => new(DateTimeOffset.UtcNow, Serilog.Events.LogEventLevel.Error, ex,
+        new Serilog.Parsing.MessageTemplateParser().Parse("An exception occurred in the database while saving changes"),
+        [new Serilog.Events.LogEventProperty("SourceContext", new Serilog.Events.ScalarValue("Microsoft.EntityFrameworkCore.Update"))]);
+
+    [Fact]
+    public void Abgefangene_Kollisionen_von_EF_nicht_ins_Journal_echte_Fehler_schon()
+    {
+        Assert.False(FehlerProtokollSink.Relevant(EfFehler(new Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException("0 Zeilen"))));
+        Assert.True(FehlerProtokollSink.Relevant(EfFehler(new Microsoft.EntityFrameworkCore.DbUpdateException("Spalte zu lang", new InvalidOperationException("x")))));
+    }
+
     [Fact]
     public void Zeitstempel_kommt_von_der_App_Uhr_nicht_vom_Log_Ereignis()
     {

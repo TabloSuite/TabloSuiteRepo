@@ -58,9 +58,19 @@ public sealed class FehlerProtokollSink(FehlerProtokollPuffer puffer, IHttpConte
     /// weil Blazor sie nur als Warning protokolliert.
     /// </summary>
     public static bool Relevant(LogEvent e)
-        => e.Level >= LogEventLevel.Error
+        => (e.Level >= LogEventLevel.Error && !IstAbgefangeneKollision(e))
            || (e.Level == LogEventLevel.Warning && e.Properties.TryGetValue("SourceContext", out var quelle)
                && quelle is ScalarValue { Value: string name } && name.EndsWith(".ErrorBoundary", StringComparison.Ordinal));
+
+    /// <summary>
+    /// EF protokolliert jede fehlgeschlagene Speicherung selbst als Error – auch gleichzeitige Anlagen (Unique-Index) und
+    /// Konflikte, die die App abfängt und wiederholt oder als Meldung zeigt (Klicktest 21.11.2026: zwei Geräte veröffentlichen
+    /// gleichzeitig → Fehlerjournal-Eintrag ohne Fehler). Nicht abgefangene landen ohnehin über ErrorBoundary/Circuit im Journal.
+    /// </summary>
+    public static bool IstAbgefangeneKollision(LogEvent e)
+        => e.Properties.TryGetValue("SourceContext", out var quelle) && quelle is ScalarValue { Value: "Microsoft.EntityFrameworkCore.Update" }
+           && e.Exception is Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException
+               or Microsoft.EntityFrameworkCore.DbUpdateException { InnerException: Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 } };
 
     private static string Kuerze(string? text, int max) => text is null ? string.Empty : text.Length > max ? text[..max] : text;
 
