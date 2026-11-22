@@ -44,4 +44,39 @@ public class TeamServiceTests
         Assert.False(team.Single(t => t.UserId == kassierer.Id).IstBesitzer);
         Assert.True(team.Single(t => t.UserId == kassierer.Id).HatPin);
     }
+
+    /// <summary>
+    /// Fehlersuche 21.11.2026 + Nutzerentscheidung 22.11.: drei « Ama Mensah » im selben Laden waren an der Kasse nicht zu
+    /// unterscheiden. Ein gleichnamiges Mitglied (auch der Besitzer, Schreibweise egal) wird abgelehnt – in einem anderen
+    /// Laden ist der Name frei.
+    /// </summary>
+    [Theory]
+    [InlineData("Ama", "Mensah")]
+    [InlineData("  ama ", "MENSAH")]
+    [InlineData("Awa", "Koffi")]
+    public async Task Gleichnamiges_Mitglied_Im_Selben_Laden_Wird_Abgelehnt(string vorname, string nachname)
+    {
+        var factory = TestDbContextFactory.Create();
+        var besitzer = new AppUser { Id = Guid.NewGuid(), FullName = "Ama Mensah", Vorname = "Ama", Nachname = "Mensah" };
+        var kassierer = new AppUser { Id = Guid.NewGuid(), FullName = "Awa  Koffi" };
+        var laden = new Salon { Name = "Laden" };
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            db.Users.AddRange(besitzer, kassierer);
+            db.UserSalons.AddRange(new UserSalon { AppUser = besitzer, Salon = laden }, new UserSalon { AppUser = kassierer, Salon = laden });
+            await db.SaveChangesAsync();
+        }
+
+        // Ohne UserManager: die Prüfung muss vor jeder Konto-Anlage greifen.
+        var service = new TeamService(factory, null!, NullLogger<TeamService>.Instance);
+        var (erfolg, fehler, konto) = await service.LegeKassiererAnAsync(laden.Id, vorname, nachname, "", "", null, "2468");
+
+        Assert.False(erfolg);
+        Assert.Null(konto);
+        Assert.Contains("porte déjà ce nom", fehler);
+        // Anderer Laden: derselbe Name stört nicht (Prüfung allein, ohne Konto-Anlage)
+        var andererLaden = Guid.NewGuid();
+        var methode = typeof(TeamService).GetMethod("NameImLadenVergebenAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        Assert.False(await (Task<bool>)methode.Invoke(service, [andererLaden, vorname, nachname, CancellationToken.None])!);
+    }
 }

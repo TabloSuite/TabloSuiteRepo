@@ -99,6 +99,22 @@ public class TeamService(
     /// Kontaktadresse und darf mehrfach verwendet werden. Seit 17.11.2026 standardmäßig OHNE Passwort: Der Mitarbeiter kassiert
     /// am Gerät des Besitzers mit Name + PIN. Mit <paramref name="initialPasswort"/> erhält er zugleich « Connexion personnelle ».
     /// </summary>
+    /// <summary>Trägt schon ein Mitglied des Ladens (auch der Besitzer) diesen Namen? Groß-/Kleinschreibung und
+    /// mehrfache Leerzeichen zählen nicht.</summary>
+    private async Task<bool> NameImLadenVergebenAsync(Guid salonId, string? vorname, string? nachname, CancellationToken ct)
+    {
+        static string Normal(string? t) => string.Join(' ', (t ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToLowerInvariant();
+        var neu = Normal($"{vorname} {nachname}");
+        if (neu.Length == 0) return false;
+        await using var db = await dbContextFactory.CreateDbContextAsync(ct);
+        var namen = await db.UserSalons.AsNoTracking()
+            .Where(us => us.SalonId == salonId)
+            .Select(us => new { us.AppUser.Vorname, us.AppUser.Nachname, us.AppUser.FullName })
+            .ToListAsync(ct);
+        return namen.Any(n => Normal(n.FullName) == neu || Normal($"{n.Vorname} {n.Nachname}") == neu);
+    }
+
     /// <summary>« prenom.nom » ohne Akzente (nur a–z, 0–9, Punkt); belegt → « prenom.nom2 », « prenom.nom3 » …</summary>
     private async Task<string> FreierPseudonymAsync(string? vorname, string? nachname)
     {
@@ -144,6 +160,13 @@ public class TeamService(
         if (KontoProfilService.PruefeNamen(vorname, nachname, pflicht: false) is { } namensFehler)
         {
             return (false, namensFehler, null);
+        }
+
+        // 22.11.2026 (Nutzerentscheidung): An der Kasse wählt man die Person nach ihrem Namen – zwei gleichnamige
+        // Mitglieder im selben Laden wären dort nicht zu unterscheiden.
+        if (await NameImLadenVergebenAsync(salonId, vorname, nachname, cancellationToken))
+        {
+            return (false, "Une personne de l'équipe porte déjà ce nom. Ajoutez par exemple une initiale pour la distinguer.", null);
         }
 
         var bereinigtPseudonym = (pseudonym ?? string.Empty).Trim();
