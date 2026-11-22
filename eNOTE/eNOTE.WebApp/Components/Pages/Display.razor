@@ -23,15 +23,19 @@
                 <span>« @slogan »</span>
             }
         </div>
-        <span class="ds-live @(verbunden ? "an" : "")"><span></span>@(verbunden ? "En direct" : "Connexion…")</span>
+        @if (!ungueltig)
+        {
+            <span class="ds-live @(verbunden ? "an" : "")"><span></span>@(verbunden ? "En direct" : "Connexion…")</span>
+        }
     </header>
 
-    @if (veralteterLink)
+    @if (ungueltig)
     {
-        <section class="ds-willkommen">
+        @* 22.11.2026: alter Link (anderes Kassengerät oder Link je Kassensitzung von vor dem 17.11.) – verständliche Meldung. *@
+        <section class="ds-willkommen" role="status">
             <span class="ds-willkommen-icon"><Icon Name="refresh" Groesse="44" /></span>
-            <h1>Nouveau lien nécessaire</h1>
-            <p>Cet écran client était lié à une ancienne caisse. À la caisse, touchez « Écran client » et scannez le nouveau code QR : l'écran restera ensuite lié à cet appareil.</p>
+            <h1>@ENote.WebApp.Services.KundenDisplayLink.UngueltigTitel</h1>
+            <p>@ENote.WebApp.Services.KundenDisplayLink.UngueltigText</p>
         </section>
     }
     else if (!verbunden || ticket is null || ticket.Positionen.Count == 0)

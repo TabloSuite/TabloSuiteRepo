@@ -6,7 +6,7 @@ namespace ENote.WebApp.Services;
 /// SignalR-Hub für Live-Umsatz-Updates und das Kunden-Display.
 /// Salon-Gruppen für Umsatz; Display-Gruppen pro Kassensitzung für das Live-Ticket.
 /// </summary>
-public class UmsatzHub : Hub
+public class UmsatzHub(Microsoft.EntityFrameworkCore.IDbContextFactory<Data.ApplicationDbContext> dbFactory) : Hub
 {
     /// <summary>
     /// Live-Umsatz abonnieren – nur mit dem geheimen Salon-Schlüssel (<see cref="SalonSchluessel"/>), nie mit der SalonId:
@@ -49,11 +49,15 @@ public class UmsatzHub : Hub
     /// <summary>
     /// Kunden-Display je Kassengerät (17.11.2026): Arbeiten zwei Geräte gleichzeitig in derselben Kasse, zeigt jedes Display nur
     /// das Ticket SEINES Geräts. Schlüssel = fester Geräteschlüssel aus dem Browser (32 Hex-Zeichen, nicht erratbar).
+    /// Seit 22.11.2026 nur mit gültigem Link (<see cref="KundenDisplayLink"/>): Läuft die Kasse inzwischen auf einem anderen
+    /// Gerät, wird nicht abonniert (false) – auch nicht von einem Client, der den Hub direkt aufruft.
     /// </summary>
-    public async Task AbonniereGeraetDisplay(string geraet)
+    public async Task<bool> AbonniereGeraetDisplay(string salonId, string geraet)
     {
-        if (IstGeraetSchluessel(geraet))
-            await Groups.AddToGroupAsync(Context.ConnectionId, GeraetDisplayGruppenName(geraet));
+        if (!Guid.TryParse(salonId, out var laden) || !await KundenDisplayLink.IstGueltigAsync(dbFactory, laden, geraet, Context.ConnectionAborted))
+            return false;
+        await Groups.AddToGroupAsync(Context.ConnectionId, GeraetDisplayGruppenName(geraet));
+        return true;
     }
 
     public async Task VerlasseGeraetDisplay(string geraet)

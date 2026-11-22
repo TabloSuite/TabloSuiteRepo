@@ -6,11 +6,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ENote.WebApp.Components.Pages;
 
-/// <summary>Kunden-Display: zeigt das laufende Ticket einer Kassensitzung live per SignalR.</summary>
+/// <summary>
+/// Kunden-Display: zeigt das laufende Ticket eines Kassengeräts live per SignalR. Seit 22.11.2026 gilt nur der Link des Geräts,
+/// an dem die Kasse zuletzt lief (<see cref="KundenDisplayLink"/>); ein alter Link zeigt « Ce lien n'est plus valide ».
+/// Geprüft beim Öffnen, sofort bei « Reprendre la caisse ici » (<see cref="AnwesenheitsSignal.KassenGeraetGewechselt"/>), nach
+/// einem Verbindungsabbruch und alle <see cref="KundenDisplayLink.PruefIntervall"/> (nächste Kasse auf einem anderen Gerät).
+/// </summary>
 public partial class Display(
     NavigationManager navigationManager,
     IDbContextFactory<ApplicationDbContext> dbContextFactory,
-    SalonService salonService) : IAsyncDisposable
+    SalonService salonService,
+    AnwesenheitsSignal signal) : IAsyncDisposable
 {
     // Ladenkopf (Name, Slogan, Logo) – nur Anzeigedaten, über die nicht erratbare Sitzungs-ID gefunden.
     private string? ladenName;
@@ -28,11 +34,15 @@ public partial class Display(
     [Parameter] public Guid SalonId { get; set; }
     [Parameter] public string? Geraet { get; set; }
 
-    private bool veralteterLink;
+    /// <summary>Link gilt nicht (mehr): alter Link je Kassensitzung, ungültiger Schlüssel oder Kasse auf einem anderen Gerät.</summary>
+    private bool ungueltig;
 
     private HubConnection? hubVerbindung;
     private bool verbunden;
     private DisplayTicket? ticket;
+    private Timer? pruefTimer;
+    private bool pruefungLaeuft;
+    private bool beendet;
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,8 +74,23 @@ public partial class Display(
         // Alter Link oder ungültiger Schlüssel: nicht verbinden, nur Hinweis zeigen.
         if (Geraet is null || !UmsatzHub.IstGeraetSchluessel(Geraet))
         {
-            veralteterLink = true;
+            ungueltig = true;
             return;
+        }
+
+        // Läuft die Kasse inzwischen auf einem anderen Gerät, gilt dieser Link nicht mehr.
+        try
+        {
+            if (!await KundenDisplayLink.IstGueltigAsync(dbContextFactory, SalonId, Geraet))
+            {
+                ungueltig = true;
+                return;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Datenbank kurz nicht erreichbar: der Hub prüft beim Abonnieren erneut.
+            Console.Error.WriteLine($"Display-Prüfung: {ex.Message}");
         }
 
         hubVerbindung = new HubConnectionBuilder()
@@ -75,6 +100,7 @@ public partial class Display(
 
         hubVerbindung.On<DisplayTicket>("DisplayAktualisiert", t =>
         {
+            if (ungueltig) return;
             ticket = t;
             InvokeAsync(StateHasChanged);
         });
@@ -87,23 +113,13 @@ public partial class Display(
         };
         hubVerbindung.Reconnected += async _ =>
         {
-            try
-            {
-                await hubVerbindung.InvokeAsync("AbonniereGeraetDisplay", Geraet);
-                verbunden = true;
-            }
-            catch
-            {
-                verbunden = false;
-            }
-            await InvokeAsync(StateHasChanged);
+            await InvokeAsync(AbonniereAsync);
         };
 
         try
         {
             await hubVerbindung.StartAsync();
-            await hubVerbindung.InvokeAsync("AbonniereGeraetDisplay", Geraet);
-            verbunden = true;
+            await AbonniereAsync();
         }
         catch
         {
@@ -111,19 +127,114 @@ public partial class Display(
         }
     }
 
+    /// <summary>Gruppe des Kassengeräts abonnieren; der Hub lehnt einen nicht mehr gültigen Link ab.</summary>
+    private async Task AbonniereAsync()
+    {
+        if (hubVerbindung is null || ungueltig) return;
+        try
+        {
+            var gueltig = await hubVerbindung.InvokeAsync<bool>("AbonniereGeraetDisplay", SalonId.ToString(), Geraet);
+            if (!gueltig)
+            {
+                await WerdeUngueltigAsync();
+                return;
+            }
+            verbunden = true;
+        }
+        catch
+        {
+            verbunden = false;
+        }
+        StateHasChanged();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // Nur interaktiv (nicht beim Vorrendern): sofort bei « Reprendre la caisse ici » und regelmäßig prüfen.
+        if (!firstRender || ungueltig || beendet) return;
+        signal.KassenGeraetGewechselt += GeraetGewechselt;
+        pruefTimer = new Timer(_ => PruefeSpaeter(), null, KundenDisplayLink.PruefIntervall, KundenDisplayLink.PruefIntervall);
+    }
+
+    private void GeraetGewechselt(Guid salonId)
+    {
+        if (salonId == SalonId) PruefeSpaeter();
+    }
+
+    /// <summary>Prüfung im Blazor-Kontext anstoßen (aus Timer oder Signal); nach dem Schließen der Seite nichts mehr.</summary>
+    private void PruefeSpaeter()
+    {
+        if (beendet || ungueltig) return;
+        try { _ = InvokeAsync(PruefeGueltigkeitAsync); }
+        catch (ObjectDisposedException) { /* Seite schon geschlossen */ }
+    }
+
+    private async Task PruefeGueltigkeitAsync()
+    {
+        if (ungueltig || pruefungLaeuft || beendet) return;
+        pruefungLaeuft = true;
+        try
+        {
+            if (await KundenDisplayLink.IstGueltigAsync(dbContextFactory, SalonId, Geraet)) return;
+        }
+        catch
+        {
+            // Datenbank kurz weg: das Display läuft weiter, nächste Prüfung im nächsten Takt.
+            return;
+        }
+        finally
+        {
+            pruefungLaeuft = false;
+        }
+        await WerdeUngueltigAsync();
+    }
+
+    /// <summary>Link gilt nicht mehr: Ticket ausblenden, Gruppe verlassen, Meldung zeigen.</summary>
+    private async Task WerdeUngueltigAsync()
+    {
+        if (ungueltig) return;
+        ungueltig = true;
+        ticket = null;
+        verbunden = false;
+        StoppePruefung();
+        await TrenneAsync();
+        StateHasChanged();
+    }
+
+    private void StoppePruefung()
+    {
+        signal.KassenGeraetGewechselt -= GeraetGewechselt;
+        pruefTimer?.Dispose();
+        pruefTimer = null;
+    }
+
+    private async Task TrenneAsync()
+    {
+        var verbindung = hubVerbindung;
+        hubVerbindung = null;
+        if (verbindung is null) return;
+        try
+        {
+            await verbindung.InvokeAsync("VerlasseGeraetDisplay", Geraet);
+        }
+        catch
+        {
+            // Beim Verlassen keine Fehler werfen.
+        }
+        try
+        {
+            await verbindung.DisposeAsync();
+        }
+        catch
+        {
+            // Beim Verlassen keine Fehler werfen.
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
-        if (hubVerbindung is not null)
-        {
-            try
-            {
-                await hubVerbindung.InvokeAsync("VerlasseGeraetDisplay", Geraet);
-                await hubVerbindung.DisposeAsync();
-            }
-            catch
-            {
-                // Beim Verlassen keine Fehler werfen.
-            }
-        }
+        beendet = true;
+        StoppePruefung();
+        await TrenneAsync();
     }
 }

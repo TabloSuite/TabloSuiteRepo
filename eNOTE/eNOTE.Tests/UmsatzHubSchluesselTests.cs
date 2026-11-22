@@ -54,7 +54,7 @@ public class UmsatzHubSchluesselTests
         public IGroupManager Groups => throw new NotSupportedException();
     }
 
-    private static UmsatzHub Hub(List<string> log) => new() { Groups = new Gruppen(log), Context = new Aufrufer() };
+    private static UmsatzHub Hub(List<string> log) => new(TestDbContextFactory.Create()) { Groups = new Gruppen(log), Context = new Aufrufer() };
 
     [Fact]
     public async Task Abonnieren_Mit_Der_SalonId_Wird_Ignoriert()

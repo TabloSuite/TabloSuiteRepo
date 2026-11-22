@@ -250,7 +250,7 @@ public static partial class FormationKatalog
                     "Les autres appareils affichent « La caisse est ouverte sur un autre appareil ».",
                     "Appareil en panne ? Le propriétaire touche « Reprendre la caisse ici » avec son code PIN : l'ancien appareil n'encaisse plus.",
                     "Une autre personne prend la caisse ? Elle touche « Changer » (« Qui encaisse ? ») : chaque vente est au nom de la bonne personne, et le reçu indique « Servi par … ».",
-                    "« Écran client » : un code QR à scanner avec une deuxième tablette tournée vers le client ; elle suit le ticket de cet appareil, aussi les jours suivants. Après « Reprendre la caisse ici », scannez le code du nouvel appareil."),
+                    "« Écran client » : un code QR à scanner avec une deuxième tablette tournée vers le client ; elle suit le ticket de cet appareil, aussi les jours suivants. Après « Reprendre la caisse ici » (ou si la caisse s'ouvre sur un autre appareil), l'ancien lien affiche « Ce lien n'est plus valide » : scannez le code du nouvel appareil."),
                 L("Ticket en attente et remboursement",
                     "Un ticket en attente n'est pas une vente : rien n'est encaissé, rien ne sort du stock. Quand on le reprend, les prix du jour comptent.",
                     "Un ticket commencé, ni encaissé ni mis en attente, est perdu à la clôture (eNOTE le rappelle).",
