@@ -1,10 +1,14 @@
 @* Nicht angemeldet → Anmeldung (mit Rückweg); angemeldet ohne Recht → « Accès refusé ». *@
 @inject NavigationManager Nav
+@inject Skoulou.WebApp.Services.Plattform.VerbindungsStatus Verbindung
+@implements IDisposable
 
 <LadeIndikator Sichtbar="true" />
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthZustand { get; set; }
+
+    private bool umleitungAusstehend;
 
     protected override async Task OnInitializedAsync()
     {
@@ -14,7 +18,25 @@
             Nav.NavigateTo("/acces-refuse", replace: true);
             return;
         }
+        Verbindung.WiederVerbunden += NachWiederverbindung;
+        ZurAnmeldung();
+    }
+
+    private void ZurAnmeldung()
+    {
+        // Sitzung endete bei geschlossenem Tab: NavigateTo würde als « Unhandled exception in circuit » im Log enden.
+        if (!Verbindung.Verbunden) { umleitungAusstehend = true; return; }
+        umleitungAusstehend = false;
+        Verbindung.WiederVerbunden -= NachWiederverbindung;
         var pfad = "/" + Nav.ToBaseRelativePath(Nav.Uri);
         Nav.NavigateTo("/auth/connexion?returnUrl=" + Uri.EscapeDataString(pfad), forceLoad: true);
     }
+
+    /// <summary>Browser wieder verbunden: eine aufgeschobene Umleitung jetzt ausführen.</summary>
+    private void NachWiederverbindung()
+    {
+        if (umleitungAusstehend) _ = InvokeAsync(ZurAnmeldung);
+    }
+
+    public void Dispose() => Verbindung.WiederVerbunden -= NachWiederverbindung;
 }

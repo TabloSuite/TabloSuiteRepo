@@ -56,6 +56,9 @@ public static class PlattformRegistrierung
         services.AddCascadingAuthenticationState();
         services.AddSingleton<SitzungsPruefung>();
         services.AddScoped<AuthenticationStateProvider, SitzungsRevalidierung>();
+        // Umleitung zur Anmeldung nur mit verbundenem Browser (sonst « Unhandled exception in circuit » im Log)
+        services.AddScoped<VerbindungsStatus>();
+        services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler>(sp => sp.GetRequiredService<VerbindungsStatus>());
 
         services.AddScoped<AnmeldeService>();
         services.AddScoped<PasswortService>();
