@@ -28,6 +28,18 @@ public class BulletinTests
     }
 
     [Fact]
+    public async Task Klassenwechsel_rueckdatiert_in_veroeffentlichte_Periode_wird_abgewiesen()
+    {
+        // Klicktest 21.11.2026: T1 der 6e A veröffentlicht, Wechsel nach 6e B zum 01.12. → zwei gültige T1-Bulletins.
+        var w = await NotenWelt.ErstelleAsync();
+        await w.VollstaendigAsync();
+        await w.VeroeffentlichenAsync();
+        var f = await Assert.ThrowsAsync<FachFehler>(() => w.O.D.Einschreibung.KlasseWechselnAsync(w.D, w.O.Schueler, w.O.Klasse6B, new DateOnly(2026, 12, 1)));
+        Assert.Contains("déjà publiés", f.Message);
+        await w.O.D.Einschreibung.KlasseWechselnAsync(w.D, w.O.Schueler, w.O.Klasse6B, new DateOnly(2027, 1, 5));   // nach dem Periodenende
+    }
+
+    [Fact]
     public async Task Veroeffentlichung_vergibt_Nummern_Token_Mails_und_sperrt()
     {
         var w = await NotenWelt.ErstelleAsync();

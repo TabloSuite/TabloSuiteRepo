@@ -216,6 +216,15 @@ public sealed class EinschreibungService(
             if (datum <= alt.Von)
                 throw new FachFehler($"Le changement doit avoir lieu après le {SkoulouKultur.Datum(alt.Von)} (début de l'inscription actuelle). Pour corriger une erreur d'inscription, annulez l'inscription.", "datum");
             var altName = await db.Klassen.Where(k => k.Id == alt.KlasseId).Select(k => k.Name).FirstAsync(ct);
+            // Rückdatiert in eine schon veröffentlichte Periode der alten Klasse: das Bulletin der alten Klasse bleibt gültig und
+            // die neue Klasse gäbe ein zweites aus (Klicktest 21.11.2026: zwei gültige T1-Bulletins nach Wechsel zum 01.12.).
+            var veroeffentlicht = await (from v in db.KlassenVeroeffentlichungen
+                                         join p in db.Perioden on v.PeriodeId equals p.Id
+                                         where v.KlasseId == alt.KlasseId && p.Ende >= datum
+                                         orderby p.Ende descending
+                                         select new { p.Titel, p.Ende }).FirstOrDefaultAsync(ct);
+            if (veroeffentlicht is not null)
+                throw new FachFehler($"Les bulletins du {veroeffentlicht.Titel} sont déjà publiés pour {altName} : le changement de classe doit avoir lieu après le {SkoulouKultur.Datum(veroeffentlicht.Ende)}.", "datum");
 
             // Session-Klasse: endete die Session schon vorher, endet die alte Einschreibung mit ihr.
             alt.Bis = SessionRegel.Ende(datum.AddDays(-1), await SessionEndeAsync(db, alt.KlasseId, ct));
