@@ -31,8 +31,15 @@ public partial class Caisse(
     // ================= Anwesende Kunden (« Clients présents ») =================
 
     /// <summary>Aus « Clients présents » → Encaisser: Kunde direkt ans Ticket.</summary>
+    // Als Text binden: « ?kunde=kaputt » (veralteter/beschädigter Link) warf beim Binden → Fehlergrenze statt Kasse.
     [SupplyParameterFromQuery(Name = "kunde")]
-    public Guid? KundeAusLink { get; set; }
+    public string? KundeAusLinkText { get; set; }
+
+    private Guid? KundeAusLink
+    {
+        get => LinkParameter.AlsGuid(KundeAusLinkText);
+        set => KundeAusLinkText = value?.ToString();
+    }
 
     private List<KundenBesuchService.Anwesend> anwesende = [];
     /// <summary>Ortszeit des Ladens der offenen Kasse.</summary>

@@ -62,7 +62,10 @@
 </div>
 
 @code {
-    [SupplyParameterFromQuery(Name = "compte")] public Guid Compte { get; set; }
+    // Als Text binden (Fehlersuche 21.11.2026: « compte=kaputt » aus einem beschädigten Mail-Link → HTTP 500).
+    // Unlesbar = Guid.Empty → « Lien invalide ou expiré ».
+    [SupplyParameterFromQuery(Name = "compte")] public string? CompteText { get; set; }
+    private Guid Compte => ENote.WebApp.Services.LinkParameter.AlsGuid(CompteText) ?? Guid.Empty;
     [SupplyParameterFromQuery(Name = "code")] public string? Code { get; set; }
     private string passwort = "", confirmation = "";
     private string? message;
