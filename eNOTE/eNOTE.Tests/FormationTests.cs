@@ -190,6 +190,19 @@ public class FormationTests
     }
 
     [Fact]
+    public async Task Keine_Erinnerung_Nach_Fristablauf_Wenn_Runde_Noch_Offen()
+    {
+        // Klicktest 22.11.: Dienst lief erst nach der Frist (Betriebspause) → « Rappel … se termine le 30.08. » am 31.08.
+        var d = await BasisAsync();
+        await d.Dienst.AktualisiereAsync(d.Po);
+        foreach (var m in await d.Dienst.GetOffeneMeldungenAsync()) await d.Dienst.MarkiereGemeldetAsync(m.RundeId, m.Art);
+        d.Uhr.Jetzt = d.Uhr.Jetzt.AddDays(31);   // Frist (30 Tage) vorbei, Runde aber noch nicht abgeschlossen
+        Assert.DoesNotContain(await d.Dienst.GetOffeneMeldungenAsync(), m => m.Art == "rappel");
+        await d.Dienst.AktualisiereAsync(d.Po);   // schließt ab → Meldung « resultat » (manquée)
+        Assert.Contains(await d.Dienst.GetOffeneMeldungenAsync(), m => m.Art == "resultat");
+    }
+
+    [Fact]
     public async Task Keine_Erinnerung_Wenn_Schon_Bestanden_Abgegeben()
     {
         var d = await BasisAsync();

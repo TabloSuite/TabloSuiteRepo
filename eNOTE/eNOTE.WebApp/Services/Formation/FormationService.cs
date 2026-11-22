@@ -717,7 +717,9 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
             if (r.Status == FormationRundenStatus.Offen)
             {
                 if (r.BenachrichtigtUtc is null) liste.Add(new(r.Id, r.ProduktOwnerId, "ouverte", r.FristUtc, null, r.BestehensGrenzeProzent, r.FragenAnzahl));
-                else if (r.ErinnerungUtc is null && r.FristUtc <= grenze && r.Versuche.Count(v => v.AbgegebenUtc != null) < FormationRunde.MaxVersuche)
+                // Nur vor Fristende: nach Ablauf (Runde noch nicht abgeschlossen, z. B. nach einer Betriebspause) keine
+                // Erinnerung « se termine le … » mit einem Datum in der Vergangenheit – dann folgt « manquée ».
+                else if (r.ErinnerungUtc is null && r.FristUtc <= grenze && r.FristUtc > Jetzt && r.Versuche.Count(v => v.AbgegebenUtc != null) < FormationRunde.MaxVersuche)
                 {
                     // Schon bestanden abgegeben → keine Erinnerung nötig (zählt zur Frist ohnehin).
                     var note = r.Versuche.Where(v => v.AbgegebenUtc != null).MaxBy(v => v.Nummer)?.Prozent;
