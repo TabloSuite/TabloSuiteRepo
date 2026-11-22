@@ -343,6 +343,9 @@ Von mir entschieden (änderbar):
     recevoir – facture … annulée par SKOULOU (annule ECR-…) » – bewusste Ausnahme zu §5 Regel 9: der Saldo zeigt das Geld, das
     SKOULOU zurückzahlt. Die Direktion bekommt eine Mail (Outbox, Bezug `facture-skoulou-annulee`); Rechnungsdetail zeigt
     « Remboursement ». Der negative Ausgleichsanteil des Responsable bleibt wie bisher.
+40. **Rechnung in der Periode der Anmeldung:** Rechnungsansicht (Schule, Admin, Responsable) und PDF erklären die geringere Zahl
+    der Monate mit « (2 mois × 500 FCFA) à partir du 01/11/2027 (mois d'inscription) » (`RechnungDetail.AbAnmeldung`), wie
+    « Facturer maintenant » und das Journal.
 
 ---
 

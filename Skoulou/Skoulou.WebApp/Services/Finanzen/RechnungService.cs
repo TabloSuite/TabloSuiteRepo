@@ -25,10 +25,18 @@ public sealed record AnteilKurz(string Responsable, decimal Prozent, long Betrag
 /// </summary>
 public sealed record RechnungDetail(RechnungZeile Kopf, long ProSchueler, IReadOnlyList<PositionZeile> Positionen, IReadOnlyList<MeldungZeile> Meldungen,
     IReadOnlyList<AnteilKurz> Anteile, string? BestaetigtVon, DateTime? BestaetigtAmUtc, string? ErgaenztNummer, bool SchuelerVerborgen = false,
-    int Monate = 0, long? Monatspreis = null)
+    int Monate = 0, long? Monatspreis = null, DateOnly? AbAnmeldung = null)
 {
-    /// <summary>« (3 mois × 500 FCFA) » oder leer.</summary>
-    public string Aufschluesselung => Monatspreis is { } m ? $"({Monate} mois × {SkoulouKultur.Fcfa(m)})" : string.Empty;
+    /// <summary>« (3 mois × 500 FCFA) » oder leer; in der Periode der Anmeldung « (2 mois × 500 FCFA) à partir du 01/11/2027 (mois d'inscription) ».</summary>
+    public string Aufschluesselung => Monatspreis is { } m
+        ? $"({Monate} mois × {SkoulouKultur.Fcfa(m)}){(AbHinweis is { } ab ? $" {ab}" : string.Empty)}"
+        : string.Empty;
+
+    /// <summary>
+    /// Nutzer 22.11.2026: Rechnung erklärt, warum sie weniger Monate als die Periode zählt – die Periode der Anmeldung läuft erst ab
+    /// dem 1. des Anmeldemonats (wie Admin-Dialog und Protokoll, 21.11.2026).
+    /// </summary>
+    public string? AbHinweis => AbAnmeldung is { } ab ? $"à partir du {SkoulouKultur.Datum(ab)} (mois d'inscription)" : null;
 }
 public sealed record RechnungsZaehler(int Alle, int Ouvertes, int Declarees, int Contestees, int Payees, int Annulees, int EnRetard, long ResteAPayer);
 public sealed record MeldungEingabe(long? Betrag, DateOnly? Datum, string? Referenz);
@@ -173,10 +181,12 @@ public sealed class RechnungService(
                            join s in db.Schulen on p.SchuleId equals s.Id
                            select new { p.Beginn, p.Ende, j.PlattformMonatspreis, s.ErstelltAmUtc }).FirstAsync(ct);
         // Wie bei der Abrechnung: in der Periode der Anmeldung erst ab dem Anmeldemonat (21.11.2026).
-        var monate = PlattformAnteil.Monate(PlattformAnteil.AbrechnungsBeginn(basis.Beginn, basis.Ende, DateOnly.FromDateTime(basis.ErstelltAmUtc)), basis.Ende);
+        var ab = PlattformAnteil.AbrechnungsBeginn(basis.Beginn, basis.Ende, DateOnly.FromDateTime(basis.ErstelltAmUtc));
+        var monate = PlattformAnteil.Monate(ab, basis.Ende);
         var monatspreis = basis.PlattformMonatspreis is { } preis && preis * monate == proSchueler ? preis : (long?)null;
         return new RechnungDetail(kopf, proSchueler, positionen, meldungen, anteile, bestaetigt, r.BestaetigtAmUtc, ergaenzt,
-            SchuelerVerborgen: ohneSchueler, Monate: monate, Monatspreis: monatspreis);
+            SchuelerVerborgen: ohneSchueler, Monate: monate, Monatspreis: monatspreis,
+            AbAnmeldung: monatspreis is not null && ab > basis.Beginn ? ab : null);
     }
 
     public async Task<Organisation.Druck.PdfDatei> PdfAsync(Guid akteurId, Guid rechnungId, CancellationToken ct = default)

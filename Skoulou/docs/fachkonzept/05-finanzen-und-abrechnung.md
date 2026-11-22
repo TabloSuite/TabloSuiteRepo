@@ -158,6 +158,8 @@ Verbindliche Fachentscheidung (Doc `docs/Automatischer-Schuelerzugang-und-Zyklus
   - Keine Fälligkeit, keine Mahnung, keine Teilzahlung, kein Storno/Gutschrift einer Rechnung; abgelehnte Rechnungen behalten ihre Positionen dauerhaft.
   - **Neubau (Nutzer 22.11.2026):** Storniert der Admin eine schon bezahlte Rechnung, bucht SKOULOU im Kassenjournal der Schule die
     Gegenbuchung « Remboursement à recevoir – facture … annulée par SKOULOU » (einmal je Ausgabe) und schreibt der Direktion eine Mail.
+  - **Neubau (Nutzer 22.11.2026):** Rechnung (Ansicht und PDF) der Periode, in der sich die Schule angemeldet hat, nennt den ersten
+    berechneten Tag: « à partir du JJ/MM/AAAA (mois d'inscription) ».
 - **R21 Verpflichtungsübersicht** « Engagements de l'école par cycle » (`AbrechnungService.GetZyklusVerpflichtungenAsync:25-50`, Recht Billing): je laufendem neuen Zyklus `Teilnehmer = Anzahl nicht stornierter Teilnahmen`, `Betrag = Σ PriceAtEnrollment` → « Engagement provisoire »; `OffeneRechnungen = alle Rechnungen ≠ Bestaetigt` (Anzahl, Summe); `ZahlungGemeldet = Σ Umsatz mit Status Akzeptiert`.
 
 ### 3.7 Saldo der Direktion (« Finances de l'école »)

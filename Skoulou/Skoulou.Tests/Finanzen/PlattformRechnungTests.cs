@@ -79,16 +79,28 @@ public class PlattformRechnungTests
 
         var detail = await w.Rechnungen.DetailAsync(w.D, r.Id);
         Assert.Equal((2_500L, 2, 1_250L), (detail.ProSchueler, detail.Monate, detail.Monatspreis));
-        Assert.Equal("(2 mois × 1.250 FCFA)", detail.Aufschluesselung);
+        // Nutzer 22.11.2026: auch die Rechnung der Schule (Ansicht und PDF, beide über Aufschluesselung) nennt den Anmeldemonat.
+        Assert.Equal(new DateOnly(2026, 11, 1), detail.AbAnmeldung);
+        Assert.Equal("(2 mois × 1.250 FCFA) à partir du 01/11/2026 (mois d'inscription)", detail.Aufschluesselung);
         Assert.Contains(await w.MitDbAsync(db => db.AuditEintraege.Select(a => a.Text).ToListAsync()),
             t => t.Contains("(2 mois × 1.250 FCFA, à partir du 01/11/2026 – mois d'inscription de l'établissement)"));
         Assert.Equal("%PDF"u8.ToArray(), (await w.Rechnungen.PdfAsync(w.D, r.Id)).Inhalt[..4]);
+        Assert.Contains("d.Aufschluesselung", File.ReadAllText(Path.Combine(WebAppOrdner(), "Services", "Finanzen", "Druck", "RechnungPdf.cs")));
 
-        // Das 2e trimestre danach ganz normal (3 Monate).
+        // Das 2e trimestre danach ganz normal (3 Monate, ohne Zusatz).
         w.Heute(new(2027, 3, 27));
         Assert.Equal(1, await w.Abrechnung.FaelligeAbrechnenAsync());
         var p2 = await w.MitDbAsync(db => db.Plattformrechnungen.Include(x => x.Positionen).SingleAsync(x => x.PeriodeId == w.Org.P2));
         Assert.All(p2.Positionen, p => Assert.Equal(3 * 1_250, p.Betrag));
+        var d2 = await w.Rechnungen.DetailAsync(w.D, p2.Id);
+        Assert.Equal((null, "(3 mois × 1.250 FCFA)"), (d2.AbAnmeldung, d2.Aufschluesselung));
+    }
+
+    private static string WebAppOrdner()
+    {
+        var d = new DirectoryInfo(AppContext.BaseDirectory);
+        while (d is not null && !Directory.Exists(Path.Combine(d.FullName, "Skoulou.WebApp"))) d = d.Parent;
+        return Path.Combine(d!.FullName, "Skoulou.WebApp");
     }
 
     [Fact]
