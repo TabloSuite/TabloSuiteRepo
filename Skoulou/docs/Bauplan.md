@@ -335,9 +335,9 @@ Von mir entschieden (änderbar):
     archiviert (Status `Archive`, Sitzung beendet, Journal). Anmeldung danach mit eigener Meldung (« compte archivé … demandez à la
     direction de le réactiver »); Noten/Bulletins bleiben für die Schule; « Réintégrer » macht das Konto wieder aktiv (Einschreiben
     verlangt das zuerst). Eltern-Konten bleiben unberührt. Keine Migration.
-38. **Passage vor dem Jahresende** (heute in der Zeitzone der Schule vor « Fin » des Schuljahres): Warnung « L'année … n'est pas
-    terminée : elle se termine le JJ/MM/AAAA » oben auf der Seite und im Dialog; « Effectuer » erst nach ausdrücklicher Bestätigung,
-    auch serverseitig (`PassagePlan.VorJahresendeBestaetigt`).
+38. **Passage vor dem Jahresende** (heute in der Zeitzone der Schule vor dem Jahresende – seit Nr. 46 das Ende der letzten
+    zählenden Periode): Warnung « L'année … n'est pas terminée : … se termine le JJ/MM/AAAA » oben auf der Seite und im Dialog;
+    « Effectuer » erst nach ausdrücklicher Bestätigung, auch serverseitig (`PassagePlan.VorJahresendeBestaetigt`).
 39. **Storno einer bezahlten (bestätigten) Plattformrechnung:** wie beim gemeldeten, nicht bestätigten Fall (21.11.2026) entsteht je
     Ausgabe « Facture SKOULOU » genau eine Gegenbuchung (Recette, Herkunft `Annulation`, `StornoVonId`), Text « Remboursement à
     recevoir – facture … annulée par SKOULOU (annule ECR-…) » – bewusste Ausnahme zu §5 Regel 9: der Saldo zeigt das Geld, das
@@ -358,12 +358,16 @@ Von mir entschieden (änderbar):
     (`KorrekturService.ZaehlerAsync`, `KorrekturFilter.OhneLehrauftrag`). Serverseitige Rechte unverändert.
 44. Texte à trous: « 6 / 7 » (mit Leerzeichen) zählt wie « 6/7 » – bleibt so (Leerzeichen werden normalisiert).
 
-**Vom Nutzer entschieden 22.11.2026 (Rückfragen R5–R9 aus dem Normaltest):**
+**Vom Nutzer entschieden 22.11.2026 (Rückfragen R5, R7, R8, R9 aus dem Normaltest):**
 45. **Eintrittsperiode ohne Note** (Ergänzung zu Nr. 35): Kommt ein Schüler erst im Lauf einer Periode in die Schule und hat er
     darin keine einzige eingetragene Note (auch « abs. »/« disp. » zählen als eingetragen), zählt diese Periode für sein
     Jahresmittel und seinen Jahresrang nicht – wie eine Periode ohne Einschreibung; im Bilan « — (arrivé(e) en cours de période,
     sans note) ». Mit mindestens einer Note bleibt alles wie bisher (fehlende Noten → « Notes incomplètes »). Gilt nur, wenn die
     Einschreibung nach dem Periodenbeginn beginnt und er zu Periodenbeginn in keiner Klasse der Schule war (`KlassenRechner.Teilnahme`).
+46. **Passage – maßgebliches Jahresende** (Änderung zu Nr. 38): das Ende der **letzten Periode, die fürs Jahr zählt**, nicht mehr
+    « Fin » des Schuljahres; ohne zählende Periode wie bisher « Fin ». Warnung « … sa dernière période, « 3e trimestre », se termine
+    le 30/06/2027 », Dialog und Fehlermeldung « (fin de « 3e trimestre » le 30/06/2027) » (`PassageVorschau.JahrLaeuftBisPeriode`).
+    Ein Examen blanc nach dem letzten Trimester verlangt keine Bestätigung mehr.
 
 ---
 

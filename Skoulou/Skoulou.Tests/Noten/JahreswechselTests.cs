@@ -280,10 +280,10 @@ public class JahreswechselTests
 
         var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
         Assert.Equal(new DateOnly(2027, 6, 30), v.JahrLaeuftBis);
-        Assert.StartsWith("L'année 2026-2027 n'est pas terminée : elle se termine le 30/06/2027.", v.Warnungen[0]);
+        Assert.StartsWith("L'année 2026-2027 n'est pas terminée : sa dernière période, « 3e trimestre », se termine le 30/06/2027.", v.Warnungen[0]);
         Assert.True(v.Bereit);   // nur Warnung + Bestätigung, keine Sperre der Seite
         var f = await Assert.ThrowsAsync<FachFehler>(() => w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan));
-        Assert.Contains("n'est pas terminée (fin le 30/06/2027)", f.Message);
+        Assert.Contains("n'est pas terminée (fin de « 3e trimestre » le 30/06/2027)", f.Message);
         Assert.Equal(0, await w.MitDbAsync(db => db.Einschreibungen.CountAsync(e => e.SchuljahrId == w.O.JahrVorb)));
 
         plan.VorJahresendeBestaetigt = true;
@@ -302,6 +302,53 @@ public class JahreswechselTests
         Assert.Null(v.JahrLaeuftBis);
         Assert.DoesNotContain(v.Warnungen, x => x.Contains("n'est pas terminée"));
         Assert.Equal(2, (await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan)).Einschreibungen);
+    }
+
+    [Fact]
+    public async Task Massgeblich_ist_das_Ende_der_letzten_zaehlenden_Periode_nicht_Fin()
+    {
+        // Nutzer 22.11.2026 (R7): « Fin » des Schuljahres am 31/07, 3e trimestre bis 30/06, danach ein Examen blanc (zählt nicht).
+        var w = await NotenWelt.ErstelleAsync();
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Admis);
+        await w.AendernAsync(async db =>
+        {
+            (await db.Schuljahre.SingleAsync(j => j.Id == w.O.Jahr)).Ende = new DateOnly(2027, 7, 31);
+            db.Perioden.Add(new Periode
+            {
+                SchuleId = w.O.SchuleA, SchuljahrId = w.O.Jahr, Nr = 4, Titel = "Examen blanc", Beginn = new(2027, 7, 5), Ende = new(2027, 7, 20),
+                ZaehltFuerJahr = false, Jahresgewicht = 0
+            });
+        });
+
+        w.Zeit.Jetzt = new DateTimeOffset(2027, 6, 15, 8, 0, 0, TimeSpan.Zero);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal((new DateOnly(2027, 6, 30), "3e trimestre"), (v.JahrLaeuftBis, v.JahrLaeuftBisPeriode));
+        Assert.Contains("« 3e trimestre », se termine le 30/06/2027", v.Warnungen[0]);
+
+        // Nach dem 3e trimestre, aber vor « Fin » (31/07) und vor dem Examen blanc: keine Warnung, keine Bestätigung.
+        w.Zeit.Jetzt = new DateTimeOffset(2027, 7, 1, 8, 0, 0, TimeSpan.Zero);
+        v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        Assert.False(v.VorJahresende);
+        Assert.DoesNotContain(v.Warnungen, x => x.Contains("n'est pas terminée"));
+        Assert.Equal(2, (await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan)).Einschreibungen);
+    }
+
+    [Fact]
+    public async Task Ohne_zaehlende_Perioden_gilt_Fin_des_Schuljahres()
+    {
+        var w = await NotenWelt.ErstelleAsync();
+        await w.AendernAsync(async db =>
+        {
+            (await db.Schuljahre.SingleAsync(j => j.Id == w.O.Jahr)).Ende = new DateOnly(2027, 7, 31);
+            foreach (var p in await db.Perioden.Where(p => p.SchuljahrId == w.O.Jahr).ToListAsync()) p.ZaehltFuerJahr = false;
+        });
+        w.Zeit.Jetzt = new DateTimeOffset(2027, 7, 1, 8, 0, 0, TimeSpan.Zero);
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, await w.Wechsel.PlanAsync(w.D, w.O.Jahr));
+        Assert.Equal((new DateOnly(2027, 7, 31), null), (v.JahrLaeuftBis, v.JahrLaeuftBisPeriode));
+        Assert.StartsWith("L'année 2026-2027 n'est pas terminée : elle se termine le 31/07/2027.", v.Warnungen[0]);
+        Assert.Equal("fin le 31/07/2027", v.JahresendeText);
     }
 
     [Fact]

@@ -138,7 +138,7 @@ else
     <p>@v?.Eingeschrieben élève(s) seront inscrits en @v?.NeuesJahr et @v?.Sortants quitteront l'établissement@(plan?.AbgaengerArchivieren == true && v?.Sortants > 0 ? " (leurs comptes seront archivés)" : null). L'année @v?.AltesJahr sera ensuite clôturée (le directeur peut la rouvrir avec un motif).</p>
     @if (v?.JahrLaeuftBis is { } jahresende && plan is not null)
     {
-        <Hinweis Art="warn">Attention : l'année @v.AltesJahr <strong>n'est pas terminée</strong> (fin le @SkoulouKultur.Datum(jahresende)). Le passage la clôture dès maintenant.</Hinweis>
+        <Hinweis Art="warn">Attention : l'année @v.AltesJahr <strong>n'est pas terminée</strong> (@v.JahresendeText). Le passage la clôture dès maintenant.</Hinweis>
         <Schalter Wert="plan.VorJahresendeBestaetigt" WertChanged="b => plan.VorJahresendeBestaetigt = b"
                   Label="@($"Je confirme effectuer le passage avant la fin de l'année ({SkoulouKultur.Datum(jahresende)})")" />
     }

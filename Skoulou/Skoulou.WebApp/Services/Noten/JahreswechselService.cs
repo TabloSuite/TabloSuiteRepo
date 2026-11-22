@@ -83,12 +83,19 @@ public sealed record PassageUeberbelegung(string Klasse, int Bestand, int Zugaen
 
 public sealed record PassageVorschau(Guid AltesJahrId, string AltesJahr, SchuljahrStatus AltStatus, Guid? NeuesJahrId, string NeuesJahr,
     DateOnly NeuBeginn, DateOnly NeuEnde, int NeuePerioden, IReadOnlyList<PassageKlasse> Klassen, IReadOnlyList<string> Warnungen, bool BereitsAusgefuehrt,
-    IReadOnlyList<PassageUeberbelegung>? Ueberbelegungen = null, DateOnly? JahrLaeuftBis = null)
+    IReadOnlyList<PassageUeberbelegung>? Ueberbelegungen = null, DateOnly? JahrLaeuftBis = null, string? JahrLaeuftBisPeriode = null)
 {
     public IReadOnlyList<PassageUeberbelegung> Ueberbelegt => Ueberbelegungen ?? [];
 
-    /// <summary>Heute liegt vor dem Ende des alten Schuljahres: Warnung und ausdrückliche Bestätigung nötig.</summary>
+    /// <summary>
+    /// Heute liegt vor dem Ende des alten Schuljahres – Ende der letzten Periode, die fürs Jahr zählt (<see cref="JahrLaeuftBisPeriode"/>),
+    /// ohne Perioden « Fin » des Schuljahres: Warnung und ausdrückliche Bestätigung nötig.
+    /// </summary>
     public bool VorJahresende => JahrLaeuftBis is not null;
+
+    /// <summary>« fin le 30/06/2027 » bzw. « fin de « 3e trimestre » le 30/06/2027 » für Dialog und Fehlermeldung.</summary>
+    public string? JahresendeText => JahrLaeuftBis is not { } ende ? null
+        : JahrLaeuftBisPeriode is { } titel ? $"fin de « {titel} » le {SkoulouKultur.Datum(ende)}" : $"fin le {SkoulouKultur.Datum(ende)}";
 
     public int Offen => Klassen.Sum(k => k.Anzahl(JahresEntscheidungsArt.Offen));
     public int Eingeschrieben => Klassen.Sum(k => k.Schueler.Count(s => s.Ziel is not null));
@@ -168,10 +175,13 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             if (ohne > 0) warnungen.Add($"{ohne} classe(s) n'ont pas encore de bulletins publiés pour « {letzte.Titel} ».");
         }
         var bereits = alt.Status == SchuljahrStatus.Abgeschlossen && schueler.Count == 0;
-        // Nutzer 22.11.2026: vor dem Ende des Schuljahres (Datum « Fin » der Année scolaire, Zeitzone der Schule) deutlich warnen.
-        DateOnly? laeuftBis = !bereits && new SchulZeit(zeit).Heute < alt.Ende ? alt.Ende : null;
+        // Nutzer 22.11.2026: vor dem Ende des Schuljahres (Zeitzone der Schule) deutlich warnen. Maßgeblich ist das Ende der letzten
+        // Periode, die fürs Jahr zählt (R7); ohne solche Periode das Datum « Fin » der Année scolaire.
+        var jahresende = letzte?.Ende ?? alt.Ende;
+        DateOnly? laeuftBis = !bereits && new SchulZeit(zeit).Heute < jahresende ? jahresende : null;
         if (laeuftBis is { } ende)
-            warnungen.Insert(0, $"L'année {alt.Bezeichnung} n'est pas terminée : elle se termine le {SkoulouKultur.Datum(ende)}. "
+            warnungen.Insert(0, $"L'année {alt.Bezeichnung} n'est pas terminée : "
+                + (letzte is null ? $"elle se termine le {SkoulouKultur.Datum(ende)}. " : $"sa dernière période, « {letzte.Titel} », se termine le {SkoulouKultur.Datum(ende)}. ")
                 + "Le passage la clôture dès maintenant ; effectuez-le de préférence après la fin de l'année (une confirmation vous sera demandée).");
         var ergebnis = klassen.Select(k =>
         {
@@ -201,7 +211,7 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
         var anzahlPerioden = neu is null ? perioden.Count : await db.Perioden.CountAsync(p => p.SchuljahrId == neu.Id, ct);
         return new PassageVorschau(alt.Id, alt.Bezeichnung, alt.Status, neu?.Id, neuesJahr,
             neu?.Beginn ?? plan.Beginn ?? alt.Beginn.AddYears(1), neu?.Ende ?? plan.Ende ?? alt.Ende.AddYears(1), anzahlPerioden, ergebnis, warnungen, bereits,
-            ueberbelegt, laeuftBis);
+            ueberbelegt, laeuftBis, laeuftBis is null ? null : letzte?.Titel);
     }
 
     /// <summary>
@@ -270,8 +280,8 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var vorschau = await RechneAsync(db, alt, plan, ct);
             if (vorschau.AdmisOhneKlasse > 0 && !plan.AbgaengeBestaetigt)
                 throw new FachFehler($"{vorschau.AdmisOhneKlasse} élève(s) admis n'ont pas de classe dans l'année suivante : confirmez qu'ils quittent l'établissement ou choisissez leur classe.");
-            if (vorschau.JahrLaeuftBis is { } jahresende && !plan.VorJahresendeBestaetigt)
-                throw new FachFehler($"L'année {alt.Bezeichnung} n'est pas terminée (fin le {SkoulouKultur.Datum(jahresende)}) : confirmez que vous effectuez le passage avant la fin de l'année.");
+            if (vorschau.VorJahresende && !plan.VorJahresendeBestaetigt)
+                throw new FachFehler($"L'année {alt.Bezeichnung} n'est pas terminée ({vorschau.JahresendeText}) : confirmez que vous effectuez le passage avant la fin de l'année.");
             if (vorschau.BereitsAusgefuehrt) throw new FachFehler($"Le passage de l'année {alt.Bezeichnung} a déjà été effectué.");
             if (vorschau.Offen > 0)
                 throw new FachFehler($"{vorschau.Offen} élève(s) n'ont pas encore de décision de fin d'année : renseignez-la (conseil de classe) ou appliquez « Admis » aux élèves sans décision.");
