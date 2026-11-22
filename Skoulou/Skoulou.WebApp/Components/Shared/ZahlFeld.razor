@@ -11,8 +11,10 @@
         }
         else
         {
-            <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="decimal" name="@Name" value="@Anzeige"
-                   placeholder="@Platzhalter" disabled="@Deaktiviert" @onchange="AendernAsync" />
+            @* Klicktest 21.11.2026: ungültige Eingabe (Koeffizient « 0 ») zeigte nur einen Fehler, der alte Wert galt still weiter
+               (« Ajouter » legte das Fach mit 1 an). Jetzt springt das Feld auf den geltenden Wert zurück und sagt es. *@
+            <input id="@id" class="sk-eingabe sk-zahl" type="text" inputmode="decimal" name="@Name"
+                   placeholder="@Platzhalter" disabled="@Deaktiviert" @bind:get="text" @bind:set="AendernAsync" />
         }
         @if (Einheit is not null)
         {
@@ -52,7 +54,7 @@
     protected override void OnParametersSet()
     {
         // Wert von außen geändert (Laden, Zurücksetzen): neu anzeigen. Der eigene, noch getippte Text bleibt stehen.
-        if (Sofort && (text is null || Wert != textWert)) (text, textWert) = (Anzeige, Wert);
+        if (text is null || Wert != textWert) (text, textWert) = (Anzeige, Wert);
     }
 
     /// <summary>Liest die Eingabe: gültig (leer = null) oder Meldung.</summary>
@@ -68,12 +70,20 @@
         return (true, wert, null);
     }
 
-    private async Task AendernAsync(ChangeEventArgs e)
+    private async Task AendernAsync(string? eingabe)
     {
-        var (ok, wert, fehler) = Lies(e.Value?.ToString());
+        text = eingabe;
+        var (ok, wert, fehler) = Lies(eingabe);
         eigenerFehler = fehler;
-        if (!ok) return;
+        if (!ok)
+        {
+            // Nicht still den alten Wert behalten: Feld zeigt wieder den geltenden Wert, die Meldung sagt es.
+            eigenerFehler = $"{fehler} {(Wert is null ? "Le champ reste vide." : $"La valeur {Anzeige} est conservée.")}";
+            text = Anzeige;
+            return;
+        }
         Wert = wert;
+        (text, textWert) = (Anzeige, wert);
         await WertChanged.InvokeAsync(wert);
     }
 
