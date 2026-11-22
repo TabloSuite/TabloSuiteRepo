@@ -126,7 +126,7 @@ public static class GuideTexte
         [
             new("Leçons et exercices", "Créez une leçon avec ses pages et ses questions, puis attribuez-la à une classe.", "/enseignant/lecons"),
             new("Examens", "Préparez un examen chronométré ; les élèves le passent une seule fois, avant la date limite.", "/enseignant/examens"),
-            new("Corrections", "Corrigez les réponses libres ; les autres questions sont notées automatiquement.", "/enseignant/corrections")
+            new("Corrections", "Corrigez les réponses libres ; les autres questions sont notées automatiquement. Les réponses d'une classe où vous n'enseignez plus restent lisibles sous « À corriger par la direction ».", "/enseignant/corrections")
         ]),
         new("classe", "Ma classe", "users",
         [

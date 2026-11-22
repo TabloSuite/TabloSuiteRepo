@@ -2,7 +2,7 @@
 @inject KorrekturService Korrektur
 @inject TimeProvider Uhr
 
-<ModalDialog Open="AntwortId is not null" Title="Corriger la réponse" Oberzeile="@(detail is null ? null : $"{detail.Schueler} · {detail.Klasse} · {detail.Inhalt}")"
+<ModalDialog Open="AntwortId is not null" Title="@(detail?.NurLesen == true ? "Réponse (lecture seule)" : "Corriger la réponse")" Oberzeile="@(detail is null ? null : $"{detail.Schueler} · {detail.Klasse} · {detail.Inhalt}")"
              Breite="sk-modal-lg" OnClose="OnClose" ErrorMessage="@fehler" SchliessenMitEscape="false">
     <ChildContent>
         @if (detail is null)
@@ -12,6 +12,17 @@
         else
         {
             <FrageVorschau Frage="detail.Frage" Eingabe="detail.Eingabe" MitLoesungen="true" />
+            @if (detail.NurLesen)
+            {
+                @* 22.11.2026: ohne Lehrauftrag nur lesen – « à corriger par la direction » (der Dienst lehnt das Speichern ohnehin ab). *@
+                <Hinweis Art="info" Titel="@(detail.Punkte is null ? "À corriger par la direction" : "Lecture seule")">@KorrekturService.MeldungOhneLehrauftrag</Hinweis>
+                @if (detail.Punkte is { } gegeben)
+                {
+                    <p>Note : <strong>@PaedagogikText.Punkte(gegeben, detail.Frage.Punkte)</strong>@(detail.Feedback is { } fb ? $" – « {fb} »" : null)</p>
+                }
+            }
+            else
+            {
             <div class="sk-korrektur-formular">
                 <ZahlFeld Label="@($"Points (sur {ScoreRechner.Punkte(detail.Frage.Punkte)})")" Wert="punkte" WertChanged="w => punkte = w" Min="0" Max="detail.Frage.Punkte"
                           Pflicht="true" Sofort="true" />
@@ -22,6 +33,7 @@
                 </div>
                 <TextFeld Label="Commentaire pour l'élève (facultatif)" Zeilen="3" MaxLaenge="2000" Wert="@feedback" WertChanged="w => feedback = w" Sofort="true" />
             </div>
+            }
             @if (detail.Verlauf.Count > 0)
             {
                 <details class="sk-verlauf">
@@ -38,11 +50,14 @@
     </ChildContent>
     <Footer>
         <button type="button" class="sk-btn sk-btn-ghost" @onclick="OnClose">Fermer</button>
-        @if (MitNaechster)
+        @if (detail?.NurLesen != true)
         {
-            <AsyncKnopf Text="Enregistrer et suivante" CssClass="sk-btn-ghost" Disabled="@(punkte is null)" OnClick="() => SpeichernAsync(true)" />
+            @if (MitNaechster)
+            {
+                <AsyncKnopf Text="Enregistrer et suivante" CssClass="sk-btn-ghost" Disabled="@(punkte is null)" OnClick="() => SpeichernAsync(true)" />
+            }
+            <AsyncKnopf Text="Enregistrer la note" Icon="check" CssClass="sk-btn-primaer" Disabled="@(punkte is null)" OnClick="() => SpeichernAsync(false)" />
         }
-        <AsyncKnopf Text="Enregistrer la note" Icon="check" CssClass="sk-btn-primaer" Disabled="@(punkte is null)" OnClick="() => SpeichernAsync(false)" />
     </Footer>
 </ModalDialog>
 

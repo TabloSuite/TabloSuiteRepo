@@ -352,6 +352,11 @@ Von mir entschieden (änderbar):
 42. **Rückfrage « Démarrer l'année ? »** nennt den Preis: ohne Rechnung den Preis, der jetzt eingefroren wird; hat eine Rechnung
     den Preis schon festgehalten (Nr. 27), diesen Preis – mit dem Hinweis, dass der inzwischen andere Schulpreis für dieses Jahr
     nicht gilt (`SchuljahrService.StartFrage`). Die Jahreskarte schreibt vor dem Start « Prix SKOULOU déjà figé par la première facture ».
+43. **« Corrections » einer Lehrkraft ohne Lehrauftrag** (Ergänzung zu Nr. 29): offene Antworten, die sie nicht korrigieren darf,
+    stehen lesbar unter dem eigenen Chip « À corriger par la direction » (mit Zahl und Hinweis), gekennzeichnet in der Zeile und im
+    Dialog « Réponse (lecture seule) » ohne Eingabe; « À corriger » zählt wie die Startseite nur, was sie korrigieren darf
+    (`KorrekturService.ZaehlerAsync`, `KorrekturFilter.OhneLehrauftrag`). Serverseitige Rechte unverändert.
+44. Texte à trous: « 6 / 7 » (mit Leerzeichen) zählt wie « 6/7 » – bleibt so (Leerzeichen werden normalisiert).
 
 ---
 

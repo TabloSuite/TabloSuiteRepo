@@ -198,6 +198,10 @@ Weitere Regeln:
 - `IsCorrect = awardedPoints >= max` (LS:957). Teilpunkte gibt es nur hier.
 - Danach werden Feedback (getrimmt) und Korrektor/Zeit gesetzt und der Fortschritt neu berechnet.
 - Eine **Fristprüfung fehlt serverseitig** (nur die Liste filtert).
+
+**Neubau (Nutzer 22.11.2026):** Korrigieren darf eine Lehrkraft nur in Klassen mit aktuellem Lehrauftrag; offene Antworten aus
+anderen Klassen ihrer früheren Zuweisungen sieht sie lesbar unter « À corriger par la direction » (eigener Zähler), die Direktion
+korrigiert sie. « À corriger » zählt wie die Startseite nur, was sie selbst korrigieren darf.
 - In der UI ist das Punktefeld mit der **vollen Punktzahl vorbelegt** (TLE.cs:268-287, 799).
 
 ### 3.4 Lektionsfortschritt und Abschluss (`UpdateLessonProgressAsync`, LS:1008-1134)

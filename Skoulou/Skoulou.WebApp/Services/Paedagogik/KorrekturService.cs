@@ -8,8 +8,14 @@ using Skoulou.WebApp.Services.Infrastruktur;
 
 namespace Skoulou.WebApp.Services.Paedagogik;
 
-/// <summary>Filter der Korrekturliste.</summary>
-public sealed record KorrekturFilter(bool NurOffene = true, Guid? KlasseId = null, string? Suche = null);
+/// <summary>
+/// Filter der Korrekturliste. <see cref="OhneLehrauftrag"/> (Lehrkraft, 22.11.2026): null = alle, false = nur Antworten, die sie
+/// korrigieren darf (Klasse mit Lehrauftrag), true = nur Antworten, die die Direktion korrigiert (kein Lehrauftrag mehr).
+/// </summary>
+public sealed record KorrekturFilter(bool NurOffene = true, Guid? KlasseId = null, string? Suche = null, bool? OhneLehrauftrag = null);
+
+/// <summary>Zähler der Korrekturseite: <see cref="Offen"/> = selbst zu korrigieren (wie Startseite), <see cref="Direktion"/> = offen, aber « à corriger par la direction ».</summary>
+public sealed record KorrekturZaehler(int Offen, int Direktion);
 
 /// <summary>
 /// Eine Korrektur-Warteschlange für Übungen und Examen (unabhängig von der Frist), Nachkorrektur mit
@@ -56,12 +62,23 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
 
     /// <summary>Anzahl offener Korrekturen (Startseite, Navigation) – nur Klassen mit Lehrauftrag.</summary>
     public async Task<int> OffeneAnzahlAsync(Guid akteurId, CancellationToken ct = default)
+        => (await ZaehlerAsync(akteurId, ct)).Offen;
+
+    /// <summary>
+    /// Zähler der Chips « À corriger » und « À corriger par la direction » (Nutzer 22.11.2026: Zähler und Liste stimmig – « À corriger »
+    /// zählt wie die Startseite nur, was die Lehrkraft korrigieren darf; der Rest steht lesbar unter « À corriger par la direction »).
+    /// </summary>
+    public async Task<KorrekturZaehler> ZaehlerAsync(Guid akteurId, CancellationToken ct = default)
     {
         var akteur = await KorrektorAsync(akteurId, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var zuweisungen = MitLehrauftrag(db, akteur, Erlaubte(db, akteur)).Select(z => z.Id);
-        return await db.Antworten.CountAsync(a => a.Punkte == null && a.Korrektur == KorrekturArt.Manuelle
-            && db.Versuche.Any(v => v.Id == a.VersuchId && zuweisungen.Contains(v.ZuweisungId)), ct);
+        var alle = Erlaubte(db, akteur);
+        var mit = MitLehrauftrag(db, akteur, alle).Select(z => z.Id);
+        var offene = db.Antworten.Where(a => a.Punkte == null && a.Korrektur == KorrekturArt.Manuelle);
+        var offen = await offene.CountAsync(a => db.Versuche.Any(v => v.Id == a.VersuchId && mit.Contains(v.ZuweisungId)), ct);
+        if (akteur.IstDirektion) return new KorrekturZaehler(offen, 0);
+        var gesamt = await offene.CountAsync(a => db.Versuche.Any(v => v.Id == a.VersuchId && alle.Select(z => z.Id).Contains(v.ZuweisungId)), ct);
+        return new KorrekturZaehler(offen, gesamt - offen);
     }
 
     /// <summary>Klassen, in denen es Zuweisungen des Akteurs gibt (Filter).</summary>
@@ -83,6 +100,10 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var zuweisungen = Erlaubte(db, akteur);
         if (filter.KlasseId is { } klasse) zuweisungen = zuweisungen.Where(z => z.KlasseId == klasse);
+        // Lehrkraft ohne (aktuellen) Lehrauftrag: lesbar, « à corriger par la direction » (22.11.2026). Direktion: alles korrigierbar.
+        var korrigierbar = MitLehrauftrag(db, akteur, Erlaubte(db, akteur)).Select(z => z.Id);
+        if (!akteur.IstDirektion && filter.OhneLehrauftrag is { } ohne)
+            zuweisungen = ohne ? zuweisungen.Where(z => !korrigierbar.Contains(z.Id)) : zuweisungen.Where(z => korrigierbar.Contains(z.Id));
 
         var q = from a in db.Antworten
                 join v in db.Versuche on a.VersuchId equals v.Id
@@ -114,11 +135,11 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
                     : db.Pruefungen.Where(p => p.Id == x.z.PruefungId).Select(p => p.Titel).FirstOrDefault(),
                 IstLecon = x.z.LeconId != null, BlockNr = db.AufgabenBloecke.Where(b => b.Id == x.f.BlockId).Select(b => b.Nr).FirstOrDefault(),
                 x.f.Nr, x.f.TextHtml, Abgabe = x.v.AbgabeUtc ?? x.a.ErstelltAmUtc,
-                x.a.Punkte, Max = x.f.Punkte, x.a.KorrigiertAmUtc
+                x.a.Punkte, Max = x.f.Punkte, x.a.KorrigiertAmUtc, NurLesen = !akteur.IstDirektion && !korrigierbar.Contains(x.z.Id)
             }).ToListAsync(ct);
         var zeilen = roh.Take(anzahl).Select(x => new KorrekturZeile(x.Id, x.VersuchId, x.ZuweisungId, x.Schueler, x.Klasse, x.Inhalt ?? "",
             x.IstLecon ? InhaltsArt.Lecon : InhaltsArt.Pruefung, x.BlockNr, x.Nr, InhaltBereiniger.Kurztext(x.TextHtml), x.Abgabe, x.Punkte, x.Max,
-            x.KorrigiertAmUtc)).ToList();
+            x.KorrigiertAmUtc, x.NurLesen)).ToList();
         return (zeilen, roh.Count > anzahl);
     }
 
@@ -145,7 +166,7 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
                                  db.Users.Where(k => k.Id == e.KorrigiertVonId).Select(k => k.Vorname + " " + k.Nachname).FirstOrDefault() ?? "",
                                  e.AltePunkte, e.NeuePunkte, e.Feedback)).ToListAsync(ct);
         return new KorrekturDetail(a.Id, schueler, klasse, $"{titel} · exercice {blockNr}", FragenAbbildung.Ansicht(f, f.Nr), AntwortEingabe.AusJson(a.AntwortJson),
-            a.Punkte, a.Feedback, verlauf);
+            a.Punkte, a.Feedback, verlauf, NurLesen: !await UnterrichtetAsync(db, akteur, z, ct));
     }
 
     /// <summary>Punkte und Rückmeldung setzen (auch Nachkorrektur); jede Änderung wird protokolliert.</summary>

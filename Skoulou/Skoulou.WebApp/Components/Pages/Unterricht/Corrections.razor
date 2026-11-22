@@ -14,8 +14,12 @@
 
 @if (!Laedt)
 {
-    <Liste @ref="liste" T="KorrekturZeile" Laden="LadenAsync" Filter="chips" AnfangsFilter="offen" SuchPlatzhalter="Élève ou contenu…"
-           LeerIcon="check-circle" LeerTitel="Rien à corriger" LeerText="Toutes les réponses ouvertes sont corrigées.">
+    @if (zaehler is { Direktion: > 0 } z0)
+    {
+        <Hinweis Art="info">@z0.Direktion réponse(s) d'une classe où vous n'enseignez plus : vous pouvez les lire sous « À corriger par la direction » ; la direction les corrige.</Hinweis>
+    }
+    <Liste @ref="liste" T="KorrekturZeile" Laden="LadenAsync" Filter="Chips" AnfangsFilter="offen" SuchPlatzhalter="Élève ou contenu…"
+           LeerIcon="check-circle" LeerTitel="Rien à corriger" LeerText="Toutes les réponses ouvertes que vous pouvez corriger sont corrigées.">
         <Werkzeuge>
             @if (klassen.Count > 1)
             {
@@ -31,6 +35,10 @@
                     <small>@z.FrageText</small>
                 </span>
                 <span class="sk-lecon-karte-ende">
+                    @if (z.NurLesen)
+                    {
+                        <StatusBadge Text="@(z.Punkte is null ? "À corriger par la direction" : "Lecture seule")" Art="neutral" Icon="eye" />
+                    }
                     @if (z.Punkte is { } p)
                     {
                         <span class="sk-badge sk-badge-erfolg">@PaedagogikText.Punkte(p, z.MaxPunkte)</span>
@@ -49,7 +57,13 @@
 <KorrekturDialog AntwortId="offen" AkteurId="Ich.KontoId" MitNaechster="@(filter == "offen")" OnGespeichert="GespeichertAsync" OnClose="() => offen = null" />
 
 @code {
-    private static readonly IReadOnlyList<FilterChip> chips = [new("offen", "À corriger"), new("fait", "Déjà corrigées")];
+    // 22.11.2026: « À corriger » zählt wie die Startseite nur, was die Lehrkraft korrigieren darf; Antworten aus Klassen ohne
+    // Lehrauftrag stehen lesbar unter « À corriger par la direction » (nur Lehrkräfte, nur wenn es welche gibt).
+    private IReadOnlyList<FilterChip> Chips => zaehler is { Direktion: > 0 } z
+        ? [new("offen", "À corriger", z.Offen), new("direction", "À corriger par la direction", z.Direktion), new("fait", "Déjà corrigées")]
+        : [new("offen", "À corriger", zaehler?.Offen), new("fait", "Déjà corrigées")];
+
+    private KorrekturZaehler? zaehler;
 
     private Liste<KorrekturZeile>? liste;
     private IReadOnlyList<AuswahlOption<Guid?>> klassen = [];
@@ -62,12 +76,14 @@
     {
         var k = await Korrektur.KlassenAsync(Ich.KontoId);
         klassen = [new AuswahlOption<Guid?>(null, "Toutes les classes"), .. k.Select(x => new AuswahlOption<Guid?>(x.Id, x.Name))];
+        zaehler = await Korrektur.ZaehlerAsync(Ich.KontoId);
     }
 
     private async Task<(IReadOnlyList<KorrekturZeile> Eintraege, bool Mehr)> LadenAsync(ListenAnfrage a, CancellationToken ct)
     {
         filter = a.Filter;
-        var ergebnis = await Korrektur.SucheAsync(Ich.KontoId, new KorrekturFilter(a.Filter != "fait", klasseId, a.Suche), a.Ueberspringen, a.Anzahl, ct);
+        var ohneLehrauftrag = a.Filter switch { "offen" => false, "direction" => true, _ => (bool?)null };
+        var ergebnis = await Korrektur.SucheAsync(Ich.KontoId, new KorrekturFilter(a.Filter != "fait", klasseId, a.Suche, ohneLehrauftrag), a.Ueberspringen, a.Anzahl, ct);
         sichtbar = a.Ueberspringen == 0 ? ergebnis.Eintraege.ToList() : [.. sichtbar, .. ergebnis.Eintraege];
         return ergebnis;
     }
@@ -87,6 +103,7 @@
         var index = sichtbar.FindIndex(z => z.AntwortId == aktuell);
         var folgende = index >= 0 && index + 1 < sichtbar.Count ? sichtbar[index + 1].AntwortId : (Guid?)null;
         offen = naechste ? folgende : null;
+        zaehler = await Korrektur.ZaehlerAsync(Ich.KontoId);
         if (liste is not null) await liste.NeuLadenAsync();
     }
 }

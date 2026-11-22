@@ -320,6 +320,39 @@ public class LernUndPruefungTests
     }
 
     [Fact]
+    public async Task Ohne_Lehrauftrag_offene_Antworten_lesbar_als_a_corriger_par_la_direction()
+    {
+        // Nutzer 22.11.2026 (Nachtest: « Corrections » listete offene Antworten, die die Lehrkraft nicht korrigieren darf, Zähler 0).
+        await using var u = await PaedagogikUmgebung.ErstelleAsync();
+        var (_, z) = await u.ZugewiesenAsync(u.Formular(InhaltsArt.Lecon, "Rédaction", PaedagogikUmgebung.Text("Expliquez", 4)));
+        var f = await u.FragenAsync(u.SchuelerA.Id, z);
+        await u.Lernen.AntwortenAsync(u.SchuelerA.Id, z, f[0].Id, Satz("Ma réponse"));
+        Assert.Equal(new KorrekturZaehler(1, 0), await u.Korrektur.ZaehlerAsync(u.Lehrer.Id));
+        Assert.False(Assert.Single((await u.Korrektur.SucheAsync(u.Lehrer.Id, new KorrekturFilter(OhneLehrauftrag: false))).Eintraege).NurLesen);
+
+        await using (var db = await u.Env.Db.CreateDbContextAsync())
+        {
+            db.Lehrauftraege.RemoveRange(await db.Lehrauftraege.Where(l => l.LehrerId == u.Lehrer.Id
+                && db.Klassenfaecher.Any(kf => kf.Id == l.KlassenfachId && kf.KlasseId == u.Klasse6A)).ToListAsync());
+            await db.SaveChangesAsync();
+        }
+        // Zähler und Liste stimmig: « À corriger » 0 (wie die Startseite), « À corriger par la direction » 1 – lesbar, gekennzeichnet.
+        Assert.Equal(new KorrekturZaehler(0, 1), await u.Korrektur.ZaehlerAsync(u.Lehrer.Id));
+        Assert.Equal(0, await u.Korrektur.OffeneAnzahlAsync(u.Lehrer.Id));
+        Assert.Empty((await u.Korrektur.SucheAsync(u.Lehrer.Id, new KorrekturFilter(OhneLehrauftrag: false))).Eintraege);
+        var zeile = Assert.Single((await u.Korrektur.SucheAsync(u.Lehrer.Id, new KorrekturFilter(OhneLehrauftrag: true))).Eintraege);
+        Assert.True(zeile.NurLesen);
+        Assert.True((await u.Korrektur.DetailAsync(u.Lehrer.Id, zeile.AntwortId)).NurLesen);
+        // Rechte unverändert: speichern lehnt der Dienst ab; die Direktion korrigiert.
+        await Assert.ThrowsAsync<KeinZugriffFehler>(() => u.Korrektur.KorrigierenAsync(u.Lehrer.Id, zeile.AntwortId, 3, null));
+        Assert.Equal(new KorrekturZaehler(1, 0), await u.Korrektur.ZaehlerAsync(u.Direktor.Id));
+        Assert.False((await u.Korrektur.DetailAsync(u.Direktor.Id, zeile.AntwortId)).NurLesen);
+        await u.Korrektur.KorrigierenAsync(u.Direktor.Id, zeile.AntwortId, 3, null);
+        Assert.Equal(new KorrekturZaehler(0, 0), await u.Korrektur.ZaehlerAsync(u.Lehrer.Id));
+        Assert.True(Assert.Single((await u.Korrektur.SucheAsync(u.Lehrer.Id, new KorrekturFilter(NurOffene: false))).Eintraege).NurLesen);
+    }
+
+    [Fact]
     public async Task Examen_Textantwort_wird_nach_Abgabe_korrigiert()
     {
         await using var u = await PaedagogikUmgebung.ErstelleAsync();

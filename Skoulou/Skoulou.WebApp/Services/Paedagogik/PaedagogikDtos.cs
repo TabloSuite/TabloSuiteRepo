@@ -144,12 +144,13 @@ public sealed record VersuchsDetail(Guid VersuchId, string Schueler, string Tite
     decimal MaxPunkte, DateTime StartUtc, DateTime? AbgabeUtc, IReadOnlyList<VersuchsAntwortZeile> Antworten);
 
 public sealed record KorrekturZeile(Guid AntwortId, Guid VersuchId, Guid ZuweisungId, string Schueler, string Klasse, string Inhalt,
-    InhaltsArt Art, int BlockNr, int FrageNr, string FrageText, DateTime? AbgegebenUtc, decimal? Punkte, decimal MaxPunkte, DateTime? KorrigiertAmUtc);
+    InhaltsArt Art, int BlockNr, int FrageNr, string FrageText, DateTime? AbgegebenUtc, decimal? Punkte, decimal MaxPunkte, DateTime? KorrigiertAmUtc,
+    bool NurLesen = false);
 
 public sealed record KorrekturVerlauf(DateTime ZeitUtc, string Von, decimal? AltePunkte, decimal NeuePunkte, string? Feedback);
 
 public sealed record KorrekturDetail(Guid AntwortId, string Schueler, string Klasse, string Inhalt, AnsichtFrage Frage,
-    AntwortEingabe Eingabe, decimal? Punkte, string? Feedback, IReadOnlyList<KorrekturVerlauf> Verlauf);
+    AntwortEingabe Eingabe, decimal? Punkte, string? Feedback, IReadOnlyList<KorrekturVerlauf> Verlauf, bool NurLesen = false);
 
 public sealed record LehrerKlasse(Guid KlasseId, string Klasse, IReadOnlyList<string> Faecher, int Schueler);
 
