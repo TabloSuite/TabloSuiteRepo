@@ -35,6 +35,19 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         return z.Length == 0 ? null : z;
     }
 
+    /// <summary>
+    /// Kunden mit derselben Nummer – auch lokal gegen international geschrieben (« 91 00 10 01 » = « +228 91 00 10 01 »):
+    /// gleich, wenn die kürzere Nummer (mind. 8 Ziffern) das Ende der längeren ist. Fehlersuche 21.11.2026: die lokale
+    /// Schreibweise legte dieselbe Person ein zweites Mal an.
+    /// </summary>
+    private static IQueryable<Kunde> MitGleicherNummer(IQueryable<Kunde> kunden, string ziffern)
+        => ziffern.Length < VergleichMinZiffern
+            ? kunden.Where(k => k.TelefonZiffern == ziffern)
+            : kunden.Where(k => k.TelefonZiffern != null && (k.TelefonZiffern == ziffern || k.TelefonZiffern.EndsWith(ziffern)
+                || (k.TelefonZiffern.Length >= VergleichMinZiffern && ziffern.EndsWith(k.TelefonZiffern))));
+
+    private const int VergleichMinZiffern = 8;
+
     /// <summary>Für die Kasse: nur die letzten vier Ziffern („•• 34 56“).</summary>
     public static string? Gekuerzt(string? ziffern)
         => ziffern is { Length: >= 4 } z ? $"•• {z[^4..^2]} {z[^2..]}" : null;
@@ -121,7 +134,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         var (n, t, z) = Pruefe(name, telefon, einwilligung);
         await using var db = await factory.CreateDbContextAsync(ct);
         await PruefeZugangAsync(db, user, salonId, Stufe.Mitglied, ct);
-        if (z is not null && await db.Kunden.AsNoTracking().FirstOrDefaultAsync(k => k.SalonId == salonId && k.TelefonZiffern == z, ct) is { } vorhanden)
+        if (z is not null && await MitGleicherNummer(db.Kunden.AsNoTracking().Where(k => k.SalonId == salonId), z).FirstOrDefaultAsync(ct) is { } vorhanden)
             throw new ArgumentException($"Ce numéro est déjà enregistré pour « {vorhanden.Name} ».");
         var jetzt = zeit.GetUtcNow().UtcDateTime;
         var kunde = new Kunde
@@ -235,7 +248,7 @@ public class KundenService(IDbContextFactory<ApplicationDbContext> factory, Time
         var unveraendert = Ziffern(telefon) is { } zNeu && zNeu == k.TelefonZiffern;
         var (n, t, z) = Pruefe(name, telefon, einwilligung || unveraendert);
         if (z is not null && z != k.TelefonZiffern
-            && await db.Kunden.AsNoTracking().FirstOrDefaultAsync(x => x.SalonId == k.SalonId && x.TelefonZiffern == z && x.Id != k.Id, ct) is { } andere)
+            && await MitGleicherNummer(db.Kunden.AsNoTracking().Where(x => x.SalonId == k.SalonId && x.Id != k.Id), z).FirstOrDefaultAsync(ct) is { } andere)
             throw new ArgumentException($"Ce numéro est déjà enregistré pour « {andere.Name} ».");
         var no = string.IsNullOrWhiteSpace(notiz) ? null : notiz.Trim();
         if (no is { Length: > NotizMax }) throw new ArgumentException($"Note : {NotizMax} caractères au maximum.");
