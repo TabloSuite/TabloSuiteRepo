@@ -102,6 +102,16 @@ public class KommunikationTests
         await Assert.ThrowsAsync<KeinZugriffFehler>(() => u.Messagerie.NeuAsync(resp.Id, "x@exemple.tg", "Objet", "Texte", fremde.Id));
         await u.Messagerie.NeuAsync(resp.Id, "dir@exemple.tg", "Objet", "Texte", eigene.Id);
         Assert.Single(await u.Messagerie.EmpfaengerAsync(resp.Id, eigene.Id));
+        // Fehlersuche 21.11.2026 (R5), Nutzerentscheidung 22.11.: Schüler und Eltern der eigenen Schule sind keine Empfänger,
+        // Koordination schon; die Meldung ist dieselbe wie bei einer fremden Adresse (verrät keine Zugehörigkeit).
+        await u.Basis.KontoAsync("eleve", Rollen.Schueler, eigene.Id, email: "eleve@exemple.tg");
+        await u.Basis.KontoAsync("parent", Rollen.Eltern, eigene.Id, email: "parent@exemple.tg");
+        await u.Basis.KontoAsync("coord", Rollen.Koordinator, eigene.Id, email: "coord@exemple.tg");
+        var schueler = await Assert.ThrowsAsync<FachFehler>(() => u.Messagerie.NeuAsync(resp.Id, "eleve@exemple.tg", "Objet", "Texte", eigene.Id));
+        var unbekannt = await Assert.ThrowsAsync<FachFehler>(() => u.Messagerie.NeuAsync(resp.Id, "x@exemple.tg", "Objet", "Texte", eigene.Id));
+        Assert.Equal(unbekannt.Message, schueler.Message);
+        await Assert.ThrowsAsync<FachFehler>(() => u.Messagerie.NeuAsync(resp.Id, "parent@exemple.tg", "Objet", "Texte", eigene.Id));
+        await u.Messagerie.NeuAsync(resp.Id, "coord@exemple.tg", "Objet", "Texte", eigene.Id);
         await Assert.ThrowsAsync<KeinZugriffFehler>(() => u.Messagerie.ZuordnenAsync(resp.Id, fremdId, eigene.Id));
         await u.Messagerie.ZuordnenAsync(admin.Id, fremdId, eigene.Id);
         Assert.Equal(2, (await u.Messagerie.SucheAsync(resp.Id, Postfach.Eingang, null, null)).Eintraege.Count);

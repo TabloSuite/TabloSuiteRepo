@@ -103,8 +103,9 @@ public sealed class MessagerieService(
     }
 
     /// <summary>
-    /// Neue Nachricht: SuperAdmin an jede Adresse (Schule optional); Responsable nur an Konten seiner Schulen
-    /// (Schule Pflicht, Empfänger muss zu dieser Schule gehören).
+    /// Neue Nachricht: SuperAdmin an jede Adresse (Schule optional); Responsable nur an die aktive Direktion bzw.
+    /// Koordination seiner Schulen (Schule Pflicht). Fehlersuche 21.11.2026 (R5), Nutzerentscheidung 22.11.: vorher ging jedes
+    /// aktive Konto der Schule (auch Schüler und Eltern), und die Meldung verriet, ob eine Adresse zur Schule gehört.
     /// </summary>
     public async Task<Guid> NeuAsync(Guid akteurId, string? an, string? betreff, string? text, Guid? schuleId, CancellationToken ct = default)
     {
@@ -122,8 +123,9 @@ public sealed class MessagerieService(
         {
             if (schuleId is null) throw new FachFehler("Choisissez une école pour envoyer ce message.", "ecole");
             var normal = adresse.ToUpperInvariant();
-            if (!await db.Users.AnyAsync(k => k.SchuleId == schuleId && k.NormalizedEmail == normal && k.Status == KontoStatus.Actif, ct))
-                throw new FachFehler("Le destinataire ne fait pas partie de cette école.", "destinataire");
+            if (!await db.Users.AnyAsync(k => k.SchuleId == schuleId && k.NormalizedEmail == normal && k.Status == KontoStatus.Actif
+                    && (k.Rolle == Rollen.Direktor || k.Rolle == Rollen.Koordinator), ct))
+                throw new FachFehler("Choisissez un destinataire de la direction de l'établissement (liste proposée).", "destinataire");
         }
         return await SendenAsync(db, akteur, adresse, sujet, text, schuleId, null, ct);
     }
