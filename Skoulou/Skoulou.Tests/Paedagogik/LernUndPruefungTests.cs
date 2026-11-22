@@ -280,6 +280,44 @@ public class LernUndPruefungTests
     }
 
     [Fact]
+    public async Task Lehrkraft_ohne_Lehrauftrag_liest_alte_Arbeiten_aber_sieht_keine_Klassenliste_und_korrigiert_nicht()
+    {
+        // Fehlersuche 21.11.2026 (R3), Nutzerentscheidung 22.11.
+        await using var u = await PaedagogikUmgebung.ErstelleAsync();
+        var (_, z) = await u.ZugewiesenAsync(u.Formular(InhaltsArt.Lecon, "Rédaction", PaedagogikUmgebung.Text("Expliquez", 4)));
+        var f = await u.FragenAsync(u.SchuelerA.Id, z);
+        await u.Lernen.AntwortenAsync(u.SchuelerA.Id, z, f[0].Id, Satz("Ma réponse"));
+        // Ein zweiter Schüler kommt in die Klasse, hat aber noch nichts gemacht.
+        await using (var db = await u.Env.Db.CreateDbContextAsync())
+        {
+            var jahr = await db.Schuljahre.SingleAsync(j => j.Id == u.Jahr);
+            db.Einschreibungen.Add(new Einschreibung { SchuleId = u.Schule, SchuelerId = u.SchuelerB.Id, SchuljahrId = u.Jahr, KlasseId = u.Klasse6A,
+                Von = jahr.Beginn, Status = EinschreibungsStatus.Active });
+            (await db.Einschreibungen.SingleAsync(e => e.SchuelerId == u.SchuelerB.Id && e.KlasseId == u.Klasse6B)).Status = EinschreibungsStatus.Terminee;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(2, (await u.Korrektur.ErgebnisseAsync(u.Lehrer.Id, z)).Zeilen.Count);
+
+        // Lehrauftrag in 6e A entzogen
+        await using (var db = await u.Env.Db.CreateDbContextAsync())
+        {
+            db.Lehrauftraege.RemoveRange(await db.Lehrauftraege.Where(l => l.LehrerId == u.Lehrer.Id
+                && db.Klassenfaecher.Any(kf => kf.Id == l.KlassenfachId && kf.KlasseId == u.Klasse6A)).ToListAsync());
+            await db.SaveChangesAsync();
+        }
+        var zeile = Assert.Single((await u.Korrektur.SucheAsync(u.Lehrer.Id, new KorrekturFilter())).Eintraege);
+        Assert.Equal(0, await u.Korrektur.OffeneAnzahlAsync(u.Lehrer.Id));
+        Assert.NotNull(await u.Korrektur.DetailAsync(u.Lehrer.Id, zeile.AntwortId));
+        var fehler = await Assert.ThrowsAsync<KeinZugriffFehler>(() => u.Korrektur.KorrigierenAsync(u.Lehrer.Id, zeile.AntwortId, 3, null));
+        Assert.Equal(KorrekturService.MeldungOhneLehrauftrag, fehler.Message);
+        var ergebnisse = await u.Korrektur.ErgebnisseAsync(u.Lehrer.Id, z);
+        Assert.Equal([u.SchuelerA.Id], ergebnisse.Zeilen.Select(x => x.SchuelerId));
+        // Die Direktion korrigiert und sieht die ganze Klasse.
+        await u.Korrektur.KorrigierenAsync(u.Direktor.Id, zeile.AntwortId, 3, null);
+        Assert.Equal(2, (await u.Korrektur.ErgebnisseAsync(u.Direktor.Id, z)).Zeilen.Count);
+    }
+
+    [Fact]
     public async Task Examen_Textantwort_wird_nach_Abgabe_korrigiert()
     {
         await using var u = await PaedagogikUmgebung.ErstelleAsync();

@@ -38,12 +38,28 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
             ? db.Zuweisungen.Where(z => z.SchuleId == akteur.SchuleId)
             : db.Zuweisungen.Where(z => z.SchuleId == akteur.SchuleId && z.LehrerId == akteur.Id);
 
-    /// <summary>Anzahl offener Korrekturen (Startseite, Navigation).</summary>
+    /// <summary>
+    /// Fehlersuche 21.11.2026 (R3), Nutzerentscheidung 22.11.: Eine Lehrkraft ohne (aktuellen) Lehrauftrag in der Klasse liest
+    /// ihre früheren Arbeiten weiter, sieht aber nicht mehr die aktuelle Klassenliste und korrigiert nicht mehr (das übernimmt
+    /// die Direktion). Direktion immer.
+    /// </summary>
+    internal static IQueryable<Zuweisung> MitLehrauftrag(SkoulouDbContext db, Akteur akteur, IQueryable<Zuweisung> zuweisungen)
+        => akteur.IstDirektion ? zuweisungen
+            : zuweisungen.Where(z => db.Lehrauftraege.Any(l => l.LehrerId == akteur.Id
+                && db.Klassenfaecher.Any(kf => kf.Id == l.KlassenfachId && kf.KlasseId == z.KlasseId)));
+
+    private static async Task<bool> UnterrichtetAsync(SkoulouDbContext db, Akteur akteur, Zuweisung z, CancellationToken ct)
+        => await MitLehrauftrag(db, akteur, db.Zuweisungen.Where(x => x.Id == z.Id)).AnyAsync(ct);
+
+    public const string MeldungOhneLehrauftrag
+        = "Vous n'enseignez plus dans cette classe : vous pouvez consulter ce travail, la correction revient à la direction.";
+
+    /// <summary>Anzahl offener Korrekturen (Startseite, Navigation) – nur Klassen mit Lehrauftrag.</summary>
     public async Task<int> OffeneAnzahlAsync(Guid akteurId, CancellationToken ct = default)
     {
         var akteur = await KorrektorAsync(akteurId, ct);
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        var zuweisungen = Erlaubte(db, akteur).Select(z => z.Id);
+        var zuweisungen = MitLehrauftrag(db, akteur, Erlaubte(db, akteur)).Select(z => z.Id);
         return await db.Antworten.CountAsync(a => a.Punkte == null && a.Korrektur == KorrekturArt.Manuelle
             && db.Versuche.Any(v => v.Id == a.VersuchId && zuweisungen.Contains(v.ZuweisungId)), ct);
     }
@@ -148,6 +164,7 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
             var v = await db.Versuche.FirstAsync(x => x.Id == a.VersuchId, ct);
             var z = await db.Zuweisungen.AsNoTracking().FirstAsync(x => x.Id == v.ZuweisungId, ct);
             PruefeZuweisung(akteur, z);
+            if (!await UnterrichtetAsync(db, akteur, z, ct)) throw new KeinZugriffFehler(MeldungOhneLehrauftrag);
             if (z.PruefungId is not null && v.Status == VersuchsStatus.EnCours)
                 throw new FachFehler("L'élève compose encore : corrigez après l'envoi de sa copie.");
             var max = await db.Fragen.Where(f => f.Id == a.FrageId).Select(f => f.Punkte).FirstAsync(ct);
@@ -207,7 +224,10 @@ public sealed class KorrekturService(IDbContextFactory<SkoulouDbContext> dbFacto
         PruefeZuweisung(akteur, z);
         var kopf = await KopfAsync(db, z, ct);
 
-        var inKlasse = await SchulAbfragen.AktiveEinschreibungen(db).Where(e => e.KlasseId == z.KlasseId).Select(e => e.SchuelerId).ToListAsync(ct);
+        // Ohne Lehrauftrag: nur wer schon gearbeitet hat, nicht die aktuelle Klassenliste (R3).
+        var inKlasse = await UnterrichtetAsync(db, akteur, z, ct)
+            ? await SchulAbfragen.AktiveEinschreibungen(db).Where(e => e.KlasseId == z.KlasseId).Select(e => e.SchuelerId).ToListAsync(ct)
+            : [];
         var mitVersuch = await db.Versuche.Where(v => v.ZuweisungId == z.Id).Select(v => v.SchuelerId).Distinct().ToListAsync(ct);
         var alle = inKlasse.Union(mitVersuch).ToList();
         var namen = await db.Users.AsNoTracking().Where(k => alle.Contains(k.Id))

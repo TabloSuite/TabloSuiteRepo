@@ -41,8 +41,9 @@ public sealed class UebersichtService(IDbContextFactory<SkoulouDbContext> dbFact
                 effektiv.GetValueOrDefault(g.Key.KlasseId))).ToList();
 
         var eigene = db.Zuweisungen.Where(z => z.SchuleId == schuleId && z.LehrerId == akteur.Id);
+        var korrigierbar = KorrekturService.MitLehrauftrag(db, akteur, eigene);
         var offen = await db.Antworten.CountAsync(a => a.Punkte == null && a.Korrektur == KorrekturArt.Manuelle
-            && db.Versuche.Any(v => v.Id == a.VersuchId && eigene.Any(z => z.Id == v.ZuweisungId)), ct);
+            && db.Versuche.Any(v => v.Id == a.VersuchId && korrigierbar.Any(z => z.Id == v.ZuweisungId)), ct);
 
         var von = jetzt.AddDays(-2);
         var bis = jetzt.AddDays(21);
