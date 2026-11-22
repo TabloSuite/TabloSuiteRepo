@@ -163,6 +163,13 @@ internal sealed partial class Simulation
             var pin = $"{1000 + (l.Nr * 53 + k * 111) % 8000:0000}";
             if (pin == l.BesitzerPin || l.Team.Any(t => t.Pin == pin)) pin = $"{9000 + k:0000}";
             var r = await team.LegeKassiererAnAsync(l.Id, vn, nn, $"emp{l.Nr:000}.{k + 1}.sim", $"emp{l.Nr:000}.{k + 1}@enote-sim.tg", Passwort(l.Nr * 10 + k), pin);
+            if (!r.Erfolg && r.Fehler?.Contains("porte déjà ce nom") == true)
+            {
+                // Seit 22.11.2026 kein gleichnamiges Mitglied im Laden: die Besitzerin ergänzt eine Initiale, wie die Meldung rät.
+                Zaehle("Employé gleichnamig → Initiale ergänzt");
+                nn += $" {(char)('A' + k)}.";
+                r = await team.LegeKassiererAnAsync(l.Id, vn, nn, $"emp{l.Nr:000}.{k + 1}.sim", $"emp{l.Nr:000}.{k + 1}@enote-sim.tg", Passwort(l.Nr * 10 + k), pin);
+            }
             if (!r.Erfolg) { Befund($"Employé {l.Name}: {r.Fehler}"); continue; }
             var us = await d.MitDbAsync(db => db.UserSalons.Where(x => x.SalonId == l.Id && x.AppUserId == r.Kassierer!.Id).Select(x => x.Id).SingleAsync());
             var m = new SimMitarbeiter { Id = r.Kassierer!.Id, UserSalonId = us, Pin = pin, Name = $"{vn} {nn}", Erstatten = k % 3 == 0 };

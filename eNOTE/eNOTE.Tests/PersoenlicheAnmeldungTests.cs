@@ -199,7 +199,16 @@ public class PersoenlicheAnmeldungTests
         Assert.Equal("ama.mensah", ama!.UserName);
         Assert.Null(ama.Email);
 
-        var (ok2, fehler2, ama2) = await team.LegeKassiererAnAsync(salon, "Ama", "Mensah", "  ", "  ", null, "1357");
+        // Gleichnamig im selben Laden ist seit 22.11.2026 verboten (Kasse wählt nach Namen); in einem anderen Laden ist der Name
+        // frei – das Pseudonym ist global eindeutig und bekommt eine Zahl.
+        Assert.False((await team.LegeKassiererAnAsync(salon, "Ama", "Mensah", "  ", "  ", null, "1357")).Erfolg);
+        var zweiterLaden = new Salon { Name = "Boutique 2", IstAktiv = true, IstFreigegeben = true };
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            db.Salons.Add(zweiterLaden);
+            await db.SaveChangesAsync();
+        }
+        var (ok2, fehler2, ama2) = await team.LegeKassiererAnAsync(zweiterLaden.Id, "Ama", "Mensah", "  ", "  ", null, "1357");
         Assert.True(ok2, fehler2);
         Assert.Equal("ama.mensah2", ama2!.UserName);
 
