@@ -52,9 +52,11 @@ public sealed class EssaiService(IDbContextFactory<SkoulouDbContext> dbFactory, 
     /// <summary>Abrechnungsperioden des ersten Schuljahres, die nach der Anmeldung der Schule enden (Kandidaten der Probezeit).</summary>
     internal static async Task<List<EssaiPeriode>> KandidatenAsync(SkoulouDbContext db, Schule schule, CancellationToken ct)
     {
-        var jahr = await db.Schuljahre.AsNoTracking().Where(j => j.SchuleId == schule.Id).OrderBy(j => j.Beginn).FirstOrDefaultAsync(ct);
-        if (jahr is null) return [];
+        // Erstes Schuljahr = das erste, das nach der Anmeldung noch läuft: ein nachträglich angelegtes Vorjahr (z. B. für
+        // Restbeträge) hob sonst die Probezeit auf (Klicktest 21.11.2026: Vorjahr 2025-26 → 1er trimestre 2026-27 berechnet).
         var ab = DateOnly.FromDateTime(schule.ErstelltAmUtc);
+        var jahr = await db.Schuljahre.AsNoTracking().Where(j => j.SchuleId == schule.Id && j.Ende >= ab).OrderBy(j => j.Beginn).FirstOrDefaultAsync(ct);
+        if (jahr is null) return [];
         var perioden = await db.Perioden.AsNoTracking().Where(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr && p.Ende >= ab)
             .OrderBy(p => p.Beginn).ThenBy(p => p.Nr).ToListAsync(ct);
         return perioden.Select(p => new EssaiPeriode(p.Id, p.Titel, jahr.Bezeichnung, p.Beginn, p.Ende)).ToList();

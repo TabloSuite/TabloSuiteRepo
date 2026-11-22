@@ -24,6 +24,24 @@ public class EssaiTests
     }
 
     [Fact]
+    public async Task Nachtraeglich_angelegtes_Vorjahr_hebt_die_Probezeit_nicht_auf()
+    {
+        // Klicktest 21.11.2026: Essai 1, danach Vorjahr 2025-2026 (in Vorbereitung) angelegt → 1er trimestre 2026-27 wurde berechnet.
+        var w = await FinanzWelt.ErstelleAsync();
+        await Dienst(w).SetzenAsync(w.Org.Admin, w.Org.SchuleA, 1);
+        await w.MitDbAsync(async db =>
+        {
+            var vorjahr = new Schuljahr { SchuleId = w.Org.SchuleA, Bezeichnung = "2025-2026", Beginn = new(2025, 9, 1), Ende = new(2026, 6, 30), Status = SchuljahrStatus.Vorbereitung };
+            db.Schuljahre.Add(vorjahr);
+            db.Perioden.Add(new Periode { SchuleId = w.Org.SchuleA, SchuljahrId = vorjahr.Id, Nr = 1, Titel = "Année", Beginn = new(2025, 9, 1), Ende = new(2026, 6, 30), ZaehltFuerJahr = true });
+            return await db.SaveChangesAsync();
+        });
+        w.Heute(NachP1);
+        Assert.Equal(0, await w.Abrechnung.FaelligeAbrechnenAsync());
+        Assert.Equal([w.Org.P1], (await Dienst(w).StandAsync(w.Org.Admin, w.Org.SchuleA)).Offert.Select(p => p.Id));
+    }
+
+    [Fact]
     public async Task Probe_Periode_ohne_Rechnung_danach_fest()
     {
         var w = await FinanzWelt.ErstelleAsync();
