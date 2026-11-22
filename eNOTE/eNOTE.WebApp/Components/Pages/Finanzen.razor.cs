@@ -104,7 +104,7 @@ public partial class Finanzen(
     }
 
     private string ZeitraumTitel => filterAktiv
-        ? $"Chiffre d'affaires du {filterVon:dd.MM.yyyy} au {filterBis:dd.MM.yyyy}"
+        ? $"Chiffre d'affaires du {filterVon:dd'/'MM'/'yyyy} au {filterBis:dd'/'MM'/'yyyy}"
         : "Chiffre d'affaires (14 jours)";
 
     private string ZeitraumLabel => aktiverZeitraum switch
@@ -113,7 +113,7 @@ public partial class Finanzen(
         "14" => "14 derniers jours",
         "30" => "30 derniers jours",
         "mois" => "ce mois",
-        _ => $"du {filterVon:dd.MM} au {filterBis:dd.MM.yyyy}"
+        _ => $"du {filterVon:dd'/'MM} au {filterBis:dd'/'MM'/'yyyy}"
     };
 
     protected override async Task OnInitializedAsync()

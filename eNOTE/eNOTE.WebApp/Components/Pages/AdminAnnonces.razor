@@ -99,7 +99,7 @@
                         <p class="offen">@Vorschau(neu.Text)</p>
                         @if (IstWartung && Fenster is { } f)
                         {
-                            <span class="an-zeitfenster"><Icon Name="clock" Groesse="14" /> @f.Von.ToString("dd/MM") · @AnkuendigungService.Uhrzeit(f.Von) – @AnkuendigungService.Uhrzeit(f.Bis)</span>
+                            <span class="an-zeitfenster"><Icon Name="clock" Groesse="14" /> @f.Von.ToString("dd'/'MM") · @AnkuendigungService.Uhrzeit(f.Von) – @AnkuendigungService.Uhrzeit(f.Bis)</span>
                         }
                     </div>
                     <div class="an-aktionen">
@@ -145,14 +145,14 @@
                             </div>
                             <p>@a.Text</p>
                             <small class="enote-muted">
-                                @a.ErstelltUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · @AnkuendigungService.ZielText(a.Ziel)
+                                @a.ErstelltUtc.ToLocalTime().ToString("dd'/'MM'/'yyyy HH:mm") · @AnkuendigungService.ZielText(a.Ziel)
                                 · lue par @a.Gelesen
                                 @if (a.MailsGesendet > 0) { <text> · @a.MailsGesendet e-mail(s)</text> }
                                 @if (a.WartungVonUtc is DateTime wv && a.WartungBisUtc is DateTime wb)
                                 {
-                                    <text> · mise à jour le @wv.ToString("dd/MM") de @AnkuendigungService.Uhrzeit(wv) à @AnkuendigungService.Uhrzeit(wb)</text>
+                                    <text> · mise à jour le @wv.ToString("dd'/'MM") de @AnkuendigungService.Uhrzeit(wv) à @AnkuendigungService.Uhrzeit(wb)</text>
                                 }
-                                else if (a.SichtbarBisUtc is DateTime bis) { <text> · jusqu'au @bis.ToLocalTime().ToString("dd/MM/yyyy")</text> }
+                                else if (a.SichtbarBisUtc is DateTime bis) { <text> · jusqu'au @bis.ToLocalTime().ToString("dd'/'MM'/'yyyy")</text> }
                             </small>
                         </div>
                         <div class="an-eintrag-aktionen">

@@ -18,7 +18,7 @@
 else if (fehler is null)
 {
     var resultate = Gefiltert.ToList();
-    <p class="enote-muted">Période appliquée : @appliqueVon.ToString("dd/MM/yyyy") – @appliqueBis.ToString("dd/MM/yyyy"). Contrats dont la période recoupe ces dates ; montants complets, sans prorata. Un paiement signalé n'est pas encore payé.</p>
+    <p class="enote-muted">Période appliquée : @appliqueVon.ToString("dd'/'MM'/'yyyy") – @appliqueBis.ToString("dd'/'MM'/'yyyy"). Contrats dont la période recoupe ces dates ; montants complets, sans prorata. Un paiement signalé n'est pas encore payé.</p>
     <div class="enote-grid">
         <div class="enote-item"><strong>Payé</strong><span>@Geld(resultate.Where(a => a.Status == AboZahlungStatus.Bestaetigt).Sum(a => a.Betrag))</span></div>
         <div class="enote-item"><strong>Non payé</strong><span>@Geld(resultate.Where(a => a.Status != AboZahlungStatus.Bestaetigt).Sum(a => a.Betrag))</span></div>
@@ -32,10 +32,10 @@ else if (fehler is null)
                 <strong>@a.Besitzer</strong><span>@a.Laden</span>
                 <span>@VertragsRegeln.Bezeichnung(a.Intervall) · @Geld(a.Betrag)</span>
                 <small>@(a.Individuell ? "Tarif personnalisé" : "Tarif général") · remise @a.Rabatt %</small>
-                <small>Échéance : @a.Faellig.ToString("dd/MM/yyyy") · suspension sans signalement : @a.SperreAb.ToString("dd/MM/yyyy")</small>
-                @if (a.GemeldetAm is DateTime signalement) { <small>Virement signalé le @signalement.ToString("dd/MM/yyyy") · réception à vérifier</small> }
+                <small>Échéance : @a.Faellig.ToString("dd'/'MM'/'yyyy") · suspension sans signalement : @a.SperreAb.ToString("dd'/'MM'/'yyyy")</small>
+                @if (a.GemeldetAm is DateTime signalement) { <small>Virement signalé le @signalement.ToString("dd'/'MM'/'yyyy") · réception à vérifier</small> }
                 <span class="enote-tag @(a.Status == AboZahlungStatus.Bestaetigt ? "" : "enote-tag-warn")">@VertragsRegeln.ZahlungsText(a.Status)</span>
-                <small>@a.Von.ToString("dd/MM/yyyy") – @a.Bis.ToString("dd/MM/yyyy") (fin exclusive)</small>
+                <small>@a.Von.ToString("dd'/'MM'/'yyyy") – @a.Bis.ToString("dd'/'MM'/'yyyy") (fin exclusive)</small>
                 @if (IstBesitzer && a.Status is AboZahlungStatus.Offen or AboZahlungStatus.Abgelehnt)
                 {
                     <button class="enote-btn enote-btn-primary" @onclick="() => { meldungId = a.Id; reference = null; }">J’ai effectué le virement</button>

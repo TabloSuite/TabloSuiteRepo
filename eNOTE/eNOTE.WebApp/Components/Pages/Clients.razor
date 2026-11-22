@@ -91,7 +91,7 @@
                     <div><span>Achats</span><strong>@d.Besuche</strong></div>
                     <div><span>Dépensé</span><strong>@d.Umsatz.ToString("N0") F</strong></div>
                     <div><span>Panier moyen</span><strong>@d.Durchschnitt.ToString("N0") F</strong></div>
-                    <div><span>Client depuis</span><strong>@((d.ErsterBesuchUtc ?? d.ErstelltUtc).ImLaden(aktiverSalon.Zeitzone).ToString("dd/MM/yyyy"))</strong></div>
+                    <div><span>Client depuis</span><strong>@((d.ErsterBesuchUtc ?? d.ErstelltUtc).ImLaden(aktiverSalon.Zeitzone).ToString("dd'/'MM'/'yyyy"))</strong></div>
                 </div>
 
                 @if (d.Lieblinge.Count > 0)
@@ -133,7 +133,7 @@
                     @foreach (var b in d.LetzteBesuche)
                     {
                         <div class="ku-besuch @(b.IstRueckerstattung ? "storno" : "")">
-                            <span>@b.ZeitUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd/MM/yyyy")</span>
+                            <span>@b.ZeitUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd'/'MM'/'yyyy")</span>
                             <span class="ku-besuch-inhalt">@(b.IstRueckerstattung ? "Remboursement · " : "")@b.Inhalt</span>
                             <strong>@b.Betrag.ToString("N0") F</strong>
                         </div>
@@ -246,7 +246,7 @@
     {
         if (utc is not DateTime d) return "—";
         var tage = (Zeitzonen.Heute(aktiverSalon.Zeitzone, ENote.Core.Services.AppUhr.UtcNow) - d.ImLaden(aktiverSalon.Zeitzone).Date).Days;
-        return tage switch { 0 => "Aujourd'hui", 1 => "Hier", < 7 => $"Il y a {tage} jours", _ => d.ImLaden(aktiverSalon.Zeitzone).ToString("dd/MM/yyyy") };
+        return tage switch { 0 => "Aujourd'hui", 1 => "Hier", < 7 => $"Il y a {tage} jours", _ => d.ImLaden(aktiverSalon.Zeitzone).ToString("dd'/'MM'/'yyyy") };
     }
 
     private async Task OeffneDetailAsync(Guid id)

@@ -58,8 +58,8 @@ public class KassenZugangService(IDbContextFactory<ApplicationDbContext> factory
                 ? "Caisse suspendue : le paiement signalé n'a pas encore été confirmé par l'administrateur. La clôture de la caisse reste possible."
                 : "Caisse suspendue : un paiement arrivé à échéance n'a pas été signalé. Veuillez contacter le propriétaire. La clôture de la caisse reste possible.")
             : (nurGemeldet
-                ? $"Paiement signalé, en attente de confirmation par l'administrateur. Sans confirmation, les ventes seront suspendues le {frist:dd/MM/yyyy}."
-                : $"Abonnement arrivé à échéance. Sans signalement du virement, les ventes seront suspendues le {frist:dd/MM/yyyy}. Veuillez contacter le propriétaire.");
+                ? $"Paiement signalé, en attente de confirmation par l'administrateur. Sans confirmation, les ventes seront suspendues le {frist:dd'/'MM'/'yyyy}."
+                : $"Abonnement arrivé à échéance. Sans signalement du virement, les ventes seront suspendues le {frist:dd'/'MM'/'yyyy}. Veuillez contacter le propriétaire.");
         return new(gesperrt, hinweis, frist);
     }
 }

@@ -260,7 +260,7 @@
                             <span class="em-punkt @(m.IstGesendet ? "ok" : m.Versuche >= EmailService.MaxVersuche ? "fehler" : "warte")"></span>
                             <button type="button" class="em-zeile-info em-eingang-kopf" @onclick="() => OeffneVerlaufAsync(m.Id)" aria-expanded="@(offenerVerlauf == m.Id ? "true" : "false")">
                                 <strong>@m.Betreff</strong>
-                                <small>@m.Empfaenger · @m.CreatedAtUtc.ToLocalTime().ToString("dd.MM HH:mm")@(m.Kategorie is null ? "" : " · " + (MailArten.Finde(m.Kategorie)?.Name ?? m.Kategorie))@(m.Versuche > 1 ? $" · {m.Versuche} essais" : "")</small>
+                                <small>@m.Empfaenger · @m.CreatedAtUtc.ToLocalTime().ToString("dd'/'MM HH:mm")@(m.Kategorie is null ? "" : " · " + (MailArten.Finde(m.Kategorie)?.Name ?? m.Kategorie))@(m.Versuche > 1 ? $" · {m.Versuche} essais" : "")</small>
                                 @if (!m.IstGesendet && !string.IsNullOrWhiteSpace(m.LetzterFehler))
                                 {
                                     <small class="em-fehler">@m.LetzterFehler</small>
@@ -308,7 +308,7 @@
                             <span class="em-punkt @(m.BeantwortetUtc is not null ? "ok" : m.IstGelesen ? "" : "warte")"></span>
                             <button type="button" class="em-zeile-info em-eingang-kopf" @onclick="() => OeffneEingangAsync(m)">
                                 <strong>@m.Betreff</strong>
-                                <small>@m.Absender · @m.EmpfangenUtc.ToLocalTime().ToString("dd.MM HH:mm")</small>
+                                <small>@m.Absender · @m.EmpfangenUtc.ToLocalTime().ToString("dd'/'MM HH:mm")</small>
                             </button>
                             <span class="em-tag @(m.BeantwortetUtc is not null ? "ok" : "warte")">@(m.BeantwortetUtc is not null ? "Répondu" : m.IstGelesen ? "Lu" : "Nouveau")</span>
                         </div>

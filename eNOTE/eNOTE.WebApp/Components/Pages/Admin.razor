@@ -74,7 +74,7 @@
                             {
                                 <p class="enote-item-desc">@s.Standort</p>
                             }
-                            <p class="enote-item-desc">Inscrit le @s.CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")</p>
+                            <p class="enote-item-desc">Inscrit le @s.CreatedAtUtc.ToLocalTime().ToString("dd'/'MM'/'yyyy")</p>
                             <div class="enote-item-actions">
                                 <AsyncActionButton Text="Valider" OnClick="() => SetzeFreigabeAsync(s.SalonId, true)" CssClass="enote-btn-primary" />
                                 @if (istSuperAdmin)
@@ -415,11 +415,11 @@
             }
             else if (!PoDarfVerlaengern)
             {
-                <p class="enote-muted">L'essai de « @probeSalonName » dure déjà jusqu'au <strong>@probeBisher?.ToString("dd.MM.yyyy")</strong> : vous ne pouvez pas le prolonger davantage. Pour toute autre modification, envoyez une demande à l'administrateur.</p>
+                <p class="enote-muted">L'essai de « @probeSalonName » dure déjà jusqu'au <strong>@probeBisher?.ToString("dd'/'MM'/'yyyy")</strong> : vous ne pouvez pas le prolonger davantage. Pour toute autre modification, envoyez une demande à l'administrateur.</p>
             }
             else
             {
-                <p class="enote-muted">Vous pouvez prolonger l'essai de « @probeSalonName » jusqu'au <strong>@ENote.WebApp.Services.AdminService.PoProbeGrenze(ENote.Core.Services.AppUhr.UtcNow).ToString("dd.MM.yyyy")</strong> au plus (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours). Pour raccourcir ou retirer l'essai, envoyez une demande à l'administrateur.</p>
+                <p class="enote-muted">Vous pouvez prolonger l'essai de « @probeSalonName » jusqu'au <strong>@ENote.WebApp.Services.AdminService.PoProbeGrenze(ENote.Core.Services.AppUhr.UtcNow).ToString("dd'/'MM'/'yyyy")</strong> au plus (@ENote.WebApp.Services.AdminService.PoProbeMaxTage jours). Pour raccourcir ou retirer l'essai, envoyez une demande à l'administrateur.</p>
             }
             @if (ZeigeProbeFormular)
             {

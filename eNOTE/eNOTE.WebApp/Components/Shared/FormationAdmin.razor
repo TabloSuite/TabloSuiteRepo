@@ -96,7 +96,7 @@ else
                 @if (z.Offen is { } o)
                 {
                     <section>
-                        <h3>Session ouverte · jusqu'au @o.FristUtc.ToString("dd.MM.yyyy")</h3>
+                        <h3>Session ouverte · jusqu'au @o.FristUtc.ToString("dd'/'MM'/'yyyy")</h3>
                         <div class="fo-zeile-feld">
                             <EnoteDatePicker @bind-Value="neueFrist" />
                             <AsyncActionButton Text="Prolonger le délai" CssClass="enote-btn-ghost" Disabled="@(neueFrist is null)" OnClick="FristAsync" />
@@ -119,7 +119,7 @@ else
                     <h3>Pause</h3>
                     @if (z.PausiertBisUtc is { } p && p > ENote.Core.Services.AppUhr.UtcNow)
                     {
-                        <p class="enote-muted">En pause jusqu'au @p.ToString("dd.MM.yyyy").</p>
+                        <p class="enote-muted">En pause jusqu'au @p.ToString("dd'/'MM'/'yyyy").</p>
                         <AsyncActionButton Text="Terminer la pause (session tout de suite)" CssClass="enote-btn-ghost" OnClick="() => PauseAsync(null)" />
                     }
                     else
@@ -145,7 +145,7 @@ else
                                 <span class="fo-status fo-status-@Formation_StatusKlasse(r.Status)">@Formation_StatusText(r.Status)</span>
                                 <span>
                                     <strong>@(r.EndNoteProzent is { } n ? $"{n} %" : "—")</strong>
-                                    <small>@r.GeoeffnetUtc.ToString("dd.MM.yyyy") → @((r.AbgeschlossenUtc ?? r.FristUtc).ToString("dd.MM.yyyy"))@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
+                                    <small>@r.GeoeffnetUtc.ToString("dd'/'MM'/'yyyy") → @((r.AbgeschlossenUtc ?? r.FristUtc).ToString("dd'/'MM'/'yyyy"))@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
                                     @if (r.Versuche.Any(v => v.AbgegebenUtc is not null))
                                     {
                                         <span class="fo-versuche">
@@ -269,7 +269,7 @@ else
     private Task ErlassenAsync() => FuehreAusAsync(() => Formation.ErlasseRundeAsync(auswahl!.PoId, AdminId, grund), "Session dispensée.");
     private Task OeffnenAsync() => FuehreAusAsync(() => Formation.OeffneRundeJetztAsync(auswahl!.PoId), "Nouvelle session ouverte – il reçoit un e-mail.");
     private Task PauseAsync(DateTime? bis) => FuehreAusAsync(() => Formation.SetzePauseAsync(auswahl!.PoId, bis?.Date.AddDays(1).AddTicks(-1).ToUniversalTime(), AdminId),
-        bis is null ? "Pause terminée." : $"En pause jusqu'au {bis:dd.MM.yyyy}.");
+        bis is null ? "Pause terminée." : $"En pause jusqu'au {bis:dd'/'MM'/'yyyy}.");
 
     private async Task EntziehenVorbereitenAsync()
     {
@@ -308,10 +308,10 @@ else
         if (z.Offen is { } o)
         {
             var l = o.LetzterAbgegeben;
-            return $"Session ouverte jusqu'au {o.FristUtc:dd.MM.yyyy} · {o.Abgegeben}/{FormationRunde.MaxVersuche} essais" + (l is null ? "" : $" · dernier {l.Prozent} %");
+            return $"Session ouverte jusqu'au {o.FristUtc:dd'/'MM'/'yyyy} · {o.Abgegeben}/{FormationRunde.MaxVersuche} essais" + (l is null ? "" : $" · dernier {l.Prozent} %");
         }
-        if (z.PausiertBisUtc is { } p && p > ENote.Core.Services.AppUhr.UtcNow) return $"En pause jusqu'au {p:dd.MM.yyyy}";
-        return z.NaechsteRundeAbUtc is { } n ? $"Prochaine session le {n:dd.MM.yyyy}" : "Pas encore de session";
+        if (z.PausiertBisUtc is { } p && p > ENote.Core.Services.AppUhr.UtcNow) return $"En pause jusqu'au {p:dd'/'MM'/'yyyy}";
+        return z.NaechsteRundeAbUtc is { } n ? $"Prochaine session le {n:dd'/'MM'/'yyyy}" : "Pas encore de session";
     }
 
     private static string Formation_StatusText(FormationRundenStatus s) => ENote.WebApp.Components.Pages.FormationUebersicht.StatusText(s);

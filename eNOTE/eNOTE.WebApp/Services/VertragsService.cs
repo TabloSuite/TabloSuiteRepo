@@ -300,7 +300,7 @@ public class VertragsService(IDbContextFactory<ApplicationDbContext> factory, Ti
         await PruefeBesitzerAsync(db, user, salonId, ct);
         var salon = await db.Salons.AsNoTracking().SingleAsync(s => s.Id == salonId, ct);
         return salon.NaechstesVertragsIntervall is AboIntervall intervall
-            ? $"Prochaine formule : {VertragsRegeln.Bezeichnung(intervall)}, à partir du {salon.VertragsWechselAbUtc:dd/MM/yyyy}."
+            ? $"Prochaine formule : {VertragsRegeln.Bezeichnung(intervall)}, à partir du {salon.VertragsWechselAbUtc:dd'/'MM'/'yyyy}."
             : null;
     }
 

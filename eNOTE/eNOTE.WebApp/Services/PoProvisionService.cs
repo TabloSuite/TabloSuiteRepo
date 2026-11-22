@@ -194,7 +194,7 @@ public class PoProvisionService(IDbContextFactory<ApplicationDbContext> factory,
         }
         foreach (var g in liste.GroupBy(p => p.ProduktOwnerId))
             await EreignisAsync(db, g.Key, admin, lauf, "Commissions versées", g.Sum(p => p.Betrag),
-                $"{g.Count()} commission(s) · versement du {tag:dd/MM/yyyy} · référence : {text}", ct);
+                $"{g.Count()} commission(s) · versement du {tag:dd'/'MM'/'yyyy} · référence : {text}", ct);
         await db.SaveChangesAsync(ct);
         return (liste.Count, liste.Sum(p => p.Betrag));
     }

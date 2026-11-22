@@ -57,7 +57,7 @@
                             }
                             <span class="enote-price">@a.PreisSnapshot.ToString("N0") F</span>
                         </div>
-                        <p class="enote-item-desc">@IntervallText(a.Intervall) · signalé le @a.ZahlungGemeldetUtc?.ToLocalTime().ToString("dd.MM.yyyy")</p>
+                        <p class="enote-item-desc">@IntervallText(a.Intervall) · signalé le @a.ZahlungGemeldetUtc?.ToLocalTime().ToString("dd'/'MM'/'yyyy")</p>
                         @if (!string.IsNullOrWhiteSpace(a.ZahlungsNotiz))
                         {
                             <p class="enote-item-desc">« @a.ZahlungsNotiz »</p>
@@ -104,7 +104,7 @@
                                 <td>@a.Salon.Name</td>
                                 <td>@IntervallText(a.Intervall)</td>
                                 <td>@a.PreisSnapshot.ToString("N0") F</td>
-                                <td>@a.ZeitraumVonUtc.ToLocalTime().ToString("dd.MM.yy") – @a.ZeitraumBisUtc.ToLocalTime().ToString("dd.MM.yy")</td>
+                                <td>@a.ZeitraumVonUtc.ToLocalTime().ToString("dd'/'MM'/'yyyy") – @a.ZeitraumBisUtc.ToLocalTime().ToString("dd'/'MM'/'yyyy")</td>
                                 <td><span class="enote-tag @StatusKlasse(a.ZahlungStatus)">@StatusText(a.ZahlungStatus)</span></td>
                             </tr>
                         }

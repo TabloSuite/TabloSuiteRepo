@@ -353,7 +353,7 @@ public class AdminService(
 
         if (!wer.IstAdmin && MailDienst is { } m)
             await m.ResponsableMeldungAsync(wer.Name, salon.Name, "Essai prolongé par un responsable",
-                $"Nouvelle fin d'essai : {neu:dd.MM.yyyy}", cancellationToken);
+                $"Nouvelle fin d'essai : {neu:dd'/'MM'/'yyyy}", cancellationToken);
         return true;
     }
 

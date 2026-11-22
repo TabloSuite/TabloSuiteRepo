@@ -575,7 +575,7 @@ else
                                     }
                                 }
                             </div>
-                            <small class="enote-muted">@v.ZeitUtc.ImLaden(zone).ToString("dd.MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</small>
+                            <small class="enote-muted">@v.ZeitUtc.ImLaden(zone).ToString("dd'/'MM · HH:mm") · @v.KassiererName@(v.IstStorno && !string.IsNullOrWhiteSpace(v.StornoGrund) ? " · " + v.StornoGrund : "")</small>
                             <small class="kx-historie-pos">@v.PositionenText</small>
                         </div>
                         <div class="kx-historie-aktionen">
@@ -687,7 +687,7 @@ else
             <div class="enote-wiederhergestellt">
                 <p class="enote-wiederhergestellt-text">La caisse est déjà ouverte. Indiquez qui encaisse sur cet appareil : chaque vente sera enregistrée à son nom.</p>
                 <div class="enote-wiederhergestellt-zeile"><span>Ouverte par</span><strong>@wiederhergestelltKassierer</strong></div>
-                <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ImLaden(zone).ToString("dd.MM.yyyy HH:mm")</strong></div>
+                <div class="enote-wiederhergestellt-zeile"><span>Ouverte le</span><strong>@wiederhergestelltGestartet.ImLaden(zone).ToString("dd'/'MM'/'yyyy HH:mm")</strong></div>
                 @if (wiederhergestelltSoll is decimal soll)
                 {
                     <div class="enote-wiederhergestellt-zeile enote-wiederhergestellt-soll"><span>Espèces attendues</span><strong>@soll.ToString("N0") F</strong></div>
@@ -749,7 +749,7 @@ else
         {
             <div class="kx-pay">
                 <p class="enote-muted kx-frei-text">
-                    Vente du @sv.ZeitUtc.ImLaden(zone).ToString("dd.MM.yyyy · HH:mm") · @sv.KassiererName · @sv.GesamtSumme.ToString("N0") F
+                    Vente du @sv.ZeitUtc.ImLaden(zone).ToString("dd'/'MM'/'yyyy · HH:mm") · @sv.KassiererName · @sv.GesamtSumme.ToString("N0") F
                     @if (sv.BereitsErstattet > 0)
                     {
                         <text> · déjà remboursé : @sv.BereitsErstattet.ToString("N0") F</text>

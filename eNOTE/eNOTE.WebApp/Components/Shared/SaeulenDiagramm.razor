@@ -38,7 +38,7 @@
     <tbody>
         @foreach (var w in Werte)
         {
-            <tr><td>@w.Datum.ToString("dd.MM.yyyy")</td><td>@w.Umsatz.ToString("N0") F</td><td>@w.Verkaeufe</td></tr>
+            <tr><td>@w.Datum.ToString("dd'/'MM'/'yyyy")</td><td>@w.Umsatz.ToString("N0") F</td><td>@w.Verkaeufe</td></tr>
         }
     </tbody>
 </table>

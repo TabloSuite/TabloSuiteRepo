@@ -65,7 +65,7 @@
                         {
                             <div class="db-meldung">
                                 <span class="db-meldung-text">@h.Text</span>
-                                <small class="enote-muted">@h.CreatedAtUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd.MM · HH:mm") · @h.AusgeloestVonName</small>
+                                <small class="enote-muted">@h.CreatedAtUtc.ImLaden(aktiverSalon.Zeitzone).ToString("dd'/'MM · HH:mm") · @h.AusgeloestVonName</small>
                                 <AsyncActionButton BasisKlasse="db-meldung-ok" title="Marquer comme lu" aria-label="Marquer comme lu" OnClick="() => MarkiereGelesenAsync(h.Id)"><Icon Name="check" Groesse="16" /></AsyncActionButton>
                             </div>
                         }

@@ -59,13 +59,13 @@
                         }
                         <span class="enote-price">@Geld(e.Betrag)</span>
                     </div>
-                    <p class="enote-item-desc">Paiement confirmé le @e.BestaetigtUtc.ToLocalTime().ToString("dd/MM/yyyy") · contrat : @e.VonUtc.ToString("dd/MM/yyyy") – @e.BisUtc.ToString("dd/MM/yyyy")</p>
+                    <p class="enote-item-desc">Paiement confirmé le @e.BestaetigtUtc.ToLocalTime().ToString("dd'/'MM'/'yyyy") · contrat : @e.VonUtc.ToString("dd'/'MM'/'yyyy") – @e.BisUtc.ToString("dd'/'MM'/'yyyy")</p>
                     <p class="enote-item-desc">Calcul : @Geld(e.AboBetrag) × @e.Prozent.ToString("0.##") %@(e.Fest > 0 ? " + " + Geld(e.Fest) : "") = @Geld(e.Betrag)</p>
                     <div class="enote-item-meta">
                         <span class="enote-tag @StatusKlasse(e.Status)">@StatusText(e.Status)</span>
                         @if (e.VerseeUtc is { } v)
                         {
-                            <span class="enote-muted">Versée le @v.ToString("dd/MM/yyyy") · référence : @e.Referenz</span>
+                            <span class="enote-muted">Versée le @v.ToString("dd'/'MM'/'yyyy") · référence : @e.Referenz</span>
                         }
                         @if (e.Status == PoProvisionStatus.AVerser && !string.IsNullOrWhiteSpace(e.Hinweis))
                         {
@@ -94,7 +94,7 @@
         <ul class="enote-sammel-liste">
             @foreach (var e in eintraege.Where(e => auswahl.Contains(e.Id)))
             {
-                <li>@e.Laden · @Geld(e.Betrag) · versée le @e.VerseeUtc?.ToString("dd/MM/yyyy") (@e.Referenz)</li>
+                <li>@e.Laden · @Geld(e.Betrag) · versée le @e.VerseeUtc?.ToString("dd'/'MM'/'yyyy") (@e.Referenz)</li>
             }
         </ul>
     </ChildContent>
@@ -106,7 +106,7 @@
 
 <ModalDialog Open="nichtErhalten is not null" Title="Versement non reçu" OnClose="() => nichtErhalten = null" ErrorMessage="@dialogFehler">
     <ChildContent>
-        <p>@nichtErhalten?.Laden · @Geld(nichtErhalten?.Betrag ?? 0) · versée le @nichtErhalten?.VerseeUtc?.ToString("dd/MM/yyyy") (référence @nichtErhalten?.Referenz)</p>
+        <p>@nichtErhalten?.Laden · @Geld(nichtErhalten?.Betrag ?? 0) · versée le @nichtErhalten?.VerseeUtc?.ToString("dd'/'MM'/'yyyy") (référence @nichtErhalten?.Referenz)</p>
         <p class="enote-muted">La commission redevient « à recevoir » et l'administrateur voit votre message.</p>
         <div class="enote-form">
             <label><span class="enote-pflicht">Que s'est-il passé ?</span></label>

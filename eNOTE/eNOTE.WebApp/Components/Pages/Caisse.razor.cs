@@ -193,7 +193,7 @@ public partial class Caisse(
         var heute = ENote.Core.Services.Zeitzonen.ImLaden(ENote.Core.Services.AppUhr.UtcNow, zone).Date;
         var wann = ort.Date == heute ? $"depuis {ort:HH:mm}"
             : ort.Date == heute.AddDays(-1) ? $"depuis hier {ort:HH:mm}"
-            : $"depuis le {ort:dd.MM} à {ort:HH:mm}";
+            : $"depuis le {ort:dd'/'MM} à {ort:HH:mm}";
         return string.IsNullOrWhiteSpace(w.GeaendertVon) ? wann : $"{wann} · {w.GeaendertVon}";
     }
 

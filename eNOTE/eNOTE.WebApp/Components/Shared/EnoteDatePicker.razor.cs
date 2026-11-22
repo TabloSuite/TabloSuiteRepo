@@ -8,7 +8,7 @@ public partial class EnoteDatePicker : IAsyncDisposable
 {
     [Parameter] public DateTime? Value { get; set; }
     [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
-    [Parameter] public string Placeholder { get; set; } = "jj.mm.aaaa";
+    [Parameter] public string Placeholder { get; set; } = "jj/mm/aaaa";
     [Parameter] public bool Disabled { get; set; }
 
     [Inject] private IJSRuntime Js { get; set; } = default!;

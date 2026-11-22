@@ -107,7 +107,7 @@ public class PostEingangService(IDbContextFactory<ApplicationDbContext> factory,
         var betreff = mail.Betreff.StartsWith("Re:", StringComparison.OrdinalIgnoreCase) ? mail.Betreff : "Re: " + mail.Betreff;
         var zitat = mail.Text.Length > 1500 ? mail.Text[..1500] + " …" : mail.Text;
         var html = TabloSuiteMails.Nachricht(null, "Réponse de l'équipe TabloSuite",
-            text + "\n\n— Votre message du " + mail.EmpfangenUtc.ToString("dd.MM.yyyy") + " :\n" + zitat, null, null);
+            text + "\n\n— Votre message du " + mail.EmpfangenUtc.ToString("dd'/'MM'/'yyyy") + " :\n" + zitat, null, null);
         bool ok;
         try
         {

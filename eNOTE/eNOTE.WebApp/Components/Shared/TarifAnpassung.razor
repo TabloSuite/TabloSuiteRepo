@@ -61,7 +61,7 @@
                     <span class="ta-verlauf-diff @(hoch ? "hoch" : "runter")">@(hoch ? "+" : "−")@Math.Abs(p.NeuerStandard - p.AlterStandard).ToString("N0") F</span>
                     @if (p.IstAufgehoben)
                     {
-                        <span class="enote-muted">@(p.AufgehobenUtc is DateTime am ? $"Annulé le {am:dd.MM.yyyy}" : "Annulé") · @(p.EntwarnungAnkuendigungId is null ? "sans avis" : p.EntwarnungMails > 0 ? $"avis : app + {p.EntwarnungMails} e-mail(s)" : "avis dans l'app")</span>
+                        <span class="enote-muted">@(p.AufgehobenUtc is DateTime am ? $"Annulé le {am:dd'/'MM'/'yyyy}" : "Annulé") · @(p.EntwarnungAnkuendigungId is null ? "sans avis" : p.EntwarnungMails > 0 ? $"avis : app + {p.EntwarnungMails} e-mail(s)" : "avis dans l'app")</span>
                         <span class="ta-verlauf-status annule">Annulé</span>
                     }
                     else

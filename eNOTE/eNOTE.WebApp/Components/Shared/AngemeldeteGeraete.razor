@@ -32,7 +32,7 @@
                     <span class="st-geraet-ico"><Icon Name="@(g.Beschreibung.Contains("Android") || g.Beschreibung.Contains("iPhone") ? "phone" : "monitor")" Groesse="18" /></span>
                     <div class="st-geraet-text">
                         <strong>@g.Beschreibung @if (g.IstDiesesGeraet) { <span class="enote-tag enote-tag-ok">Cet appareil</span> }</strong>
-                        <small class="enote-muted">Connecté le @g.ErstelltUtc.ImLaden(AktiverSalon.Zeitzone).ToString("dd.MM.yyyy HH:mm") · dernière activité @Relativ(g.ZuletztUtc)</small>
+                        <small class="enote-muted">Connecté le @g.ErstelltUtc.ImLaden(AktiverSalon.Zeitzone).ToString("dd'/'MM'/'yyyy HH:mm") · dernière activité @Relativ(g.ZuletztUtc)</small>
                     </div>
                     @if (!g.IstDiesesGeraet)
                     {
@@ -90,6 +90,6 @@
         if (d < TimeSpan.FromMinutes(10)) return "à l'instant";
         if (d < TimeSpan.FromHours(1)) return $"il y a {(int)d.TotalMinutes} min";
         if (d < TimeSpan.FromDays(1)) return $"il y a {(int)d.TotalHours} h";
-        return "le " + utc.ImLaden(AktiverSalon.Zeitzone).ToString("dd.MM.yyyy");
+        return "le " + utc.ImLaden(AktiverSalon.Zeitzone).ToString("dd'/'MM'/'yyyy");
     }
 }

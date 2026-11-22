@@ -38,7 +38,7 @@
             @if (stand.Offen is { } o && !istFrei)
             {
                 <div class="fo-fakten">
-                    <div><small>Jusqu'au</small><strong>@o.FristUtc.ToString("dd.MM.yyyy")</strong><span>@TageText(o.FristUtc)</span></div>
+                    <div><small>Jusqu'au</small><strong>@o.FristUtc.ToString("dd'/'MM'/'yyyy")</strong><span>@TageText(o.FristUtc)</span></div>
                     <div><small>Essais</small><strong>@o.Abgegeben / @FormationRunde.MaxVersuche</strong><span>le dernier compte</span></div>
                     <div><small>Réussite</small><strong>@o.Grenze %</strong><span>@o.FragenAnzahl questions</span></div>
                     @if (o.LetzterAbgegeben is { } l)
@@ -78,7 +78,7 @@
             }
             @if (!istFrei && stand.Offen is { Abgegeben: 0 } && gelesen < Lektionen.Count)
             {
-                <p class="fo-tipp"><Icon Name="info" Groesse="16" /> Conseil : lisez d'abord les leçons (@gelesen / @Lektionen.Count lues). Vous avez jusqu'au @stand.Offen.FristUtc.ToString("dd.MM.yyyy").</p>
+                <p class="fo-tipp"><Icon Name="info" Groesse="16" /> Conseil : lisez d'abord les leçons (@gelesen / @Lektionen.Count lues). Vous avez jusqu'au @stand.Offen.FristUtc.ToString("dd'/'MM'/'yyyy").</p>
             }
         </section>
 
@@ -106,7 +106,7 @@
                             <span class="fo-status fo-status-@StatusKlasse(r.Status)">@(r.IstFrei ? PfadName(r.AdminPfad) : StatusText(r.Status))</span>
                             <span class="fo-verlauf-text">
                                 <strong>@(r.EndNoteProzent is { } n ? $"{n} %" : "—")</strong>
-                                <small>@((r.AbgeschlossenUtc ?? r.GeoeffnetUtc).ToString("dd.MM.yyyy"))@(r.IstFrei ? "" : $" · {r.Abgegeben} essai{(r.Abgegeben > 1 ? "s" : "")}")@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
+                                <small>@((r.AbgeschlossenUtc ?? r.GeoeffnetUtc).ToString("dd'/'MM'/'yyyy"))@(r.IstFrei ? "" : $" · {r.Abgegeben} essai{(r.Abgegeben > 1 ? "s" : "")}")@(r.ErlassenGrund is { } g ? $" · {g}" : "")</small>
                             </span>
                             @if (letzterVersuch is not null)
                             {
@@ -238,9 +238,9 @@
             ? (o.Uebrig > 0 ? $"{o.FragenAnzahl} questions sur toutes les leçons. Après chaque essai, vous voyez votre note et vos erreurs. Vous avez {FormationRunde.MaxVersuche} essais au plus : seul le dernier compte."
                             : "Vous avez utilisé vos essais.")
             : stand?.PausiertBisUtc is { } p && p > ENote.Core.Services.AppUhr.UtcNow
-                ? $"L'administrateur a mis votre évaluation en pause jusqu'au {p:dd.MM.yyyy}. Les leçons restent ouvertes."
+                ? $"L'administrateur a mis votre évaluation en pause jusqu'au {p:dd'/'MM'/'yyyy}. Les leçons restent ouvertes."
                 : stand?.NaechsteRundeAbUtc is { } n
-                    ? $"Prochaine évaluation à partir du {n:dd.MM.yyyy} (tous les {stand.IntervallMonate} mois). D'ici là, relisez les leçons quand vous voulez."
+                    ? $"Prochaine évaluation à partir du {n:dd'/'MM'/'yyyy} (tous les {stand.IntervallMonate} mois). D'ici là, relisez les leçons quand vous voulez."
                     : "Les leçons restent ouvertes à tout moment.";
 
     private static string TageText(DateTime frist)

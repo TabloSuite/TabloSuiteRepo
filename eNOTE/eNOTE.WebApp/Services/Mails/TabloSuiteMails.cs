@@ -267,20 +267,20 @@ public static class TabloSuiteMails
 
     /// <summary>Neue Prüfungsrunde für einen Responsable.</summary>
     public static string FormationOuverte(string vorname, DateTime fristUtc, int grenze, int fragen, string url)
-        => Wrap("Votre évaluation eNOTE est ouverte", $"Jusqu'au {fristUtc:dd.MM.yyyy} · {fragen} questions.",
+        => Wrap("Votre évaluation eNOTE est ouverte", $"Jusqu'au {fristUtc:dd'/'MM'/'yyyy} · {fragen} questions.",
             Anrede(vorname)
             + P("Une nouvelle session d'évaluation de votre formation de responsable est ouverte.")
-            + Tabelle([("Jusqu'au", fristUtc.ToString("dd.MM.yyyy")), ("Questions", fragen.ToString()), ("Réussite à partir de", $"{grenze} %"), ("Essais", "3 au plus – le dernier compte")])
+            + Tabelle([("Jusqu'au", fristUtc.ToString("dd'/'MM'/'yyyy")), ("Questions", fragen.ToString()), ("Réussite à partir de", $"{grenze} %"), ("Essais", "3 au plus – le dernier compte")])
             + P("Relisez les leçons si besoin : elles sont mises à jour avec l'application. Vous voyez votre note et vos erreurs après chaque essai.")
             + Knopf("Ouvrir ma formation", url) + Gruss());
 
     /// <summary>Erinnerung kurz vor der Frist.</summary>
     public static string FormationRappel(string vorname, DateTime fristUtc, int? note, int grenze, string url)
-        => Wrap("Rappel : votre évaluation eNOTE", $"Encore jusqu'au {fristUtc:dd.MM.yyyy}.",
+        => Wrap("Rappel : votre évaluation eNOTE", $"Encore jusqu'au {fristUtc:dd'/'MM'/'yyyy}.",
             Anrede(vorname)
             + P(note is null
-                ? $"Votre session d'évaluation se termine le <strong>{fristUtc:dd.MM.yyyy}</strong> et vous ne l'avez pas encore faite."
-                : $"Votre dernier essai a obtenu <strong>{note} %</strong> (réussite à partir de {grenze} %). Vous pouvez encore réessayer jusqu'au <strong>{fristUtc:dd.MM.yyyy}</strong>.")
+                ? $"Votre session d'évaluation se termine le <strong>{fristUtc:dd'/'MM'/'yyyy}</strong> et vous ne l'avez pas encore faite."
+                : $"Votre dernier essai a obtenu <strong>{note} %</strong> (réussite à partir de {grenze} %). Vous pouvez encore réessayer jusqu'au <strong>{fristUtc:dd'/'MM'/'yyyy}</strong>.")
             + Knopf("Ouvrir ma formation", url) + Gruss());
 
     /// <summary>Meldung an das Team: Runde nicht bestanden oder verpasst.</summary>
@@ -395,7 +395,7 @@ public static class TabloSuiteMails
     {
         // Togo, Sénégal, Côte d'Ivoire, Burkina, Mali: UTC+0 (Bénin UTC+1). Perioden liegen auf Tagesgrenzen, die Uhrzeit nur bei Hinweisen.
         var d = DateTime.SpecifyKind(utc, DateTimeKind.Utc);
-        return mitZeit ? d.ToString("dd/MM/yyyy 'à' HH:mm", Fr) : d.ToString("dd/MM/yyyy", Fr);
+        return mitZeit ? d.ToString("dd'/'MM'/'yyyy 'à' HH:mm", Fr) : d.ToString("dd'/'MM'/'yyyy", Fr);
     }
 
     private static string Wrap(string titel, string vorschau, string inhalt)

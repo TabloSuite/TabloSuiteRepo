@@ -565,7 +565,7 @@ public class FormationService(IDbContextFactory<ApplicationDbContext> dbFactory,
             t.PausiertBisUtc = bisUtc;
             if (bisUtc is { } bis)
             {
-                if (offen is not null) Erlasse(offen, adminId, $"Pause jusqu'au {bis:dd.MM.yyyy}", t, null);
+                if (offen is not null) Erlasse(offen, adminId, $"Pause jusqu'au {bis:dd'/'MM'/'yyyy}", t, null);
                 if (t.NaechsteRundeAbUtc < bis) t.NaechsteRundeAbUtc = bis;
             }
             await db.SaveChangesAsync(ct);

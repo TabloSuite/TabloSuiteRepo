@@ -62,7 +62,7 @@
                         }
                         <span class="enote-price">@Geld(e.Betrag)</span>
                     </div>
-                    <p class="enote-item-desc">Paiement confirmé le @e.BestaetigtUtc.ToLocalTime().ToString("dd/MM/yyyy") · contrat : @e.VonUtc.ToString("dd/MM/yyyy") – @e.BisUtc.ToString("dd/MM/yyyy")</p>
+                    <p class="enote-item-desc">Paiement confirmé le @e.BestaetigtUtc.ToLocalTime().ToString("dd'/'MM'/'yyyy") · contrat : @e.VonUtc.ToString("dd'/'MM'/'yyyy") – @e.BisUtc.ToString("dd'/'MM'/'yyyy")</p>
                     <p class="enote-item-desc">Calcul : @Geld(e.AboBetrag) × @e.Prozent.ToString("0.##") %@(e.Fest > 0 ? " + " + Geld(e.Fest) : "") = @Geld(e.Betrag)</p>
                     @if (!string.IsNullOrWhiteSpace(e.Hinweis) && e.Status == PoProvisionStatus.AVerser)
                     {
@@ -72,11 +72,11 @@
                         <span class="enote-tag @StatusKlasse(e.Status)">@StatusText(e.Status)</span>
                         @if (e.VerseeUtc is { } v)
                         {
-                            <span class="enote-muted">Versée le @v.ToString("dd/MM/yyyy") · référence : @e.Referenz</span>
+                            <span class="enote-muted">Versée le @v.ToString("dd'/'MM'/'yyyy") · référence : @e.Referenz</span>
                         }
                         @if (e.ErhaltenUtc is { } r)
                         {
-                            <span class="enote-muted">· confirmée le @r.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                            <span class="enote-muted">· confirmée le @r.ToLocalTime().ToString("dd'/'MM'/'yyyy")</span>
                         }
                     </div>
                     @if (e.Status == PoProvisionStatus.Versee)

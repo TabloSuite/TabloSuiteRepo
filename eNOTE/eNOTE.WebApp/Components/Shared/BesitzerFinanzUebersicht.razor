@@ -73,7 +73,7 @@ else if (besitzerId is not null)
 else if (bericht is not null)
 {
     <h2 class="enote-section-title">@bericht.LadenName · @bericht.Vertragsart</h2>
-    <p class="enote-muted">Période appliquée : @bericht.Von.ToString("dd/MM/yyyy") – @bericht.Bis.ToString("dd/MM/yyyy") (jours inclus).</p>
+    <p class="enote-muted">Période appliquée : @bericht.Von.ToString("dd'/'MM'/'yyyy") – @bericht.Bis.ToString("dd'/'MM'/'yyyy") (jours inclus).</p>
     <h3>Activité de l'établissement</h3>
     <div class="enote-grid">
         <div class="enote-item"><strong>Chiffre d'affaires</strong><span class="enote-price">@Geld(bericht.Monate.Sum(m => m.Umsatz))</span><small>@bericht.Monate.Sum(m => m.Verkaeufe) vente(s)</small></div>
@@ -112,8 +112,8 @@ else if (bericht is not null)
             <div class="enote-item">
                 <strong>@BesitzerFinanzService.IntervallText(abo.Intervall) · @Geld(abo.PreisSnapshot)</strong>
                 <span>@Status(abo.ZahlungStatus)</span>
-                <span>Contrat : @abo.ZeitraumVonUtc.ToString("dd/MM/yyyy") – @abo.ZeitraumBisUtc.ToString("dd/MM/yyyy")</span>
-                <small>Opération : @((abo.ZahlungBestaetigtUtc ?? abo.ZahlungGemeldetUtc ?? abo.CreatedAtUtc).ToString("dd/MM/yyyy"))</small>
+                <span>Contrat : @abo.ZeitraumVonUtc.ToString("dd'/'MM'/'yyyy") – @abo.ZeitraumBisUtc.ToString("dd'/'MM'/'yyyy")</span>
+                <small>Opération : @((abo.ZahlungBestaetigtUtc ?? abo.ZahlungGemeldetUtc ?? abo.CreatedAtUtc).ToString("dd'/'MM'/'yyyy"))</small>
             </div>
         }
     </div>

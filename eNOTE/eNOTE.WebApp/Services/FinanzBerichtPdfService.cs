@@ -37,7 +37,7 @@ public static class FinanzBerichtPdfService
                 {
                     col.Item().Text("Rapport financier").FontSize(20).Bold();
                     col.Item().Text(salon.Name).FontSize(12).SemiBold();
-                    col.Item().Text($"Période : du {von:dd.MM.yyyy} au {bis:dd.MM.yyyy}").FontSize(9).FontColor(Colors.Grey.Medium);
+                    col.Item().Text($"Période : du {von:dd'/'MM'/'yyyy} au {bis:dd'/'MM'/'yyyy}").FontSize(9).FontColor(Colors.Grey.Medium);
                 });
 
                 page.Content().PaddingTop(15).Column(col =>
@@ -129,7 +129,7 @@ public static class FinanzBerichtPdfService
 
                         foreach (var t in tage.OrderBy(x => x.Datum))
                         {
-                            table.Cell().Element(DatenZelle).Text(t.Datum.ToString("dd.MM.yyyy"));
+                            table.Cell().Element(DatenZelle).Text(t.Datum.ToString("dd'/'MM'/'yyyy"));
                             table.Cell().Element(DatenZelle).AlignRight().Text(t.AnzahlVerkaeufe.ToString());
                             table.Cell().Element(DatenZelle).AlignRight().Text($"{t.Bar:N0} F");
                             table.Cell().Element(DatenZelle).AlignRight().Text($"{t.Karte:N0} F");
@@ -141,7 +141,7 @@ public static class FinanzBerichtPdfService
 
                 page.Footer().AlignCenter().Text(t =>
                 {
-                    t.Span("eNOTE · Généré le " + ENote.Core.Services.Zeitzonen.ImLaden(ENote.Core.Services.AppUhr.UtcNow, ENote.Core.Services.Zeitzonen.Fuer(salon.Land)).ToString("dd.MM.yyyy HH:mm") + " · Page ").FontSize(8).FontColor(Colors.Grey.Medium);
+                    t.Span("eNOTE · Généré le " + ENote.Core.Services.Zeitzonen.ImLaden(ENote.Core.Services.AppUhr.UtcNow, ENote.Core.Services.Zeitzonen.Fuer(salon.Land)).ToString("dd'/'MM'/'yyyy HH:mm") + " · Page ").FontSize(8).FontColor(Colors.Grey.Medium);
                     t.CurrentPageNumber().FontSize(8);
                     t.Span(" / ").FontSize(8);
                     t.TotalPages().FontSize(8);

@@ -46,7 +46,7 @@
             {
                 <div class="enote-log-item @(log.IstBehandelt ? "behandelt" : "")">
                     <div class="enote-log-head">
-                        <span class="enote-log-zeit">@log.ZeitUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</span>
+                        <span class="enote-log-zeit">@log.ZeitUtc.ToLocalTime().ToString("dd'/'MM'/'yyyy HH:mm:ss")</span>
                         @if (log.IstBehandelt)
                         {
                             <span class="enote-tag">Traité</span>

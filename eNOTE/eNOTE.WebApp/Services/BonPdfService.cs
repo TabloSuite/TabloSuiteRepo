@@ -67,7 +67,7 @@ public static class BonPdfService
                         col.Item().Text($"Motif : {verkauf.StornoGrund}").FontSize(8);
                     }
                     col.Item().Text($"Reçu n° {verkauf.Id.ToString()[..8].ToUpperInvariant()}").FontSize(8);
-                    col.Item().Text(ENote.Core.Services.Zeitzonen.ImLaden(verkauf.ZeitUtc, ENote.Core.Services.Zeitzonen.Fuer(salon.Land)).ToString("dd.MM.yyyy HH:mm")).FontSize(8);
+                    col.Item().Text(ENote.Core.Services.Zeitzonen.ImLaden(verkauf.ZeitUtc, ENote.Core.Services.Zeitzonen.Fuer(salon.Land)).ToString("dd'/'MM'/'yyyy HH:mm")).FontSize(8);
                     col.Item().Text($"Servi par : {kassiererName}").FontSize(8);
                     if (verkauf.Kunde is { } kunde)
                         col.Item().Text($"Client : {kunde.Name}").FontSize(8);
