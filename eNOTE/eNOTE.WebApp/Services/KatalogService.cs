@@ -312,7 +312,15 @@ public class KatalogService(
             });
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Zweites Gerät hat denselben Stern gleichzeitig umgeschaltet (eindeutiger Index bzw. schon entfernt):
+            // der Stand in der Datenbank gilt, die Kasse lädt die Favoriten danach neu (Fehlersuche 21.11.2026).
+        }
     }
 
     // --- Leistungen ---

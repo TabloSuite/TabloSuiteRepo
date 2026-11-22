@@ -246,9 +246,19 @@ public partial class Leistungen(
         return q;
     }
 
+    // Fehlersuche 21.11.2026: ein leeres Preisfeld (oder « 1e6 », das der Browser nicht übergibt) wurde still als 0 F
+    // gespeichert. Das Feld ist jetzt leer, bis ein Preis eingegeben ist; 0 F muss man bewusst eintippen.
+    private decimal? preisEingabe;
+    private decimal? PreisFeld
+    {
+        get => preisEingabe;
+        set { preisEingabe = value; bearbeitungsLeistung.Preis = value ?? 0m; }
+    }
+
     private async void NeuAnlegen()
     {
         stueckzahlBeimOeffnen = null;
+        preisEingabe = null;
         bearbeitungsLeistung = new Leistung { Id = Guid.Empty, SalonId = salonId, IstAktiv = true, Typ = LeistungsTyp.Prestation };
         istSammelArtikel = false;
         basisLeistungIdText = string.Empty;
@@ -267,6 +277,7 @@ public partial class Leistungen(
     private async void Bearbeiten(Leistung leistung)
     {
         stueckzahlBeimOeffnen = leistung.HatStueckzahl ? leistung.Stueckzahl : null;
+        preisEingabe = leistung.Preis;
         bearbeitungsLeistung = new Leistung
         {
             Id = leistung.Id,
@@ -457,6 +468,12 @@ public partial class Leistungen(
         if (string.IsNullOrWhiteSpace(bearbeitungsLeistung.Name))
         {
             editorFehler = "Veuillez saisir un nom.";
+            return;
+        }
+
+        if (preisEingabe is null)
+        {
+            editorFehler = PreisEingabe.MeldungPreisFehlt;
             return;
         }
 

@@ -341,12 +341,12 @@
             @* Preis-Felder je nach Typ *@
             @if (bearbeitungsLeistung.Typ == LeistungsTyp.Prestation)
             {
-                <label>Prix de la prestation (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
+                <label>Prix de la prestation (F) <input type="number" min="0" step="50" @bind="PreisFeld" /></label>
             }
             else
             {
                 <div class="enote-form-grid">
-                    <label>Prix de vente (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Preis" /></label>
+                    <label>Prix de vente (F) <input type="number" min="0" step="50" @bind="PreisFeld" /></label>
                     <label>Prix d'achat (F) <input type="number" min="0" step="50" @bind="bearbeitungsLeistung.Kaufpreis" /></label>
                 </div>
                 @if (bearbeitungsLeistung.Kaufpreis is not null && bearbeitungsLeistung.Preis > 0)

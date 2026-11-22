@@ -6,7 +6,10 @@ namespace ENote.WebApp.Services;
 /// </summary>
 public static class PreisEingabe
 {
-    public const string MeldungGanzeFrancs = "Les prix se saisissent en francs entiers, sans point ni virgule (ex. 1500 pour 1.500 F).";
+    /// <summary>Leeres oder unlesbares Preisfeld (Fehlersuche 21.11.2026: wurde still als 0 F gespeichert).</summary>
+    public const string MeldungPreisFehlt = "Veuillez saisir le prix en francs (0 pour une prestation gratuite).";
+
+    public const string MeldungGanzeFrancs ="Les prix se saisissent en francs entiers, sans point ni virgule (ex. 1500 pour 1.500 F).";
 
     /// <summary>Null = in Ordnung, sonst die französische Meldung.</summary>
     public static string? Pruefe(decimal preis, decimal? kaufpreis = null)
