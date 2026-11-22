@@ -29,6 +29,10 @@
             }
             @Werkzeuge
         </div>
+        @if (SucheHinweis is not null && !string.IsNullOrWhiteSpace(suche))
+        {
+            <p class="sk-leise">@SucheHinweis</p>
+        }
     }
 
     @if (fehler is not null)

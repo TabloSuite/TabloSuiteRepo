@@ -346,6 +346,9 @@ Von mir entschieden (änderbar):
 40. **Rechnung in der Periode der Anmeldung:** Rechnungsansicht (Schule, Admin, Responsable) und PDF erklären die geringere Zahl
     der Monate mit « (2 mois × 500 FCFA) à partir du 01/11/2027 (mois d'inscription) » (`RechnungDetail.AbAnmeldung`), wie
     « Facturer maintenant » und das Journal.
+41. **Suche in den Rechnungslisten** (Admin « Facturation », auch Schule/Responsable) gilt immer für alle Rechnungen: beim Beginn
+    einer Suche springt der Chip sichtbar auf « Toutes », darunter « Recherche dans toutes les factures, quel que soit leur statut. »
+    (`Liste.SucheUeberAlleFilter`); ein danach gewählter Chip filtert die Treffer weiter.
 
 ---
 

@@ -9,6 +9,18 @@ public sealed record ListenAnfrage(string? Suche, string? Filter, int Uebersprin
 /// <summary>Filter-Chip; Wert null = « Tous ».</summary>
 public sealed record FilterChip(string? Wert, string Label, int? Anzahl = null);
 
+/// <summary>Regeln der Listensuche (rein, testbar).</summary>
+public static class ListenSuche
+{
+    /// <summary>
+    /// Nutzer 22.11.2026 (Admin « Facturation » startete mit « À confirmer », die Suche nach einer Schule fand dort nichts): Mit
+    /// <paramref name="ueberAlle"/> springt der Filter beim Beginn einer Suche sichtbar auf « Toutes » (Chip ohne Wert). Wer danach
+    /// selbst einen Chip wählt, sucht darin weiter.
+    /// </summary>
+    public static string? FilterBeiSuche(string? filter, string? bisherigeSuche, string? neueSuche, bool ueberAlle)
+        => ueberAlle && string.IsNullOrWhiteSpace(bisherigeSuche) && !string.IsNullOrWhiteSpace(neueSuche) ? null : filter;
+}
+
 /// <summary>
 /// Server-geblätterte Liste: lädt seitenweise über <see cref="Laden"/> (Einträge, gibt es mehr?),
 /// sucht verzögert (350 ms) und filtert über Chips. <see cref="NeuLadenAsync"/> nach Änderungen aufrufen.
@@ -33,6 +45,12 @@ public partial class Liste<T> : IDisposable
     [Parameter] public string LeerTitel { get; set; } = "Rien pour le moment";
     [Parameter] public string? LeerText { get; set; }
     [Parameter] public string? CssClass { get; set; }
+
+    /// <summary>Eine Suche gilt für alle Einträge: der Filter springt auf « Toutes » (<see cref="ListenSuche.FilterBeiSuche"/>).</summary>
+    [Parameter] public bool SucheUeberAlleFilter { get; set; }
+
+    /// <summary>Hinweis unter der Filterleiste, solange gesucht wird (z. B. « Recherche dans toutes les factures … »).</summary>
+    [Parameter] public string? SucheHinweis { get; set; }
 
     private List<T>? eintraege;
     private bool mehr;
@@ -79,6 +97,7 @@ public partial class Liste<T> : IDisposable
 
     private async Task SucheGeaendert(string? wert)
     {
+        filter = ListenSuche.FilterBeiSuche(filter, suche, wert, SucheUeberAlleFilter);
         suche = wert;
         abbruch?.Cancel();
         abbruch = new CancellationTokenSource();

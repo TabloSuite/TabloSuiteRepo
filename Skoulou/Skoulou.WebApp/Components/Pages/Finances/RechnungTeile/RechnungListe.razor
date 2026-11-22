@@ -17,7 +17,9 @@ else
             <KennzahlKachel Bezeichnung="Payées" Wert="@z.Payees.ToString()" Icon="check-circle" />
         </div>
     }
+    @* 22.11.2026: eine Suche gilt immer für alle Rechnungen (Chip springt auf « Toutes »), auch wenn die Seite mit « À confirmer » startet. *@
     <Liste T="RechnungZeile" @ref="liste" Laden="LadenAsync" Filter="Chips" AnfangsFilter="@AnfangsFilter" SuchPlatzhalter="@(Modus == "schule" ? "N° de facture…" : "N° de facture ou établissement…")"
+           SucheUeberAlleFilter="true" SucheHinweis="Recherche dans toutes les factures, quel que soit leur statut."
            LeerIcon="receipt" LeerTitel="Aucune facture" LeerText="Les factures SKOULOU sont créées après la fin de chaque période (trimestre, semestre ou session).">
         <Werkzeuge>
             @if (Modus != "schule" && schulen.Count > 2)
