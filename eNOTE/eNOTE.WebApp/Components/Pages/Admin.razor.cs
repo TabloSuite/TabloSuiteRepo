@@ -12,7 +12,7 @@ public partial class Admin(
     ProduktOwnerService produktOwnerService,
     Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider,
     ToastService toast,
-    LadeZustand ladeZustand)
+    LadeZustand ladeZustand) : IDisposable
 {
     private List<AdminService.SalonUebersicht> salons = [];
     private List<PlattformPreis> plattformPreise = [];
@@ -216,6 +216,58 @@ public partial class Admin(
             produktOwners = await adminService.GetProduktOwnersAsync();
         }
         isLoading = false;
+    }
+
+    // ---- Liste « Établissements » aktualisiert sich selbst (Normaltest 21.11.2026, Nutzerentscheidung 22.11.) ----
+    // Neue Registrierungen, Zahlungsmeldungen und Freigaben anderer Admins erschienen erst nach F5. Alle 30 s still neu
+    // laden: nur im Reiter « Établissements », nicht während eines Ladevorgangs oder offenen Dialogs; mit denselben
+    // Filtern und so vielen Einträgen, wie schon angezeigt (« Afficher plus » bleibt aufgeklappt).
+    internal static readonly TimeSpan AktualisierungsTakt = TimeSpan.FromSeconds(30);
+    private readonly CancellationTokenSource aktualisierungStopp = new();
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _ = AktualisiereRegelmaessigAsync();
+    }
+
+    private bool IrgendeinDialogOffen => poAnlegeDialogOffen || provisionDialogOffen || probeDialogOffen || tarifDialogOffen
+        || besitzerDialogOffen || landDialogOffen || anfrageDialogOffen;
+
+    private async Task AktualisiereRegelmaessigAsync()
+    {
+        using var takt = new PeriodicTimer(AktualisierungsTakt);
+        try
+        {
+            while (await takt.WaitForNextTickAsync(aktualisierungStopp.Token))
+            {
+                if (aktiverTab != "etablissements" || isLoading || IrgendeinDialogOffen) continue;
+                try { await InvokeAsync(AktualisiereStillAsync); }
+                catch (Exception ex) when (ex is not OperationCanceledException) { /* nächster Takt versucht es erneut */ }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+    }
+
+    private async Task AktualisiereStillAsync()
+    {
+        var filter = (salonSuche, salonStatusFilter, salonLandFilter);
+        var neueKennzahlen = await adminService.GetSalonKennzahlenAsync(aktuellerBenutzerId, istSuperAdmin);
+        var (liste, mehr) = await adminService.SucheSalonsAsync(aktuellerBenutzerId, istSuperAdmin, salonSuche, salonStatusFilter,
+            salonLandFilter, 0, Math.Max(50, salons.Count));
+        var (warten, _) = await adminService.SucheSalonsAsync(aktuellerBenutzerId, istSuperAdmin, null, "attente", null, 0);
+        // Inzwischen anders gefiltert oder Ladevorgang begonnen → dieses Ergebnis ist veraltet.
+        if (filter != (salonSuche, salonStatusFilter, salonLandFilter) || isLoading) return;
+        kennzahlen = neueKennzahlen;
+        (salons, salonsMehr) = (liste, mehr);
+        ausstehende = warten;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        aktualisierungStopp.Cancel();
+        aktualisierungStopp.Dispose();
     }
 
     private async Task SetzeFreigabeAsync(Guid salonId, bool freigegeben)
