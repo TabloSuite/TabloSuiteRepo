@@ -147,6 +147,10 @@ public class NutzerAnlageTests
         var (ok, fehler) = await service.AenderePersoenlicheDatenAsync(besitzer.Id, " carine ", "MBALLA", null);
         Assert.False(ok);
         Assert.Contains("porte déjà ce nom", fehler);
+        // 22.11.2026: auch mit Akzenten derselbe Name (« Cariné Mballà » = « Carine Mballa »)
+        (ok, fehler) = await service.AenderePersoenlicheDatenAsync(besitzer.Id, "Cariné", "Mballà", null);
+        Assert.False(ok);
+        Assert.Contains("porte déjà ce nom", fehler);
         await using (var db = await factory.CreateDbContextAsync())
             Assert.Equal("Jean-Paul Nkoulou", (await db.Users.SingleAsync(u => u.Id == besitzer.Id)).FullName);
 

@@ -54,16 +54,24 @@ public class TeamServiceTests
     [InlineData("Ama", "Mensah")]
     [InlineData("  ama ", "MENSAH")]
     [InlineData("Awa", "Koffi")]
+    // Nutzerentscheidung 22.11.2026: Akzente zählen nicht (« Délali » = « Delali »), in beide Richtungen.
+    [InlineData("Àma", "Mènsah")]
+    [InlineData("Delali", "Agbeko")]
+    [InlineData("DÉLALI", "agbéko")]
+    [InlineData("Laetitia", "Kpodar")]
     public async Task Gleichnamiges_Mitglied_Im_Selben_Laden_Wird_Abgelehnt(string vorname, string nachname)
     {
         var factory = TestDbContextFactory.Create();
         var besitzer = new AppUser { Id = Guid.NewGuid(), FullName = "Ama Mensah", Vorname = "Ama", Nachname = "Mensah" };
         var kassierer = new AppUser { Id = Guid.NewGuid(), FullName = "Awa  Koffi" };
+        var mitAkzent = new AppUser { Id = Guid.NewGuid(), FullName = "Délali Agbéko", Vorname = "Délali", Nachname = "Agbéko" };
+        var ligatur = new AppUser { Id = Guid.NewGuid(), FullName = "Lætitia Kpodar", Vorname = "Lætitia", Nachname = "Kpodar" };
         var laden = new Salon { Name = "Laden" };
         await using (var db = await factory.CreateDbContextAsync())
         {
-            db.Users.AddRange(besitzer, kassierer);
-            db.UserSalons.AddRange(new UserSalon { AppUser = besitzer, Salon = laden }, new UserSalon { AppUser = kassierer, Salon = laden });
+            db.Users.AddRange(besitzer, kassierer, mitAkzent, ligatur);
+            db.UserSalons.AddRange(new UserSalon { AppUser = besitzer, Salon = laden }, new UserSalon { AppUser = kassierer, Salon = laden },
+                new UserSalon { AppUser = mitAkzent, Salon = laden }, new UserSalon { AppUser = ligatur, Salon = laden });
             await db.SaveChangesAsync();
         }
 
@@ -78,5 +86,20 @@ public class TeamServiceTests
         var andererLaden = Guid.NewGuid();
         var methode = typeof(TeamService).GetMethod("NameImLadenVergebenAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         Assert.False(await (Task<bool>)methode.Invoke(service, [andererLaden, vorname, nachname, CancellationToken.None])!);
+    }
+
+    [Theory]
+    [InlineData("Délali Agbéko", "delali agbeko")]
+    [InlineData("  Ama   MENSAH ", "ama mensah")]
+    [InlineData("Lætitia Cœur", "laetitia coeur")]
+    [InlineData("Ñoël Ïbrahïm", "noel ibrahim")]
+    public void NameFuerVergleich_Ignoriert_Akzente_Schreibweise_Und_Leerzeichen(string name, string erwartet)
+        => Assert.Equal(erwartet, TeamService.NameFuerVergleich(name));
+
+    [Fact]
+    public void NameFuerVergleich_Unterscheidet_Weiter_Verschiedene_Namen()
+    {
+        Assert.NotEqual(TeamService.NameFuerVergleich("Délali"), TeamService.NameFuerVergleich("Dalila"));
+        Assert.NotEqual(TeamService.NameFuerVergleich("Ama Mensah"), TeamService.NameFuerVergleich("Ama Mensah K."));
     }
 }

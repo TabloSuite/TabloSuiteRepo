@@ -97,12 +97,24 @@ public class TeamService(
             us.KannKundenAktenFuehren)).ToList();
     }
 
-    /// <summary>Name für den Vergleich im Team: Groß-/Kleinschreibung und mehrfache Leerzeichen zählen nicht.</summary>
-    internal static string NameFuerVergleich(string? name) => string.Join(' ', (name ?? string.Empty)
-        .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToLowerInvariant();
+    /// <summary>
+    /// Name für den Vergleich im Team: Groß-/Kleinschreibung, mehrfache Leerzeichen und – seit 22.11.2026 (Nutzerentscheidung) –
+    /// Akzente zählen nicht: « Délali » = « Delali », « Lætitia » = « Laetitia ». An der Kasse sähen beide gleich aus.
+    /// </summary>
+    internal static string NameFuerVergleich(string? name)
+    {
+        var zerlegt = string.Join(' ', (name ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .ToLowerInvariant().Replace("œ", "oe").Replace("æ", "ae")
+            .Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(zerlegt.Length);
+        foreach (var c in zerlegt)
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark) sb.Append(c);
+        return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+    }
 
-    /// <summary>Trägt schon ein Mitglied des Ladens (auch der Besitzer) diesen Namen? Groß-/Kleinschreibung und
-    /// mehrfache Leerzeichen zählen nicht.</summary>
+    /// <summary>Trägt schon ein Mitglied des Ladens (auch der Besitzer) diesen Namen? Groß-/Kleinschreibung, mehrfache
+    /// Leerzeichen und Akzente zählen nicht.</summary>
     private async Task<bool> NameImLadenVergebenAsync(Guid salonId, string? vorname, string? nachname, CancellationToken ct)
     {
         await using var db = await dbContextFactory.CreateDbContextAsync(ct);
