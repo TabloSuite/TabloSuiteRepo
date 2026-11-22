@@ -6,19 +6,22 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>
-    /// Neu laden, wenn ein Link (Menü, Reiter, Logo) genau auf die offene Adresse führt. Nicht bei Navigation aus dem Code
-    /// (z. B. Filter in der Adresse), nicht bei Sprungmarken (#…) und nicht bei einer anderen Adresse. Eine Rückfrage vor dem
-    /// Verlassen (NavigationLock) wirkt vorher: bricht sie ab, kommt dieses Ereignis gar nicht an.
+    /// Neu laden, wenn ein Link (Menü, Reiter, Logo) auf die offene Seite führt – Vergleich über den Pfad ohne Adressparameter
+    /// und Anker, also auch von « /notes?classe=… » auf « /notes » (Nutzer 22.11.2026, R9). Nicht bei Navigation aus dem Code
+    /// (Seiten, die ihre Filter per NavigateTo in die Adresse schreiben, auch Vor/Zurück des Browsers), nicht bei Sprungmarken
+    /// (#…) und nicht bei einem anderen Pfad. Eine Rückfrage vor dem Verlassen (NavigationLock) wirkt vorher: bricht sie ab,
+    /// kommt dieses Ereignis gar nicht an.
     /// </summary>
     public static bool IstNeuLaden(string? bisher, string neu, bool ausLink)
     {
         if (!ausLink || string.IsNullOrEmpty(bisher) || neu.Contains('#')) return false;
-        return string.Equals(OhneAnker(bisher), OhneAnker(neu), StringComparison.Ordinal);
+        return string.Equals(Pfad(bisher), Pfad(neu), StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string OhneAnker(string adresse)
+    /// <summary>Adresse ohne Adressparameter (?…), Anker (#…) und abschließenden Schrägstrich.</summary>
+    private static string Pfad(string adresse)
     {
-        var i = adresse.IndexOf('#');
+        var i = adresse.IndexOfAny(['?', '#']);
         return (i >= 0 ? adresse[..i] : adresse).TrimEnd('/');
     }
 }

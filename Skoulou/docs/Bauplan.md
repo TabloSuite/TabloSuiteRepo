@@ -325,8 +325,9 @@ Von mir entschieden (änderbar):
 33. Später (nicht gebaut): schnellerer Verbindungsaufbau bei sehr langsamem Netz; Eltern sehen Fortschritt bei Übungen/Examen.
 
 **Vom Nutzer entschieden 22.11.2026 (Fragen aus dem Normaltest über drei Schuljahre, Bericht « skoulou-normal »):**
-34. **Menüeintrag der offenen Seite** (auch Reiter/Logo mit derselben Adresse) lädt die Seite neu: das Hauptlayout erzeugt sie
-    über einen neuen Schlüssel samt Unterkomponenten neu. Navigation aus dem Code (Filter in der Adresse) und Sprungmarken nicht.
+34. **Menüeintrag der offenen Seite** (auch Reiter/Logo mit derselben Adresse – seit Nr. 48 demselben Pfad) lädt die Seite neu: das
+    Hauptlayout erzeugt sie über einen neuen Schlüssel samt Unterkomponenten neu. Navigation aus dem Code (Filter in der Adresse)
+    und Sprungmarken nicht.
 35. **Jahresmittel bei Neuzugängen** nur aus den Perioden mit Einschreibung, normaler Jahresrang (§5 Regel 3).
 36. **Passage – Kapazität:** Käme eine Zielklasse des neuen Jahres mit Bestand + Zugängen über ihre Kapazität, zeigt die Seite eine
     deutliche Warnung mit Zahlen (Liste oben, Hinweis an der Klasse, Bestätigungsdialog) – keine Sperre (`PassageUeberbelegung`).
@@ -373,6 +374,11 @@ Von mir entschieden (änderbar):
     « Remboursement à recevoir »). **Quand vous recevrez l'argent, ne l'enregistrez pas une deuxième fois comme recette.** »
     (`FinanzMails.RueckzahlungImJournal`/`RueckzahlungNichtDoppelt`, nur wenn die Gegenbuchung besteht). Admin/Responsable sehen,
     dass die Gegenbuchung schon im Journal der Schule steht; Guide « Facture SKOULOU » und Formationen nennen es ebenso.
+48. **Menüeintrag lädt neu – auch mit Adressparametern** (Ergänzung zu Nr. 34): ein Link-Klick (Menü, Reiter, Logo) auf die
+    offene Seite lädt neu, auch wenn sich nur die Parameter unterscheiden (z. B. von « /notes?classe=… » auf « /notes »).
+    Vergleich über den Pfad ohne Query und Anker (Groß-/Kleinschreibung egal, `SeitenRahmen.IstNeuLaden`). Unverändert nicht:
+    Sprungmarken (#…), Navigation aus dem Code (Seiten schreiben ihre Filter per `NavigateTo` in die Adresse), Vor/Zurück des
+    Browsers. Keine Seite verlinkt sich selbst nur mit anderen Parametern (Test prüft die Seiten); Reiter haben eigene Pfade.
 
 ---
 
