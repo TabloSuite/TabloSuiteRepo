@@ -211,6 +211,15 @@ public sealed class ImportService(
                              where p.SchuleId == a.SchuleId && p.Matrikel != null && alleMatrikel.Contains(p.Matrikel!)
                              select new { p.Matrikel, k.Id, k.Vorname, k.Nachname, k.Status }).ToListAsync(ct);
 
+        // Doppelte Schüler (Klicktest 21.11.2026: dieselbe Datei zweimal importiert bzw. zweimal dieselbe Zeile → doppelte Konten,
+        // doppelt berechnet): gleicher Name in derselben Klasse (und gleiches Geburtsdatum, falls angegeben).
+        var vorhandene = art == ImportArt.Eleves && jahrId is not null
+            ? await (from e in db.Einschreibungen.AsNoTracking()
+                     join k in db.Users on e.SchuelerId equals k.Id
+                     where e.SchuljahrId == jahrId && e.Status == EinschreibungsStatus.Active && k.SchuleId == a.SchuleId
+                     select new { k.Vorname, k.Nachname, e.KlasseId, k.Geburtsdatum }).ToListAsync(ct)
+            : [];
+        var personenInDatei = new Dictionary<string, int>(StringComparer.Ordinal);
         var identifiantsInDatei = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var matrikelGesehen = new Dictionary<string, int>(StringComparer.Ordinal);
         var ergebnis = new List<GepruefteZeile>(zeilen.Count);
@@ -291,6 +300,19 @@ public sealed class ImportService(
                     else if (kinder.All(k => k.Item1 != kind.Id)) kinder.Add((kind.Id, $"{kind.Vorname} {kind.Nachname}".Trim()));
                 }
                 if (kinder.Count > ElternService.MaxKinder) fehler.Add($"Un compte parent peut être lié à {ElternService.MaxKinder} enfants au maximum.");
+            }
+            if (art == ImportArt.Eleves && schueler is not null && fehler.Count == 0
+                && string.IsNullOrWhiteSpace(z["identifiant"]) && string.IsNullOrWhiteSpace(z["matricule"]))
+            {
+                var name = TextNormalisierung.Schluessel($"{vorname} {nachname}");
+                var geburt = schueler.Konto.Geburtsdatum;
+                var person = $"{name}|{klasseId}|{geburt}";
+                if (personenInDatei.TryGetValue(person, out var erste))
+                    fehler.Add($"« {vorname} {nachname} » figure déjà à la ligne {erste} (même nom, même classe).");
+                else if (klasseId is not null && vorhandene.Any(v => v.KlasseId == klasseId && TextNormalisierung.Schluessel($"{v.Vorname} {v.Nachname}") == name
+                             && (geburt is null || v.Geburtsdatum is null || v.Geburtsdatum == geburt)))
+                    fehler.Add($"Un élève « {vorname} {nachname} » est déjà inscrit en {klasseName} : s'il s'agit d'un homonyme, ajoutez-le avec « Nouvel élève ».");
+                else personenInDatei.TryAdd(person, z.Nr);
             }
             ergebnis.Add(new GepruefteZeile(z.Nr, konto, identifiant, vorgeschlagen, klasseId, klasseName, schueler, wiederholer, kinder, beziehung, fehler));
         }

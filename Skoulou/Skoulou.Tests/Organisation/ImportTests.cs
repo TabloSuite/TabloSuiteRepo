@@ -82,6 +82,26 @@ public class ImportTests
     }
 
     [Fact]
+    public async Task Doppelte_Schueler_in_der_Datei_und_beim_zweiten_Import_werden_gemeldet()
+    {
+        // Klicktest 21.11.2026: dieselbe Datei zweimal importiert → alle Schüler doppelt (und doppelt berechnet).
+        var w = await OrgWelt.ErstelleAsync();
+        byte[] Datei() => Fuelle(w.D.Import.VorlageAsync(w.Direktor, ImportArt.Eleves, w.Jahr).GetAwaiter().GetResult(),
+            Z(("Prénom", "Kwame"), ("Nom", "Doppel"), ("Classe", "6e A")),
+            Z(("Prénom", "kwame"), ("Nom", "DOPPEL"), ("Classe", "6e A")),
+            Z(("Prénom", "Kwame"), ("Nom", "Doppel"), ("Classe", "6e B")),
+            Z(("Prénom", "Ewa"), ("Nom", "Neu"), ("Classe", "6e A"))).ToArray();
+        var erste = await w.D.Import.VorschauAsync(w.Direktor, ImportArt.Eleves, w.Jahr, new MemoryStream(Datei()), "eleves.xlsx");
+        Assert.Equal(3, erste.Gueltig);
+        Assert.Contains(erste.Fehler, f => f.Zeile == 3 && f.Meldung.Contains("ligne 2"));
+        Assert.Equal(3, (await w.D.Import.ImportierenAsync(w.Direktor, erste.Id)).Angelegt);
+
+        var zweite = await w.D.Import.VorschauAsync(w.Direktor, ImportArt.Eleves, w.Jahr, new MemoryStream(Datei()), "eleves.xlsx");
+        Assert.Equal(0, zweite.Gueltig);
+        Assert.Contains(zweite.Fehler, f => f.Zeile == 2 && f.Meldung.Contains("déjà inscrit en 6e A"));
+    }
+
+    [Fact]
     public async Task Vorschau_meldet_alle_Fehler_und_Import_legt_nur_gueltige_Zeilen_an()
     {
         var w = await OrgWelt.ErstelleAsync();
