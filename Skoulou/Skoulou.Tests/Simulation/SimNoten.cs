@@ -395,6 +395,12 @@ internal sealed partial class Simulation
                 .Select(e => e.Id).ToListAsync());
             Pruefe(!gelistet.Any(inListe.Contains), $"Passage {s.P.Name} {alt.Bezeichnung}: {gelistet.Count(inListe.Contains)} vergessene Teilnehmer in der Liste des Assistenten.");
         }
+        // Admis ohne Klasse im neuen Jahr: die Direktion sieht die Warnung und bestätigt den Abgang (22.11.2026).
+        if (vorschau.AdmisOhneKlasse > 0)
+        {
+            Zaehle("Passage: Admis ohne Folgeklasse bestätigt", vorschau.AdmisOhneKlasse);
+            plan.AbgaengeBestaetigt = true;
+        }
         var ergebnis = await SollAsync($"Passage {s.P.Name}", () => wechsel.AusfuehrenAsync(s.KoordMit, alt.Id, plan));
         if (ergebnis is null) return;
         Zaehle("Passagen");

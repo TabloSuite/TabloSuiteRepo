@@ -38,15 +38,22 @@ public sealed class PassagePlan
 
     /// <summary>Alte Klasse → alte Klasse der Folgestufe, deren Kopie die « Admis » aufnimmt (null = verlassen die Schule).</summary>
     public Dictionary<Guid, Guid?> ZielAdmis { get; set; } = [];
+    /// <summary>
+    /// Die Direktion hat bestätigt, dass Admis ohne Klasse im neuen Jahr die Schule verlassen (Fehlersuche 21.11.2026,
+    /// Nutzerentscheidung 22.11.: deutlich warnen und bestätigen lassen, statt sie still als « Fin de cycle » abzumelden).
+    /// </summary>
+    public bool AbgaengeBestaetigt { get; set; }
 }
 
 public sealed record PassageSchueler(Guid EinschreibungId, string Name, JahresEntscheidungsArt Entscheidung, string? Ziel);
 
 public sealed record PassageKlasse(Guid KlasseId, string Klasse, string? Stufe, string NeuerName, Guid? ZielAdmis, string? ZielAdmisName,
-    IReadOnlyList<AuswahlEintrag> ZielOptionen, IReadOnlyList<PassageSchueler> Schueler)
+    IReadOnlyList<AuswahlEintrag> ZielOptionen, IReadOnlyList<PassageSchueler> Schueler, bool FinDeCycle = false)
 {
     public int Anzahl(JahresEntscheidungsArt e) => Schueler.Count(s => s.Entscheidung == e);
     public int Sortants => Schueler.Count(s => s.Ziel is null && s.Entscheidung != JahresEntscheidungsArt.Offen);
+    /// <summary>Admis, die mangels Klasse im neuen Jahr die Schule verlassen würden – außer am Ende des Zyklus (letztes Niveau).</summary>
+    public int AdmisOhneKlasse => FinDeCycle ? 0 : Schueler.Count(s => s.Ziel is null && s.Entscheidung == JahresEntscheidungsArt.Admis);
 }
 
 public sealed record PassageVorschau(Guid AltesJahrId, string AltesJahr, SchuljahrStatus AltStatus, Guid? NeuesJahrId, string NeuesJahr,
@@ -55,6 +62,7 @@ public sealed record PassageVorschau(Guid AltesJahrId, string AltesJahr, Schulja
     public int Offen => Klassen.Sum(k => k.Anzahl(JahresEntscheidungsArt.Offen));
     public int Eingeschrieben => Klassen.Sum(k => k.Schueler.Count(s => s.Ziel is not null));
     public int Sortants => Klassen.Sum(k => k.Sortants);
+    public int AdmisOhneKlasse => Klassen.Sum(k => k.AdmisOhneKlasse);
     public bool Bereit => !BereitsAusgefuehrt && Offen == 0 && Klassen.Count > 0;
 }
 
@@ -138,8 +146,19 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var liste = schueler.Where(s => s.KlasseId == k.Id)
                 .Select(s => new PassageSchueler(s.EinschreibungId, s.Name, s.Entscheidung, ZielName(s, k, ziel, klassen, plan))).ToList();
             return new PassageKlasse(k.Id, k.Name, k.Stufe, name, ziel, ziel is { } zid ? plan.Namen.GetValueOrDefault(zid) ?? klassen.FirstOrDefault(x => x.Id == zid)?.Name : null,
-                optionen, liste);
+                optionen, liste, FinDeCycle: k.StufeId is not null && k.Nachfolger is null);
         }).ToList();
+        if (ergebnis.Where(k => k.AdmisOhneKlasse > 0).ToList() is { Count: > 0 } ohneKlasse)
+            warnungen.Add($"{ohneKlasse.Sum(k => k.AdmisOhneKlasse)} élève(s) admis n'ont pas de classe dans l'année suivante et quitteront l'établissement "
+                + $"({string.Join(", ", ohneKlasse.Select(k => k.Klasse))}). Créez la classe du niveau suivant (Organisation › Classes) "
+                + "ou choisissez-la dans « Les admis vont en » avant d'effectuer le passage.");
+        // Fehlersuche 21.11.2026 (Z3): eine deaktivierte Klasse des Folgejahres mit dem geplanten Namen würde still benutzt.
+        if (neu is not null)
+        {
+            var deaktiviert = await db.Klassen.AsNoTracking().Where(k => k.SchuljahrId == neu.Id && !k.Aktiv).Select(k => k.Name).ToListAsync(ct);
+            foreach (var k in ergebnis.Where(k => deaktiviert.Contains(k.NeuerName.Trim(), StringComparer.OrdinalIgnoreCase)))
+                warnungen.Add(DeaktiviertText(k.NeuerName.Trim(), neu.Bezeichnung));
+        }
         var anzahlPerioden = neu is null ? perioden.Count : await db.Perioden.CountAsync(p => p.SchuljahrId == neu.Id, ct);
         return new PassageVorschau(alt.Id, alt.Bezeichnung, alt.Status, neu?.Id, neu?.Bezeichnung ?? plan.Bezeichnung ?? string.Empty,
             neu?.Beginn ?? plan.Beginn ?? alt.Beginn.AddYears(1), neu?.Ende ?? plan.Ende ?? alt.Ende.AddYears(1), anzahlPerioden, ergebnis, warnungen, bereits);
@@ -172,6 +191,8 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var alt = await OrgAbfragen.SchuljahrAsync(db, a, altesJahrId, ct);
             if (alt.Status == SchuljahrStatus.Vorbereitung) throw new FachFehler("Cette année n'a pas encore démarré : le passage se fait à la fin d'une année en cours.");
             var vorschau = await RechneAsync(db, alt, plan, ct);
+            if (vorschau.AdmisOhneKlasse > 0 && !plan.AbgaengeBestaetigt)
+                throw new FachFehler($"{vorschau.AdmisOhneKlasse} élève(s) admis n'ont pas de classe dans l'année suivante : confirmez qu'ils quittent l'établissement ou choisissez leur classe.");
             if (vorschau.BereitsAusgefuehrt) throw new FachFehler($"Le passage de l'année {alt.Bezeichnung} a déjà été effectué.");
             if (vorschau.Offen > 0)
                 throw new FachFehler($"{vorschau.Offen} élève(s) n'ont pas encore de décision de fin d'année : renseignez-la (conseil de classe) ou appliquez « Admis » aux élèves sans décision.");
@@ -192,6 +213,7 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             {
                 var quelle = altKlassen[altId];
                 var ziel = neueKlassen.FirstOrDefault(k => string.Equals(k.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (ziel is { Aktiv: false }) throw new FachFehler(DeaktiviertText(name, neu.Bezeichnung));
                 if (ziel is null)
                 {
                     ziel = new Klasse
@@ -303,6 +325,9 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             return n;
         }, ct);
     }
+
+    private static string DeaktiviertText(string name, string jahr)
+        => $"La classe « {name} » de l'année {jahr} est désactivée : réactivez-la ou choisissez un autre nom de classe.";
 
     private static string Pruefe(string? name)
     {

@@ -96,9 +96,13 @@ else
                             </td>
                             <td><TextFeld Wert="@k.NeuerName" WertChanged="t => AendernAsync(() => plan.Namen[k.KlasseId] = t ?? string.Empty)" MaxLaenge="60" aria-label="@($"Nom de la nouvelle classe pour {k.Klasse}")" /></td>
                             <td>
-                                @if (k.ZielOptionen.Count == 0)
+                                @if (k.ZielOptionen.Count == 0 && k.FinDeCycle)
                                 {
                                     <span class="sk-leise">Fin de cycle : quittent l'établissement</span>
+                                }
+                                else if (k.ZielOptionen.Count == 0)
+                                {
+                                    <StatusBadge Text="Aucune classe au niveau suivant : les admis quittent l'établissement" Art="warn" />
                                 }
                                 else
                                 {
@@ -114,15 +118,22 @@ else
     </Karte>
 
     <div class="sk-formular-fuss">
-        <button type="button" class="sk-btn sk-btn-primaer sk-btn-gross" disabled="@(!v.Bereit)" @onclick="() => bestaetigen = true">
+        <button type="button" class="sk-btn sk-btn-primaer sk-btn-gross" disabled="@(!v.Bereit)" @onclick="PassageFragen">
             <Icon Name="arrow-right" Groesse="18" /> <span>Effectuer le passage</span>
         </button>
     </div>
 }
 
 <BestaetigungsDialog Open="bestaetigen" Titel="Effectuer le passage ?" BestaetigenText="Effectuer le passage" Fehler="@Fehlermeldung"
+                     Gesperrt="@(v?.AdmisOhneKlasse > 0 && plan?.AbgaengeBestaetigt != true)"
                      OnAbbrechen="() => bestaetigen = false" OnBestaetigen="PassageAsync">
     <p>@v?.Eingeschrieben élève(s) seront inscrits en @v?.NeuesJahr et @v?.Sortants quitteront l'établissement. L'année @v?.AltesJahr sera ensuite clôturée (le directeur peut la rouvrir avec un motif).</p>
+    @if (v?.AdmisOhneKlasse > 0 && plan is not null)
+    {
+        <Hinweis Art="warn">Attention : @v.AdmisOhneKlasse élève(s) <strong>admis</strong> n'ont pas de classe en @v.NeuesJahr et quitteront l'établissement.</Hinweis>
+        <Schalter Wert="plan.AbgaengeBestaetigt" WertChanged="b => plan.AbgaengeBestaetigt = b"
+                  Label="@($"Je confirme que ces {v.AdmisOhneKlasse} élève(s) admis quittent l'établissement")" />
+    }
 </BestaetigungsDialog>
 
 @code {
@@ -151,6 +162,12 @@ else
         if (JahrId is not { } id || plan is null) return;
         if (await AusfuehrenAsync(async () => await Wechsel.OffeneEntscheidenAsync(Ich.KontoId, klasseId, JahresEntscheidungsArt.Admis), "Décisions enregistrées."))
             v = await Wechsel.VorschauAsync(Ich.KontoId, id, plan);
+    }
+
+    private void PassageFragen()
+    {
+        if (plan is not null) plan.AbgaengeBestaetigt = false;
+        bestaetigen = true;
     }
 
     private async Task PassageAsync()

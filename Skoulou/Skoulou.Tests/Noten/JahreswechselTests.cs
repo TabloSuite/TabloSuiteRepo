@@ -167,4 +167,54 @@ public class JahreswechselTests
         Assert.Equal((EinschreibungsStatus.Terminee, (DateOnly?)new DateOnly(2026, 12, 18)), (alt.Status, alt.Bis));
         Assert.False(await w.MitDbAsync(db => db.Einschreibungen.AnyAsync(e => e.SchuelerId == w.O.SchuelerZiel && e.SchuljahrId == ergebnis.NeuesJahrId)));
     }
+    [Fact]
+    public async Task Admis_ohne_Klasse_im_neuen_Jahr_werden_gewarnt_und_muessen_bestaetigt_werden()
+    {
+        // Fehlersuche 21.11.2026 (Klassen ohne Folgeklasse schickten « Admis » still als « Fin de cycle » aus der Schule),
+        // Nutzerentscheidung 22.11.: deutlich warnen und vor « Effectuer » bestätigen lassen – auch serverseitig.
+        var w = await NotenWelt.ErstelleAsync();
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        plan.ZielAdmis[w.O.Klasse6A] = null;
+
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal(1, v.AdmisOhneKlasse);
+        Assert.Contains(v.Warnungen, x => x.Contains("admis n'ont pas de classe") && x.Contains("6e A"));
+        Assert.True(v.Bereit);
+
+        var fehler = await Assert.ThrowsAsync<FachFehler>(() => w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan));
+        Assert.Contains("confirmez", fehler.Message);
+        Assert.Equal(0, await w.MitDbAsync(db => db.Einschreibungen.CountAsync(e => e.SchuljahrId == w.O.JahrVorb)));
+
+        plan.AbgaengeBestaetigt = true;
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal((1, 1), (ergebnis.Einschreibungen, ergebnis.Sortants));
+    }
+
+    [Fact]
+    public async Task Deaktivierte_Klasse_des_Folgejahres_wird_nicht_still_benutzt()
+    {
+        // Fehlersuche 21.11.2026 (Z3), Nutzerentscheidung 22.11.: eine deaktivierte « 5e A » im neuen Jahr nahm die Admis auf.
+        var w = await NotenWelt.ErstelleAsync();
+        await w.AendernAsync(async db =>
+        {
+            var vorlage = await db.Klassen.SingleAsync(k => k.Id == w.O.Klasse5A);
+            db.Klassen.Add(new Klasse { SchuleId = vorlage.SchuleId, SchuljahrId = w.O.JahrVorb, StufeId = vorlage.StufeId, Name = "5e A", Aktiv = false });
+        });
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        Assert.Contains(v.Warnungen, x => x.Contains("« 5e A »") && x.Contains("désactivée"));
+        var fehler = await Assert.ThrowsAsync<FachFehler>(() => w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan));
+        Assert.Contains("désactivée", fehler.Message);
+
+        // Anderer Name → neue Klasse, die deaktivierte bleibt unberührt
+        plan.Namen[w.O.Klasse5A] = "5e A bis";
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal(2, ergebnis.Einschreibungen);
+        Assert.False(await w.MitDbAsync(db => db.Klassen.Where(k => k.SchuljahrId == w.O.JahrVorb && k.Name == "5e A").Select(k => k.Aktiv).SingleAsync()));
+    }
 }
