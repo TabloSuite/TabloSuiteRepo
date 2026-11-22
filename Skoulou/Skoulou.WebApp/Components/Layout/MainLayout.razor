@@ -36,7 +36,7 @@
                         <AnnoncenBanner Rolle="@Kontext.Rolle" SchuleId="@Kontext.SchuleId" />
                     }
                     <ErrorBoundary @ref="grenze">
-                        <ChildContent>@Body</ChildContent>
+                        <ChildContent><SeitenRahmen @key="seitenSchluessel">@Body</SeitenRahmen></ChildContent>
                         <ErrorContent Context="fehlerKontext">
                             <Hinweis Art="fehler" Titel="Une erreur inattendue s'est produite.">
                                 L'erreur a été enregistrée. Rechargez la page ou revenez à l'accueil.
@@ -76,6 +76,10 @@
 
     private ErrorBoundary? grenze;
 
+    // Klick auf den Menüeintrag der offenen Seite → Seite neu erzeugen und laden (Nutzer 22.11.2026, Klicktest Befund 8).
+    private int seitenSchluessel;
+    private string? adresse;
+
     private IReadOnlyList<AuswahlOption<Guid?>> SchuljahrOptionen => Kontext.Schuljahre
         .Select(j => new AuswahlOption<Guid?>(j.Id, j.Bezeichnung, j.Status == SchuljahrStatus.Laufend ? "en cours" : null))
         .ToList();
@@ -83,6 +87,8 @@
     protected override async Task OnInitializedAsync()
     {
         Kontext.Geaendert += Aktualisieren;
+        adresse = Nav.Uri;
+        Nav.LocationChanged += Navigiert;
         if (AuthZustand is not null && (await AuthZustand).User.KontoId() is { } id) await Kontext.LadeAsync(id);
         ZeigeHinweisAusAdresse();
     }
@@ -98,5 +104,18 @@
 
     private void Aktualisieren() => _ = InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Kontext.Geaendert -= Aktualisieren;
+    private void Navigiert(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        var neuLaden = SeitenRahmen.IstNeuLaden(adresse, e.Location, e.IsNavigationIntercepted);
+        adresse = e.Location;
+        if (!neuLaden) return;
+        seitenSchluessel++;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Kontext.Geaendert -= Aktualisieren;
+        Nav.LocationChanged -= Navigiert;
+    }
 }

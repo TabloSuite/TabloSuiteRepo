@@ -1,0 +1,24 @@
+@* Rahmen um die Seite im Hauptlayout (ohne eigenes HTML-Element). Ein neuer @key erzeugt die Seite samt Unterkomponenten
+   (Listen, Raster, Kacheln) neu – so lädt ein Klick auf den Menüeintrag der gerade offenen Seite alles frisch (Nutzer 22.11.2026). *@
+@ChildContent
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Neu laden, wenn ein Link (Menü, Reiter, Logo) genau auf die offene Adresse führt. Nicht bei Navigation aus dem Code
+    /// (z. B. Filter in der Adresse), nicht bei Sprungmarken (#…) und nicht bei einer anderen Adresse. Eine Rückfrage vor dem
+    /// Verlassen (NavigationLock) wirkt vorher: bricht sie ab, kommt dieses Ereignis gar nicht an.
+    /// </summary>
+    public static bool IstNeuLaden(string? bisher, string neu, bool ausLink)
+    {
+        if (!ausLink || string.IsNullOrEmpty(bisher) || neu.Contains('#')) return false;
+        return string.Equals(OhneAnker(bisher), OhneAnker(neu), StringComparison.Ordinal);
+    }
+
+    private static string OhneAnker(string adresse)
+    {
+        var i = adresse.IndexOf('#');
+        return (i >= 0 ? adresse[..i] : adresse).TrimEnd('/');
+    }
+}
