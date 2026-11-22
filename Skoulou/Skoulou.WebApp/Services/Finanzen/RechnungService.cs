@@ -371,9 +371,10 @@ public sealed class RechnungService(
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var schule = await db.Schulen.AsNoTracking().FirstOrDefaultAsync(s => s.Id == schuleId, ct) ?? throw new FachFehler("Cet établissement est introuvable.");
         var einstellung = await db.PlattformEinstellungen.AsNoTracking().FirstOrDefaultAsync(ct) ?? new PlattformEinstellung();
-        var jahre = await db.Schuljahre.AsNoTracking().Where(j => j.SchuleId == schuleId && j.Status != SchuljahrStatus.Vorbereitung)
-            .OrderByDescending(j => j.Beginn).Take(2).ToListAsync(ct);
         var heute = Heute;
+        // Auch ein nie gestartetes, aber schon begonnenes Jahr (22.11.2026: wird trotzdem abgerechnet).
+        var jahre = await db.Schuljahre.AsNoTracking().Where(j => j.SchuleId == schuleId && (j.Status != SchuljahrStatus.Vorbereitung || j.Beginn <= heute))
+            .OrderByDescending(j => j.Beginn).Take(2).ToListAsync(ct);
         var probe = await EssaiService.ProbePeriodenAsync(db, schule, ct);
         var liste = new List<AbrechenbarePeriode>();
         foreach (var jahr in jahre)

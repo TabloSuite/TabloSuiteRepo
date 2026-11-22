@@ -129,6 +129,38 @@ public class PlattformRechnungTests
     }
 
     [Fact]
+    public async Task Nie_gestartetes_Jahr_wird_trotzdem_zum_aktuellen_Preis_abgerechnet()
+    {
+        // Fehlersuche 21.11.2026 (A2): ein Jahr in Vorbereitung mit eingeschriebenen Schülern erzeugte nie eine Rechnung.
+        // Nutzerentscheidung 22.11.: trotzdem abrechnen, zum aktuellen Preis (mit der ersten Rechnung eingefroren); der spätere
+        // Start behält diesen Preis.
+        var w = await FinanzWelt.ErstelleAsync();
+        await w.MitDbAsync(async db =>
+        {
+            var jahr = await db.Schuljahre.SingleAsync(j => j.Id == w.Org.Jahr);
+            (jahr.Status, jahr.PlattformMonatspreis) = (SchuljahrStatus.Vorbereitung, null);
+            (await db.Schulen.SingleAsync(s => s.Id == w.Org.SchuleA)).MonatspreisOverride = 700;
+            return await db.SaveChangesAsync();
+        });
+        w.Heute(NachP1);
+        Assert.Contains(await w.Rechnungen.AbrechenbareAsync(w.Org.Admin, w.Org.SchuleA), p => p.PeriodeId == w.Org.P1 && p.ProSchueler == 4 * 700);
+        Assert.Equal(1, await w.Abrechnung.FaelligeAbrechnenAsync());
+        var r = await EinzigeAsync(w);
+        Assert.Equal((w.Org.P1, 2, 2 * 4 * 700L), (r.PeriodeId, r.Anzahl, r.Betrag));
+        Assert.Equal(700, await w.MitDbAsync(db => db.Schuljahre.Where(j => j.Id == w.Org.Jahr).Select(j => j.PlattformMonatspreis).SingleAsync()));
+
+        // Preis der Schule ändert sich, danach startet die Direktion das Jahr: der eingefrorene Preis bleibt.
+        await w.MitDbAsync(async db =>
+        {
+            (await db.Schulen.SingleAsync(s => s.Id == w.Org.SchuleA)).MonatspreisOverride = 900;
+            return await db.SaveChangesAsync();
+        });
+        await w.Org.D.Jahre.JahrStartenAsync(w.D, w.Org.Jahr);
+        Assert.Equal((SchuljahrStatus.Laufend, (long?)700), await w.MitDbAsync(db => db.Schuljahre.Where(j => j.Id == w.Org.Jahr)
+            .Select(j => ValueTuple.Create(j.Status, j.PlattformMonatspreis)).SingleAsync()));
+    }
+
+    [Fact]
     public async Task Anteil_ist_Monatspreis_mal_Monate_der_Periode()
     {
         // 19.11.2026: P1 01.09.–18.12. (109 Tage) = 4 Monate, P2 04.01.–26.03. (82 Tage) = 3 Monate; eingefroren 1.250 je Monat.

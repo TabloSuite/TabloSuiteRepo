@@ -33,8 +33,7 @@ public sealed class PlattformAbrechnung(
         {
             var p = await db.Perioden.AsNoTracking().FirstOrDefaultAsync(x => x.Id == periodeId, ct) ?? throw new FachFehler("Cette période est introuvable.");
             if (!p.ZaehltFuerJahr) throw new FachFehler("Cette période ne compte pas pour l'année : elle n'est pas facturée.");
-            var jahr = await db.Schuljahre.AsNoTracking().FirstAsync(j => j.Id == p.SchuljahrId, ct);
-            if (jahr.Status == SchuljahrStatus.Vorbereitung) throw new FachFehler("L'année scolaire n'a pas encore démarré : le prix n'est pas encore figé.");
+            var jahr = await db.Schuljahre.FirstAsync(j => j.Id == p.SchuljahrId, ct);
             if (p.Beginn > Heute) throw new FachFehler("Cette période n'a pas encore commencé : elle ne peut pas encore être facturée.");
             var schule = await db.Schulen.AsNoTracking().FirstAsync(s => s.Id == p.SchuleId, ct);
             // Probezeit (18.11.2026): diese Perioden stellt SKOULOU nicht in Rechnung – auch nicht über « Facturer maintenant ».
@@ -53,6 +52,14 @@ public sealed class PlattformAbrechnung(
             var (anteil, monate, monatspreis, ab) = Anteil(jahr, p, schule, einstellung);
             var kandidaten = await KandidatenAsync(db, p, ab, mitStornierten: !manuell, ct);
             if (kandidaten.Count == 0) return null;
+            // Fehlersuche 21.11.2026 (A2), Nutzerentscheidung 22.11.: ein nie gestartetes Jahr mit eingeschriebenen Schülern wird
+            // trotzdem abgerechnet – zum aktuellen Preis, der mit der ersten Rechnung für das Jahr eingefroren wird (wie beim Start).
+            if (jahr.Status == SchuljahrStatus.Vorbereitung && jahr.PlattformMonatspreis is null)
+            {
+                jahr.PlattformMonatspreis = monatspreis;
+                audit.Erfasse(db, akteurId, schule.Id, FinanzAudit.RechnungErstellt, nameof(Schuljahr), jahr.Id,
+                    $"Année {jahr.Bezeichnung} non démarrée mais déjà utilisée : prix par élève et par mois figé à {SkoulouKultur.Fcfa(monatspreis)} avec la première facture.");
+            }
 
             var heute = Heute;
             var haupt = await db.Plattformrechnungen.Where(r => r.PeriodeId == p.Id && r.ErgaenztId == null && r.Status != RechnungsStatus.Annulee)
@@ -130,7 +137,6 @@ public sealed class PlattformAbrechnung(
                               join j in db.Schuljahre on p.SchuljahrId equals j.Id
                               join s in db.Schulen on p.SchuleId equals s.Id
                               where p.ZaehltFuerJahr && p.Ende < heute && p.Ende >= heute.AddYears(-2)
-                                    && j.Status != SchuljahrStatus.Vorbereitung
                                     && (s.Status == SchulStatus.Active || s.Status == SchulStatus.Suspendue)
                               orderby p.Ende
                               select p.Id).ToListAsync(ct);

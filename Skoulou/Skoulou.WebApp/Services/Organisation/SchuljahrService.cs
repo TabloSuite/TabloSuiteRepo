@@ -288,7 +288,8 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
             if (!await db.Perioden.AnyAsync(p => p.SchuljahrId == jahr.Id && p.ZaehltFuerJahr, ct))
                 throw new FachFehler("Ajoutez au moins une période qui compte pour l'année avant de démarrer.");
             // Schulpreis, sonst Plattformpreis (ohne Einstellungszeile der Standard 500 je Schüler und Monat).
-            jahr.PlattformMonatspreis = await GueltigerMonatspreisAsync(db, a.SchuleId, ct);
+            // Wurde das Jahr schon vor dem Start abgerechnet (22.11.2026), gilt der damals eingefrorene Preis weiter.
+            jahr.PlattformMonatspreis ??= await GueltigerMonatspreisAsync(db, a.SchuleId, ct);
             jahr.Status = SchuljahrStatus.Laufend;
             audit.Erfasse(db, a.Id, a.SchuleId, OrgAudit.SchuljahrGestartet, nameof(Schuljahr), jahr.Id,
                 $"Année {jahr.Bezeichnung} démarrée ; prix par élève et par mois figé à {SkoulouKultur.Fcfa(jahr.PlattformMonatspreis.Value)}.");

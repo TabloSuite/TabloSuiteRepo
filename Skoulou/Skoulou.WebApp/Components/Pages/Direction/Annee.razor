@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = Richtlinien.Direction)]
 @inherits SkoulouSeite
 @inject SchuljahrService Schuljahre
+@inject TimeProvider Zeit
 @using Skoulou.WebApp.Components.Pages.Direction.Jahre
 
 <PageTitle>Année scolaire · SKOULOU</PageTitle>
@@ -30,6 +31,13 @@ else if (jahre.Count == 0)
 }
 else
 {
+    @foreach (var j in jahre.Where(j => j.Status == SchuljahrStatus.Vorbereitung && j.Beginn <= heute))
+    {
+        <Hinweis Art="warn" Titel="@($"L'année {j.Bezeichnung} a commencé mais n'est pas démarrée")">
+            Elle a commencé le @SkoulouKultur.Datum(j.Beginn). Démarrez-la ci-dessous dès que possible : les périodes terminées sont facturées
+            quand même pour les élèves inscrits, au prix actuel par élève et par mois.
+        </Hinweis>
+    }
     @if (!jahre.Any(j => j.Status == SchuljahrStatus.Laufend))
     {
         <Hinweis Art="info" Titel="Aucune année en cours">Démarrez l'année en préparation quand l'organisation est prête : le prix SKOULOU par élève et par mois de cours@(monatspreis is { } preis ? $" ({SkoulouKultur.Fcfa(preis)}, soit environ {SkoulouKultur.Fcfa(preis * Skoulou.Core.Finanzen.PlattformAnteil.MonateJeSchuljahr)} pour une année scolaire complète)" : null) est alors figé pour l'année. Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille).</Hinweis>
@@ -49,6 +57,7 @@ else
 
 @code {
     private List<SchuljahrZeile>? jahre;
+    private DateOnly heute => new SchulZeit(Zeit).Heute;
     private bool jahrDialog, periodeDialog;
     private JahrDialogModus modus;
     private SchuljahrZeile? gewaehlt;
