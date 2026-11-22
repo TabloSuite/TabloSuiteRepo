@@ -210,6 +210,9 @@ public sealed class RechnungService(
                 var r = await RechnungAsync(db, rechnungId, ct);
                 a.PruefeSchule(r.SchuleId);
                 if (r.Status != RechnungsStatus.Ouverte) throw new FachFehler($"Cette facture est « {FinanzEingabe.StatusText(r.Status)} » : le paiement ne peut plus être déclaré.");
+                // Eine Meldung je Rechnung, danach « Payée » beim Bestätigen: ein Teilbetrag (Klicktest 21.11.2026: 1 FCFA auf 15.000) wäre als bezahlt verbucht.
+                if (betrag != r.Betrag)
+                    throw new FachFehler($"Le montant déclaré ({SkoulouKultur.Fcfa(betrag)}) doit être celui de la facture ({SkoulouKultur.Fcfa(r.Betrag)}).", "betrag");
                 var kategorie = await FinanzKategorien.SystemAsync(db, FinanzKategorien.FactureSkoulou, ct);
                 var buchung = new Buchung
                 {
@@ -291,16 +294,22 @@ public sealed class RechnungService(
         }, ct);
     }
 
+    private const string AntwortPraefix = "Contestation examinée : ";
+
+    /// <summary>Höchstlänge der Antwort auf eine Anfechtung (Grund hat 500 Zeichen inklusive Präfix).</summary>
+    public const int AntwortMax = 500 - 24;
+
     /// <summary>Anfechtung beantwortet: die Rechnung bleibt bestehen und ist wieder zu zahlen.</summary>
     public async Task AufrechterhaltenAsync(Guid akteurId, Guid rechnungId, string? antwort, CancellationToken ct = default)
     {
         var admin = await AdminAsync(akteurId, ct);
-        var text = Eingabe.Pflicht(antwort, 500, "votre réponse à l'établissement", "grund");
+        // Grund (500 Zeichen) = Präfix + Antwort: mit 500 Zeichen Antwort scheiterte das Speichern (Klicktest 21.11.2026).
+        var text = Eingabe.Pflicht(antwort, AntwortMax, "votre réponse à l'établissement", "grund");
         await StatusAsync(async db =>
         {
             var r = await RechnungAsync(db, rechnungId, ct);
             if (r.Status != RechnungsStatus.Contestee) throw new FachFehler("Cette facture n'est pas contestée.");
-            (r.Status, r.Grund) = (RechnungsStatus.Ouverte, $"Contestation examinée : {text}");
+            (r.Status, r.Grund) = (RechnungsStatus.Ouverte, AntwortPraefix + text);
             audit.Erfasse(db, admin.Id, r.SchuleId, AuditAktionen.RechnungStatus, nameof(Plattformrechnung), r.Id, $"Facture {r.Nummer} maintenue : {text}");
         }, ct);
     }
@@ -315,6 +324,21 @@ public sealed class RechnungService(
             var r = await RechnungAsync(db, rechnungId, ct);
             if (r.Status == RechnungsStatus.Annulee) throw new FachFehler("Cette facture est déjà annulée.");
             var warBezahlt = r.Status == RechnungsStatus.Payee;
+            if (r.Status == RechnungsStatus.PaiementDeclare)
+            {
+                // Gemeldet, aber nie bestätigt: die Ausgabe « Facture SKOULOU » im Kassenjournal der Schule wird aufgehoben –
+                // die Schule selbst kann sie nicht korrigieren (Klicktest 21.11.2026: Ausgabe blieb nach dem Storno stehen).
+                var heute = Heute;
+                foreach (var b in await db.Buchungen.Where(b => b.HerkunftId == r.Id && b.Herkunft == BuchungsHerkunft.FactureSkoulou
+                                 && !db.Buchungen.Any(x => x.StornoVonId == b.Id)).ToListAsync(ct))
+                    db.Buchungen.Add(new Buchung
+                    {
+                        SchuleId = b.SchuleId, Datum = heute, KategorieId = b.KategorieId, Betrag = b.Betrag, Richtung = BuchungsRichtung.Recette,
+                        Text = Kassierer.Kuerze($"Annulation de {b.Nummer} : facture {r.Nummer} annulée par SKOULOU"), Herkunft = BuchungsHerkunft.Annulation,
+                        HerkunftId = b.Id, StornoVonId = b.Id, ErfasstVonId = admin.Id,
+                        Nummer = await nummern.NaechsteNummerAsync(db, b.SchuleId, NummernArt.Ecriture, heute.Year, ct: ct)
+                    });
+            }
             (r.Status, r.Grund) = (RechnungsStatus.Annulee, motiv);
             var jetzt = zeit.GetUtcNow().UtcDateTime;
             foreach (var p in await db.Rechnungspositionen.Where(p => p.RechnungId == r.Id && p.StorniertGrund == null).ToListAsync(ct))

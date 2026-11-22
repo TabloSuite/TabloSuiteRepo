@@ -101,7 +101,7 @@
              Text="Expliquez ce qui ne va pas (élèves partis, doublons…). L'administrateur SKOULOU examine la contestation et vous répond."
              Label="Motif de la contestation" ErfolgsMeldung="La contestation est envoyée."
              Aktion="g => Rechnungen.AnfechtenAsync(Ich.KontoId, RechnungId!.Value, g)" OnClose="Zurueck" OnErledigt="ErledigtAsync" />
-<GrundDialog Open='unterdialog == "maintenir"' Titel="Répondre à la contestation" Oberzeile="@detail?.Kopf.Nummer" KnopfText="Maintenir la facture" MaxLaenge="500"
+<GrundDialog Open='unterdialog == "maintenir"' Titel="Répondre à la contestation" Oberzeile="@detail?.Kopf.Nummer" KnopfText="Maintenir la facture" MaxLaenge="RechnungService.AntwortMax"
              Text="La facture redevient « à payer » ; votre réponse est visible par l'établissement." Label="Réponse à l'établissement" ErfolgsMeldung="La facture est maintenue."
              Aktion="g => Rechnungen.AufrechterhaltenAsync(Ich.KontoId, RechnungId!.Value, g)" OnClose="Zurueck" OnErledigt="ErledigtAsync" />
 <GrundDialog Open='unterdialog == "annuler"' Titel="Annuler la facture" Oberzeile="@detail?.Kopf.Nummer" KnopfText="Annuler la facture" Gefahr="true"

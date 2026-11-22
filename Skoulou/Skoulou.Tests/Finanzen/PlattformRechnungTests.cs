@@ -241,6 +241,29 @@ public class PlattformRechnungTests
     }
 
     [Fact]
+    public async Task Meldung_nur_mit_Rechnungsbetrag_Storno_hebt_Ausgabe_auf_volle_Antwortlaenge()
+    {
+        // Klicktest 21.11.2026: 1 FCFA auf 15.000 gemeldet und angenommen; nach dem Storno blieb die Ausgabe im Journal;
+        // eine Antwort mit 500 Zeichen auf eine Anfechtung passte nicht in « Grund » (Präfix).
+        var w = await FinanzWelt.ErstelleAsync();
+        w.Heute(NachP1);
+        await w.Abrechnung.FaelligeAbrechnenAsync();
+        var r = await EinzigeAsync(w);
+        Assert.Contains("doit être celui de la facture", (await Assert.ThrowsAsync<FachFehler>(() => w.Rechnungen.MeldenAsync(w.D, r.Id, new MeldungEingabe(1, NachP1, "VIR-1F"), null))).Message);
+        await w.Rechnungen.MeldenAsync(w.D, r.Id, new MeldungEingabe(r.Betrag, NachP1, "VIR-OK"), null);
+        await w.Rechnungen.StornierenAsync(w.Org.Admin, r.Id, "Déclaration erronée");
+        var buchungen = await w.MitDbAsync(db => db.Buchungen.Where(b => b.Herkunft == BuchungsHerkunft.FactureSkoulou || b.Herkunft == BuchungsHerkunft.Annulation).ToListAsync());
+        Assert.Equal(0L, buchungen.Sum(b => b.Richtung == BuchungsRichtung.Recette ? b.Betrag : -b.Betrag));
+        Assert.Single(buchungen, b => b.Herkunft == BuchungsHerkunft.Annulation);
+
+        var id = (await w.Rechnungen.JetztAbrechnenAsync(w.Org.Admin, w.Org.P1))!.Value;
+        await w.Rechnungen.AnfechtenAsync(w.D, id, "Élève parti.");
+        await Assert.ThrowsAsync<FachFehler>(() => w.Rechnungen.AufrechterhaltenAsync(w.Org.Admin, id, new string('a', RechnungService.AntwortMax + 1)));
+        await w.Rechnungen.AufrechterhaltenAsync(w.Org.Admin, id, new string('a', RechnungService.AntwortMax));
+        Assert.True((await w.Rechnungen.DetailAsync(w.D, id)).Kopf.Grund!.Length <= 500);
+    }
+
+    [Fact]
     public async Task Anfechten_beantworten_und_vorzeitig_abrechnen()
     {
         var w = await FinanzWelt.ErstelleAsync();
