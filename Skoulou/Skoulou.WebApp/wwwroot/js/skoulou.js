@@ -1,4 +1,4 @@
-﻿// SKOULOU – kleine Hilfsfunktionen für Blazor (ohne Bibliotheken).
+// SKOULOU – kleine Hilfsfunktionen für Blazor (ohne Bibliotheken).
 
 // Popups (Auswahl, Kalender, Benutzermenü) schließen bei Klick außerhalb ihres Elements [data-sk-closer="id"].
 (function () {
@@ -376,6 +376,47 @@ window.skVideoPosition = (function () {
             setTimeout(function () { if (meiner === lauf) aus(); }, 2500);
         }
     };
+})();
+
+// Klicks vor dem Start der Blazor-Verbindung nachholen (Klicktest 21.11.2026: bei 700 ms Verzögerung ging der Klick auf
+// « Encaisser un paiement » verloren – der Ladekreis lief, der Dialog kam nie). Ein Klick auf einen Knopf der vorab
+// gezeichneten Seite wird gemerkt; sobald Blazor die Seite interaktiv neu zeichnet (der alte Knopf verschwindet), wird
+// das eindeutige Gegenstück geklickt. Links und klassische Formulare arbeiten ohnehin ohne Blazor.
+(function () {
+    if (typeof MutationObserver === 'undefined' || window.__skKlickNachholen) return;
+    window.__skKlickNachholen = true;
+    var ZIELE = 'button, [role="button"], [role="tab"]', MAX_MS = 15000;
+    var vorab = new WeakSet();
+    document.querySelectorAll(ZIELE).forEach(function (el) { vorab.add(el); });
+    var gemerkt = null, beobachter = null;
+    function kennung(el) { return el.tagName + '|' + (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim(); }
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest(ZIELE) : null;
+        if (!el || !vorab.has(el) || el.disabled) return;
+        var form = el.form || el.closest('form');
+        if (form && (el.type === 'submit' || !el.type) && form.getAttribute('action')) return;   // klassisches Formular sendet selbst
+        gemerkt = { el: el, kennung: kennung(el), zeit: Date.now() };
+        if (beobachter) return;
+        beobachter = new MutationObserver(function () {
+            if (!gemerkt || document.body.contains(gemerkt.el)) return;   // noch die vorab gezeichnete Seite
+            var g = gemerkt; gemerkt = null; beobachter.disconnect(); beobachter = null;
+            if (Date.now() - g.zeit > MAX_MS) return;
+            // Die interaktive Seite entsteht oft erst in einer späteren Änderung: kurz nach dem Gegenstück suchen.
+            var versuche = 0;
+            (function suche() {
+                var treffer = document.querySelectorAll(ZIELE), fund = null, doppelt = false;
+                for (var i = 0; i < treffer.length; i++) {
+                    if (vorab.has(treffer[i]) || kennung(treffer[i]) !== g.kennung) continue;
+                    if (fund) { doppelt = true; break; }
+                    fund = treffer[i];
+                }
+                if (doppelt) return;   // nicht eindeutig: lieber nichts auslösen
+                if (fund && !fund.disabled) { fund.click(); return; }
+                if (++versuche < 30) setTimeout(suche, 100);
+            })();
+        });
+        beobachter.observe(document.body, { childList: true, subtree: true });
+    }, true);
 })();
 
 // Sofortige Rückmeldung für alle Knöpfe der interaktiven Seiten (16.11.2026): der Ladekreis erscheint beim Tippen, ohne
