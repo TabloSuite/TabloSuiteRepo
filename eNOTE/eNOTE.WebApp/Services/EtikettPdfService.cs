@@ -42,7 +42,7 @@ public static class EtikettPdfService
                     page.MarginTop(0.5f, Unit.Millimetre);
                     page.MarginBottom(0);
                     page.MarginHorizontal(0);
-                    page.DefaultTextStyle(x => x.FontSize(8));
+                    page.DefaultTextStyle(x => PdfTextStil.OhneLigaturen(x).FontSize(8));
 
                     page.Content().Column(spalte =>
                     {
@@ -85,7 +85,7 @@ public static class EtikettPdfService
                 {
                     page.Size(62, 29, Unit.Millimetre);
                     page.Margin(1, Unit.Millimetre);
-                    page.DefaultTextStyle(x => x.FontSize(7));
+                    page.DefaultTextStyle(x => PdfTextStil.OhneLigaturen(x).FontSize(7));
                     page.Content().Width(60, Unit.Millimetre).Height(27, Unit.Millimetre)
                         .Element(c => EtikettZelle(c, etikett));
                 });

@@ -31,7 +31,7 @@ public static class FinanzBerichtPdfService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(2, Unit.Centimetre);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                page.DefaultTextStyle(x => PdfTextStil.OhneLigaturen(x).FontSize(10));
 
                 page.Header().Column(col =>
                 {

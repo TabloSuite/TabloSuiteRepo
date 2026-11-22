@@ -25,7 +25,7 @@ public static class BonPdfService
             {
                 page.Size(80, 297, Unit.Millimetre); // Bon-Rollenbreite, A4-Höhe als ausreichende Fläche
                 page.Margin(6, Unit.Millimetre);
-                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
+                page.DefaultTextStyle(x => PdfTextStil.OhneLigaturen(x).FontSize(9).FontFamily("Arial"));
 
                 page.Content().Column(col =>
                 {
