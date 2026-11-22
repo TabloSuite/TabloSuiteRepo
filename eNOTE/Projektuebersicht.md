@@ -2,12 +2,15 @@
 
 > Kassen- und Verwaltungs-App für kleine Geschäfte in Westafrika (Salon, Institut, Barbershop, Boutique, Atelier …), optimiert für Tablet und PC, nutzbar auf dem Handy. Französische Endnutzertexte, deutsche Entwicklerdoku. Regeln für die Zusammenarbeit: [copilot-instructions.md](copilot-instructions.md).
 
-## Aktueller Stand (10.11.2026, abends)
+## Aktueller Stand (22.11.2026)
 
-- **Code:** Lösungsbuild erfolgreich, `eNOTE.Tests` **270/270** grün, letzter Commit `2b0f40d`.
-- **Datenbank:** Migrationskette bis `20261111105117_MobileMoneyKamerun`; lokale `ENOTEDB` **und** Azure `ENote-Database` sind auf diesem Stand (Azure am 11.11.2026 mit OK nachgezogen). Der normale App-Start migriert nie; er legt nur den Start-Admin aus `Seed__…` an, falls er fehlt (wie SKOULOU, vorhandene Konten bleiben unverändert).
-- **Betrieb:** Azure App Service `enote` (Linux, .NET 10, Tarif B1, 1 Instanz) unter https://enote.tablosuite.com, Always On und Sitzungsaffinität an, E-Mails über Postmark, Nutzer-Medien im privaten Blob Storage (Managed Identity). Details: [Deployment-Azure.md](Deployment-Azure.md).
-- **Nächste Schritte:** Der Nutzer testet ab 11.11.2026 alles manuell und sammelt Fehler. Danach offen: Bondrucker und Scanner mit echter Hardware testen, Grundpreis auf Azure auf 3.600 F setzen (Administration → Tarifs), optional Treueprogramm.
+- **Code:** `eNOTE.Tests` 684 grün (+ SQL-Tests und Simulation mit `ENOTE_SIM=1`). Klicktest « wie ein Mensch » über 24 Monate
+  (5 Läden, 5 Länder, Jahres-Abos mit Verlängerung, Sperren, PDFs) ohne fatalen Fehler; alle Funde behoben.
+- **Datenbank:** Migrationskette bis `20261121085140_PlattformEinstellungen`; lokale `ENOTEDB` und Azure `ENote-Database` auf diesem
+  Stand. Der normale App-Start migriert nie; er legt nur den Start-Admin aus `Seed__…` an, falls er fehlt.
+- **Betrieb:** Azure App Service `enote` (Linux, .NET 10, B1, 1 Instanz) unter https://enote.tablosuite.com, Always On und
+  Sitzungsaffinität an, Mails über Postmark, Medien im privaten Blob Storage (Managed Identity). Details: [Deployment-Azure.md](Deployment-Azure.md).
+- **Laufender Arbeitsstand und nächste Schritte:** [`../STAND.md`](../STAND.md). Gesamtüberblick über alle Apps: [`../docs/Projektuebersicht.md`](../docs/Projektuebersicht.md).
 
 ## 1. Zweck
 
@@ -49,7 +52,7 @@ eNOTE ist ein **Kassensystem mit Verwaltung** pro Geschäft (`Salon` = Mandant):
 - `Salon`: `IstAktiv`, `IstFreigegeben`, `ProbeBisUtc`, Branding (Slogan, Telefon, Adresse, Logo, Bon-QR-Link), Land, optionaler individueller Monatspreis.
 - `UserSalon` verknüpft Konto ↔ Laden mit delegierbaren Rechten (`KannFinanzenSehen`, `KannLeistungenVerwalten`, `KannRabatteVerwalten`), Kassen-PIN sowie Besitzer-PIN-Hash mit Fehlversuchs-Sperre. `AktiverSalonState` liefert die Zuordnung; `SalonSwitcher` erscheint nur bei mehreren Zuordnungen.
 - **Rollen** (`AppRollen`): `Besitzer`, `Kassierer`, `ProduktOwner` (« Responsable »), `SuperAdmin`. Seiten per `[Authorize(Roles=…)]`, Rechte zusätzlich im Service (`LadenZugriff`).
-- **Kassierer** (sichtbar überall « Employé », technisch Rolle `Kassierer`) sind eigene Konten (Pseudonym, Initialpasswort, Kassen-PIN), angelegt in Équipe; kein Profil und keine Passwort-Wiederherstellung per Mail.
+- **Kassierer** (sichtbar überall « Employé », technisch Rolle `Kassierer`) werden in Équipe angelegt (Name, Kassen-PIN) und kassieren seit 17.11.2026 standardmäßig **ohne Passwort** am Gerät des Besitzers (« Qui encaisse ? », Name + PIN). Ein eigener Login nur mit dem Recht « Connexion personnelle » (Passwort beim Einschalten) – dann nur die gewährten Bereiche, nie Kasse und nie Besitzer-PIN. Namen im Laden sind eindeutig (Groß/Klein, Leerzeichen und Akzente zählen nicht). Kein Profil und keine Passwort-Wiederherstellung per Mail.
 - **Mon profil** (`/profil`, `KontoProfilService`): Admin, PO und Besitzer ändern Prénom, Nom und Téléphone (ohne Abmeldung); E-Mail-Adresse und Identifiant nur mit aktuellem Passwort. Die alte Adresse erhält den Sicherheitshinweis « Adresse e-mail modifiée » (neue Adresse maskiert); nach neuem Identifiant ist eine erneute Anmeldung nötig. Kassierer sehen nur Foto und Passwort.
 - **Land des Ladens** (`LaenderAuswahl`): Die Registrierung fragt « Pays » ab (Länder mit hinterlegter Ortszeit oder aktivem Mobile-Money-Anbieter, Westafrika zuerst, Standard Togo). Ändern können es der Besitzer (Paramètres › « Pays », mit Hinweis auf die Folgen: Ortszeit UTC±x, Mobile-Money-Anbieter des neuen Landes) und der Admin (Établissements › Land-Knopf der Zeile). Bei einem Wechsel gilt für Mobile Money wieder die Standardauswahl (alle Anbieter des neuen Landes). Läden ohne Land bleiben Togo (Lomé, Togo-Anbieter).
 - **Ortszeit je Laden** (`Zeitzonen`, aus `Salon.Land`; Togo/Sénégal/Côte d'Ivoire UTC+0, Bénin/Cameroun/Gabon UTC+1 …, unbekannt = Lomé): gespeichert wird UTC, angezeigt (Kasse, Bon HTML/PDF, Finances, Clients, Présents, Équipe, Accueil) und nach Tagen gruppiert (Finances, Tagesumsatz live, PDF-Bericht) in der Zeit des Ladens. Reine Kalendertage (Dépenses, Remises) und Abo-Perioden (UTC-Tagesgrenzen) werden nicht umgerechnet. Administration zeigt Serverzeit (Azure = UTC).
