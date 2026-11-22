@@ -36,12 +36,14 @@ public static class MailArten
         new("formation-rappel", "Rappel d'évaluation", "Responsable", $"{ENote.WebApp.Services.Formation.FormationService.ErinnerungTageVorFrist} jours avant la fin du délai, si l'évaluation n'est pas réussie", false, true),
         new("formation-resultat", "Évaluation non réussie ou manquée", "Équipe TabloSuite", "Quand la session d'un responsable se termine sans réussite", false, true),
         new("email-modifiee", "Adresse e-mail modifiée", "Utilisateur (ancienne adresse)", "Quand l'adresse e-mail du compte change (sécurité)", false, true),
+        // Sicherheitsmail, seit 22.11.2026 standardmäßig an (Nutzerentscheidung). Ein ausdrücklich gesetzter Schalter
+        // (Tabelle MailRegeln) gilt weiter; ohne Eintrag gilt dieser Standard.
+        new("mot-de-passe", "Mot de passe modifié", "Utilisateur", "Après chaque changement de mot de passe (sécurité)", false, true),
 
         // Abschaltbar – standardmäßig aus (später bei größerem Mail-Kontingent aktivieren)
         new("bienvenue", "Bienvenue", "Propriétaire", "Juste après l'inscription", false, false),
         new("paiement-confirme", "Paiement confirmé", "Propriétaire", "Quand l'admin confirme un paiement", false, false),
         new("caissier-bienvenue", "Nouvel employé", "Employé", "Quand le propriétaire crée un employé", false, false),
-        new("mot-de-passe", "Mot de passe modifié", "Utilisateur", "Après chaque changement de mot de passe", false, false),
         new("fin-essai", "Fin de l'essai", "Propriétaire", $"{MailBenachrichtigungen.ProbeHinweisTage} jours avant la fin de l'essai", false, false),
     ];
 

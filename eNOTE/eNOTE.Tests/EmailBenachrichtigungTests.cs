@@ -222,6 +222,33 @@ public class EmailBenachrichtigungTests
     }
 
     [Fact]
+    public async Task Mot_De_Passe_Modifie_Ist_Standardmaessig_An_Ausdruecklich_Abgeschaltet_Bleibt_Aus()
+    {
+        // Nutzerentscheidung 22.11.2026: Sicherheitsmail standardmäßig an. Ohne gespeicherten Schalter gilt der neue Standard.
+        var b = await BasisAsync();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        var email = new EmailService(config, b.F, NullLogger<EmailService>.Instance);
+        Assert.True(MailArten.Finde("mot-de-passe")!.StandardAktiv);
+        Assert.True(await email.IstAktivAsync("mot-de-passe"));
+        Assert.True((await email.GetSchalterAsync())["mot-de-passe"]);
+
+        await b.Mails.PasswortGeaendertAsync(await BesitzerIdAsync(b));
+        Assert.Equal(["mot-de-passe"], await KategorienAsync(b));
+
+        // Hat der Admin die Mail ausdrücklich ausgeschaltet, bleibt sie aus.
+        await SchalteEinAsync(b, "mot-de-passe", aktiv: false);
+        Assert.False(await email.IstAktivAsync("mot-de-passe"));
+        await b.Mails.PasswortGeaendertAsync(await BesitzerIdAsync(b));
+        Assert.Equal(["mot-de-passe"], await KategorienAsync(b));
+    }
+
+    private static async Task<Guid> BesitzerIdAsync(Basis b)
+    {
+        await using var db = await b.F.CreateDbContextAsync();
+        return await db.Users.Where(u => u.UserName == "ama").Select(u => u.Id).SingleAsync();
+    }
+
+    [Fact]
     public async Task Nachricht_Ermittelt_Empfaenger_Ohne_Gesperrte_Und_Maskiert_Html()
     {
         var b = await BasisAsync();
