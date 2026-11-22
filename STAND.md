@@ -5,7 +5,38 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
 
 ---
 
-## 0. HIER WEITERMACHEN (neuer Chat) – Stand 22.11.2026
+## 0. HIER WEITERMACHEN (neuer Chat) – Stand 22.11.2026 spätnachmittags (PAUSE wegen Limit)
+
+**>>> NEU 22.11. nachmittags – Klicktests FERTIG, alles nur lokal in `Etse.TabloSuite.Muster` (nicht gepusht, kein master, NICHT deployen):**
+- Beide Normaltests abgeschlossen: eNOTE 23.11.2026–02.01.2029 (41 Rechnungen, 41 Provisionen, alle PDFs nachgerechnet, kein
+  fataler Fehler), SKOULOU 3 Schuljahre (15 Rechnungen, ~1.100 Bulletins nachgerechnet, kein fataler Fehler). Berichte:
+  `%TEMP%\e2e-2111\enote-normal\BERICHT.md`, `%TEMP%\e2e-2111\skoulou-normal\BERICHT.md` (dort auch « Nachtest neue Funktionen 22.11. »).
+- Umgesetzt im Branch (je mit Test): Fachfragen 22.11. « alle nach Empfehlung » – eNOTE gleichnamige Mitarbeiter/Artikel/Remises,
+  kein negativer Bestand, Symbol statt Emoji, Admin-Liste 30-s-Aktualisierung, PDF ohne Ligaturen; SKOULOU Réémettre, nie
+  gestartetes Jahr abrechnen, Passage-Warnung/Bestätigung + deaktivierte Klasse, Lehrkraft ohne Lehrauftrag, Messagerie
+  Responsable, Periodensperre nach Abrechnung, Lückentext « | », PDF ohne Ligaturen, Umleitung nur verbunden (Bauplan §11 Nr. 26–33).
+  Nachtest SKOULOU in der Oberfläche: 7/8 Punkte bestanden (deaktivierte Klasse nur Unit-Test). Beide Simulationen mit diesem
+  Stand grün (je 0 Befunde); alle Tests grün (vor den letzten Cherry-picks).
+- **NOCH ZU ÜBERNEHMEN:** SKOULOU `b0021e7` (Ergebnisse ohne Lehrauftrag – kein « a quitté la classe »; Worktree
+  agent-ac92135ac0c6f818f); eNOTE `128e42f` (Formation-Erinnerung nicht nach Frist, geprüft) und `79babc0` (Équipe « ventes ce
+  mois » nach Ortszeit, noch lesen; Worktree agent-aec3a483b371b147d).
+- **eNOTE-Nachtest der neuen Funktionen in der Oberfläche fehlt noch** (gleichnamige Namen inkl. Reaktivieren, negativer Bestand,
+  Admin-Liste, Symbole, PDFs kopieren) – Agent im Worktree agent-aec3a483b371b147d nach `git rebase Etse.TabloSuite.Muster`,
+  Test-DB ENOTE_E2E_2111N (Konten in `%TEMP%\e2e-2111\enote-normal\zustand.json`).
+- **Offene Fragen an den Nutzer (noch NICHT entschieden, nichts davon bauen ohne OK):**
+  SKOULOU (Klicktest): 1 Menüeintrag lädt Seite neu; 2 Jahresmittel Neuzugänge nur eingeschriebene Perioden; 3 Kapazitätswarnung
+  Passage; 4 Abgänger-Konten bei Passage archivieren (Schalter, Standard an); 5 storniert bezahlte Plattformrechnung → Hinweis
+  + Gegenbuchung; 6 « à partir du … (mois d'inscription) » auf Rechnung; 7 Admin-Facturation-Suche über alle Status.
+  SKOULOU (Nachtest): « 6 / 7 » = « 6/7 » ok?; Warnung « année pas terminée » vor Passage; eingefrorener Preis im Start-Dialog;
+  « Corrections » ohne Lehrauftrag als « correction par la direction » kennzeichnen.
+  eNOTE: Sperre je Laden statt Serializable (Deadlocks Monatsanfang); einheitliches Datumsformat (31/03/2028 oder 31.03.2028);
+  Beträge in Mails « 38.880 F »; Mail « Mot de passe modifié » standardmäßig an; neuer MoMo-Anbieter sofort an allen Kassen
+  ohne eigene Auswahl?; Écran-client-Link: neuer Link entwertet alten; Enter im Passwortformular sendet ab; « Remettre en stock » Standard an?
+- **Danach:** Antworten umsetzen → alle Tests + `SKOULOU_SQL_TESTS=1` + beide Simulationen → `git fetch`, master in den Branch,
+  pushen, master (OK liegt vor: « wir pushen am Ende, zu master auch »), STAND, Aufräumen (Worktrees, Test-DBs nach Rückfrage,
+  DataProtection-Schlüssel mit Zukunftsdatum). Nutzer: « in Produktion möchte ich keinen Fehler sehen » – gründlich.
+
+## 0-alt. Stand 22.11.2026 vormittags
 
 **>>> NEU (21./22.11.) – Klicktest « wie ein Mensch » über Jahre, VOR dem nächsten Deploy (Nutzer: « alles beheben, gründlich »;
 « wir pushen am Ende, zu master auch »). NOCH NICHT DEPLOYEN.**
