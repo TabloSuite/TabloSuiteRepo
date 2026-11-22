@@ -76,6 +76,27 @@ public class KuendigungTests
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Fehlersuche 21.11.2026: Reaktivieren am 1. um 00:33 ergab « 01.03.–31.03. · 3.997 F » (minutengenauer Teilpreis).
+    /// « Ab heute » heißt ab Tagesbeginn: am 1. eines Monats die volle Monatsrechnung.
+    /// </summary>
+    [Fact]
+    public async Task Reaktivieren_Kurz_Nach_Mitternacht_Rechnet_Ab_Tagesbeginn()
+    {
+        var w = await BasisAsync(November.AddDays(10), vertragsBeginn: November);
+        await w.Vertrag.SynchronisiereAsync(w.SalonId);
+        await BezahleAlleAsync(w);
+        await w.Service.KuendigeAsync(w.Besitzer, w.SalonId, null);
+        w.Uhr.Jetzt = November.AddMonths(4).AddMinutes(33);   // 01.03. 00:33, Kündigung seit 01.12. wirksam
+        await w.Service.NimmKuendigungZurueckAsync(w.Besitzer, w.SalonId);
+        await w.Vertrag.SynchronisiereAsync(w.SalonId);
+        await using var db = await w.F.CreateDbContextAsync();
+        var neu = await db.NutzungsAbos.OrderByDescending(a => a.ZeitraumVonUtc).FirstAsync();
+        Assert.Equal(November.AddMonths(4), neu.ZeitraumVonUtc);
+        Assert.False(neu.IstTeilperiode);
+        Assert.Equal(neu.MonatsBasisSnapshot, neu.PreisSnapshot);
+    }
+
     [Fact]
     public async Task Kuendigung_Wirkt_Zum_Periodenende_Danach_Keine_Rechnung_Und_Kasse_Zu()
     {

@@ -126,7 +126,10 @@ public class KuendigungService(
         if (salon.ProbeBisUtc > jetzt) return; // Probezeit läuft noch: Start wie gewohnt danach
         var letztesEnde = await db.NutzungsAbos.Where(a => a.SalonId == salon.Id).Select(a => (DateTime?)a.ZeitraumBisUtc).MaxAsync(ct);
         // Läuft die bezahlte Periode noch, geht es nahtlos weiter; sonst beginnt die nächste Periode heute.
-        if (letztesEnde is null || letztesEnde < jetzt) salon.VertragsBeginnUtc = jetzt;
+        // « Ab heute » = ab Tagesbeginn (UTC-Tag wie alle Abo-Perioden). Fehlersuche 21.11.2026: Reaktivieren am 1. um 00:33
+        // ergab « 01.03.–31.03. · 3.997 F » statt 4.000 F (minutengenauer Teilpreis).
+        var heute = DateTime.SpecifyKind(jetzt.Date, DateTimeKind.Utc);
+        if (letztesEnde is null || letztesEnde < jetzt) salon.VertragsBeginnUtc = letztesEnde > heute ? letztesEnde.Value : heute;
     }
 
     /// <summary>Kontolöschung beantragen: Passwort, keine offene Rechnung. Laden ab sofort gesperrt.</summary>
