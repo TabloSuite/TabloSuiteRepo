@@ -94,7 +94,13 @@ else
                                     }
                                 </span>
                             </td>
-                            <td><TextFeld Wert="@k.NeuerName" WertChanged="t => AendernAsync(() => plan.Namen[k.KlasseId] = t ?? string.Empty)" MaxLaenge="60" aria-label="@($"Nom de la nouvelle classe pour {k.Klasse}")" /></td>
+                            <td>
+                                <TextFeld Wert="@k.NeuerName" WertChanged="t => AendernAsync(() => plan.Namen[k.KlasseId] = t ?? string.Empty)" MaxLaenge="60" aria-label="@($"Nom de la nouvelle classe pour {k.Klasse}")" />
+                                @if (Ueberbelegung(k.NeuerName) is { } u)
+                                {
+                                    <StatusBadge Text="@($"{u.Gesamt} élèves pour {u.Kapazitaet} places")" Art="warn" Icon="alert" />
+                                }
+                            </td>
                             <td>
                                 @if (k.ZielOptionen.Count == 0 && k.FinDeCycle)
                                 {
@@ -128,6 +134,10 @@ else
                      Gesperrt="@(v?.AdmisOhneKlasse > 0 && plan?.AbgaengeBestaetigt != true)"
                      OnAbbrechen="() => bestaetigen = false" OnBestaetigen="PassageAsync">
     <p>@v?.Eingeschrieben élève(s) seront inscrits en @v?.NeuesJahr et @v?.Sortants quitteront l'établissement. L'année @v?.AltesJahr sera ensuite clôturée (le directeur peut la rouvrir avec un motif).</p>
+    @foreach (var u in v?.Ueberbelegt ?? [])
+    {
+        <Hinweis Art="warn">Capacité dépassée : « @u.Klasse » aura <strong>@u.Gesamt élèves</strong> pour @u.Kapazitaet places (@(u.Gesamt - u.Kapazitaet) de trop).</Hinweis>
+    }
     @if (v?.AdmisOhneKlasse > 0 && plan is not null)
     {
         <Hinweis Art="warn">Attention : @v.AdmisOhneKlasse élève(s) <strong>admis</strong> n'ont pas de classe en @v.NeuesJahr et quitteront l'établissement.</Hinweis>
@@ -162,6 +172,13 @@ else
         if (JahrId is not { } id || plan is null) return;
         if (await AusfuehrenAsync(async () => await Wechsel.OffeneEntscheidenAsync(Ich.KontoId, klasseId, JahresEntscheidungsArt.Admis), "Décisions enregistrées."))
             v = await Wechsel.VorschauAsync(Ich.KontoId, id, plan);
+    }
+
+    /// <summary>Überbelegung der neuen Klasse mit diesem Namen (Leerzeichen und Groß/Klein wie beim Anlegen egal).</summary>
+    private PassageUeberbelegung? Ueberbelegung(string? name)
+    {
+        var n = string.Join(' ', (name ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return v?.Ueberbelegt.FirstOrDefault(u => string.Equals(u.Klasse, n, StringComparison.OrdinalIgnoreCase));
     }
 
     private void PassageFragen()

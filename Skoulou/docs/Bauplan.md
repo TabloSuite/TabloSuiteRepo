@@ -328,6 +328,8 @@ Von mir entschieden (änderbar):
 34. **Menüeintrag der offenen Seite** (auch Reiter/Logo mit derselben Adresse) lädt die Seite neu: das Hauptlayout erzeugt sie
     über einen neuen Schlüssel samt Unterkomponenten neu. Navigation aus dem Code (Filter in der Adresse) und Sprungmarken nicht.
 35. **Jahresmittel bei Neuzugängen** nur aus den Perioden mit Einschreibung, normaler Jahresrang (§5 Regel 3).
+36. **Passage – Kapazität:** Käme eine Zielklasse des neuen Jahres mit Bestand + Zugängen über ihre Kapazität, zeigt die Seite eine
+    deutliche Warnung mit Zahlen (Liste oben, Hinweis an der Klasse, Bestätigungsdialog) – keine Sperre (`PassageUeberbelegung`).
 
 ---
 

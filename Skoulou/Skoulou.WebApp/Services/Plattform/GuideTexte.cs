@@ -111,7 +111,7 @@ public static class GuideTexte
         ]),
         new("fin", "Fin d'année", "layers",
         [
-            new("Passage d'année", "Selon les décisions de fin d'année : les admis passent au niveau suivant, les redoublants restent au même niveau, les autres quittent l'établissement. Tout se fait en une seule étape, vérifiée avant.", "/direction/annee/passage")
+            new("Passage d'année", "Selon les décisions de fin d'année : les admis passent au niveau suivant, les redoublants restent au même niveau, les autres quittent l'établissement. Tout se fait en une seule étape, vérifiée avant (classes manquantes, capacité dépassée).", "/direction/annee/passage")
         ]),
         new("administration", "Administration", "school",
         [

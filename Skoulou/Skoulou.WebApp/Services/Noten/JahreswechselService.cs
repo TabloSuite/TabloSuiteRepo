@@ -56,9 +56,25 @@ public sealed record PassageKlasse(Guid KlasseId, string Klasse, string? Stufe, 
     public int AdmisOhneKlasse => FinDeCycle ? 0 : Schueler.Count(s => s.Ziel is null && s.Entscheidung == JahresEntscheidungsArt.Admis);
 }
 
-public sealed record PassageVorschau(Guid AltesJahrId, string AltesJahr, SchuljahrStatus AltStatus, Guid? NeuesJahrId, string NeuesJahr,
-    DateOnly NeuBeginn, DateOnly NeuEnde, int NeuePerioden, IReadOnlyList<PassageKlasse> Klassen, IReadOnlyList<string> Warnungen, bool BereitsAusgefuehrt)
+/// <summary>
+/// Zielklasse des neuen Jahres über ihrer Kapazität: Bestand (schon eingeschrieben) + Zugänge aus dem Passage (Nutzer 22.11.2026:
+/// deutlich warnen, nicht sperren).
+/// </summary>
+public sealed record PassageUeberbelegung(string Klasse, int Bestand, int Zugaenge, int Kapazitaet)
 {
+    public int Gesamt => Bestand + Zugaenge;
+
+    public string Text(string jahr) => $"La classe « {Klasse} » ({jahr}) aura {Gesamt} élèves pour une capacité de {Kapazitaet}, soit {Gesamt - Kapazitaet} de trop"
+        + (Bestand > 0 ? $" ({Zugaenge} par le passage et {Bestand} déjà inscrit(s))" : string.Empty)
+        + ". Le passage reste possible : ensuite, augmentez la capacité ou répartissez les élèves (Organisation › Classes).";
+}
+
+public sealed record PassageVorschau(Guid AltesJahrId, string AltesJahr, SchuljahrStatus AltStatus, Guid? NeuesJahrId, string NeuesJahr,
+    DateOnly NeuBeginn, DateOnly NeuEnde, int NeuePerioden, IReadOnlyList<PassageKlasse> Klassen, IReadOnlyList<string> Warnungen, bool BereitsAusgefuehrt,
+    IReadOnlyList<PassageUeberbelegung>? Ueberbelegungen = null)
+{
+    public IReadOnlyList<PassageUeberbelegung> Ueberbelegt => Ueberbelegungen ?? [];
+
     public int Offen => Klassen.Sum(k => k.Anzahl(JahresEntscheidungsArt.Offen));
     public int Eingeschrieben => Klassen.Sum(k => k.Schueler.Count(s => s.Ziel is not null));
     public int Sortants => Klassen.Sum(k => k.Sortants);
@@ -79,7 +95,7 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
 {
     private sealed record AltSchueler(Guid EinschreibungId, Guid SchuelerId, Guid KlasseId, string Name, JahresEntscheidungsArt Entscheidung, Guid? ZielStufeId);
 
-    private sealed record AltKlasse(Guid Id, string Name, Guid? StufeId, string? Stufe, Guid? Nachfolger, int Reihenfolge);
+    private sealed record AltKlasse(Guid Id, string Name, Guid? StufeId, string? Stufe, Guid? Nachfolger, int Reihenfolge, int? Kapazitaet = null);
 
     /// <summary>Vorschlag: nächstes Jahr (vorhandenes in Vorbereitung oder neu), gleiche Klassennamen, Admis in die Klasse der Folgestufe mit gleichem Suffix.</summary>
     public async Task<PassagePlan> PlanAsync(Guid akteurId, Guid altesJahrId, CancellationToken ct = default)
@@ -159,9 +175,48 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             foreach (var k in ergebnis.Where(k => deaktiviert.Contains(k.NeuerName.Trim(), StringComparer.OrdinalIgnoreCase)))
                 warnungen.Add(DeaktiviertText(k.NeuerName.Trim(), neu.Bezeichnung));
         }
+        var neuesJahr = neu?.Bezeichnung ?? plan.Bezeichnung ?? string.Empty;
+        var ueberbelegt = bereits ? new List<PassageUeberbelegung>() : await UeberbelegungAsync(db, neu, klassen, schueler, ergebnis, ct);
+        warnungen.AddRange(ueberbelegt.Select(u => u.Text(neuesJahr)));
         var anzahlPerioden = neu is null ? perioden.Count : await db.Perioden.CountAsync(p => p.SchuljahrId == neu.Id, ct);
-        return new PassageVorschau(alt.Id, alt.Bezeichnung, alt.Status, neu?.Id, neu?.Bezeichnung ?? plan.Bezeichnung ?? string.Empty,
-            neu?.Beginn ?? plan.Beginn ?? alt.Beginn.AddYears(1), neu?.Ende ?? plan.Ende ?? alt.Ende.AddYears(1), anzahlPerioden, ergebnis, warnungen, bereits);
+        return new PassageVorschau(alt.Id, alt.Bezeichnung, alt.Status, neu?.Id, neuesJahr,
+            neu?.Beginn ?? plan.Beginn ?? alt.Beginn.AddYears(1), neu?.Ende ?? plan.Ende ?? alt.Ende.AddYears(1), anzahlPerioden, ergebnis, warnungen, bereits,
+            ueberbelegt);
+    }
+
+    /// <summary>
+    /// Zielklassen über ihrer Kapazität (Nutzer 22.11.2026, Normaltest: 6e A + 6e B gingen beide in 5e A → 48 bei Kapazität 35,
+    /// ohne Hinweis). Bestand = schon im neuen Jahr eingeschriebene Schüler der Klasse; Zugänge = Schüler des Passage mit diesem
+    /// Ziel, die noch nicht im neuen Jahr eingeschrieben sind. Kapazität der vorhandenen Klasse, sonst die der Vorlage (wie beim Anlegen).
+    /// </summary>
+    private static async Task<List<PassageUeberbelegung>> UeberbelegungAsync(SkoulouDbContext db, Schuljahr? neu, List<AltKlasse> klassen,
+        List<AltSchueler> schueler, List<PassageKlasse> ergebnis, CancellationToken ct)
+    {
+        static string Norm(string? name) => string.Join(' ', (name ?? string.Empty).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        var gleich = StringComparer.OrdinalIgnoreCase;
+        var bestand = new Dictionary<string, (int Anzahl, int? Kapazitaet)>(gleich);
+        var schonImNeuenJahr = new HashSet<Guid>();
+        if (neu is not null)
+        {
+            var neueKlassen = await db.Klassen.AsNoTracking().Where(k => k.SchuljahrId == neu.Id).Select(k => new { k.Id, k.Name, k.Kapazitaet }).ToListAsync(ct);
+            var eingeschrieben = await db.Einschreibungen.AsNoTracking()
+                .Where(e => e.SchuljahrId == neu.Id && e.StorniertAmUtc == null && e.Status == EinschreibungsStatus.Active)
+                .Select(e => new { e.KlasseId, e.SchuelerId }).ToListAsync(ct);
+            schonImNeuenJahr = eingeschrieben.Select(e => e.SchuelerId).ToHashSet();
+            foreach (var k in neueKlassen) bestand[Norm(k.Name)] = (eingeschrieben.Count(e => e.KlasseId == k.Id), k.Kapazitaet);
+        }
+        var schuelerVon = schueler.ToDictionary(s => s.EinschreibungId, s => s.SchuelerId);
+        var liste = new List<PassageUeberbelegung>();
+        foreach (var g in ergebnis.SelectMany(k => k.Schueler)
+                     .Where(s => s.Ziel is not null && !schonImNeuenJahr.Contains(schuelerVon[s.EinschreibungId]))
+                     .GroupBy(s => Norm(s.Ziel), gleich))
+        {
+            var (anzahl, kapazitaet) = bestand.TryGetValue(g.Key, out var b) ? b
+                : (0, ergebnis.FirstOrDefault(k => gleich.Equals(Norm(k.NeuerName), g.Key)) is { } quelle
+                    ? klassen.First(k => k.Id == quelle.KlasseId).Kapazitaet : null);
+            if (kapazitaet is { } kap && anzahl + g.Count() > kap) liste.Add(new PassageUeberbelegung(g.Key, anzahl, g.Count(), kap));
+        }
+        return liste;
     }
 
     /// <summary>Name der Zielklasse im neuen Jahr (null = verlässt die Schule bzw. noch offen).</summary>
@@ -346,7 +401,8 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
                            join s in db.Stufen on k.StufeId equals s.Id into st
                            from s in st.DefaultIfEmpty()
                            where k.SchuljahrId == jahrId && (k.Aktiv || aktive.Any(e => e.KlasseId == k.Id))
-                           select new AltKlasse(k.Id, k.Name, k.StufeId, s == null ? null : s.Name, s == null ? null : s.NachfolgerId, s == null ? 999 : s.Reihenfolge))
+                           select new AltKlasse(k.Id, k.Name, k.StufeId, s == null ? null : s.Name, s == null ? null : s.NachfolgerId, s == null ? 999 : s.Reihenfolge,
+                               k.Kapazitaet))
             .ToListAsync(ct);
         return liste.OrderBy(k => k.Reihenfolge).ThenBy(k => k.Name).ToList();
     }

@@ -193,6 +193,44 @@ public class JahreswechselTests
     }
 
     [Fact]
+    public async Task Ueberbelegte_Zielklasse_wird_mit_Zahlen_gewarnt_aber_nicht_gesperrt()
+    {
+        // Nutzer 22.11.2026 (Normaltest: 6e A + 6e B → 5e A mit 48 Schülern bei Kapazität 35, ohne Hinweis).
+        var w = await NotenWelt.ErstelleAsync();
+        await w.AendernAsync(async db => (await db.Klassen.SingleAsync(k => k.Id == w.O.Klasse5A)).Kapazitaet = 1);
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Admis);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        var u = Assert.Single(v.Ueberbelegt);
+        Assert.Equal(("5e A", 0, 2, 1), (u.Klasse, u.Bestand, u.Zugaenge, u.Kapazitaet));
+        Assert.Contains(v.Warnungen, x => x.Contains("« 5e A » (2027-2028) aura 2 élèves pour une capacité de 1, soit 1 de trop"));
+        Assert.True(v.Bereit);
+
+        // Schon im neuen Jahr eingeschriebene Schüler der vorhandenen Klasse zählen mit (ihre Kapazität gilt).
+        await w.AendernAsync(async db =>
+        {
+            var vorlage = await db.Klassen.SingleAsync(k => k.Id == w.O.Klasse5A);
+            var neu = new Klasse { SchuleId = vorlage.SchuleId, SchuljahrId = w.O.JahrVorb, StufeId = vorlage.StufeId, Name = "5e A", Kapazitaet = 2 };
+            db.Klassen.Add(neu);
+            db.Einschreibungen.Add(new Einschreibung
+            {
+                SchuleId = vorlage.SchuleId, SchuelerId = w.O.SchuelerOhne, SchuljahrId = w.O.JahrVorb, KlasseId = neu.Id,
+                Von = new DateOnly(2027, 9, 1), Status = EinschreibungsStatus.Active
+            });
+        });
+        v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        u = Assert.Single(v.Ueberbelegt);
+        Assert.Equal((1, 2, 2, 3), (u.Bestand, u.Zugaenge, u.Kapazitaet, u.Gesamt));
+        Assert.Contains(v.Warnungen, x => x.Contains("3 élèves pour une capacité de 2") && x.Contains("(2 par le passage et 1 déjà inscrit(s))"));
+
+        // Nur eine Warnung: die Ausführung bleibt möglich.
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal(2, ergebnis.Einschreibungen);
+    }
+
+    [Fact]
     public async Task Deaktivierte_Klasse_des_Folgejahres_wird_nicht_still_benutzt()
     {
         // Fehlersuche 21.11.2026 (Z3), Nutzerentscheidung 22.11.: eine deaktivierte « 5e A » im neuen Jahr nahm die Admis auf.
