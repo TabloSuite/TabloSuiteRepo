@@ -18,12 +18,24 @@ Die vollständige Planung für SKOULOU steht in `Skoulou/docs/Bauplan.md` (verbi
   (Worktree agent-aec3a483b371b147d, App-Zeit ab 14.08.2027; zuerst Hänger « Kasse öffnen » + PO sieht Laden nicht in « Mes
   établissements » klären) und SKOULOU-Normaltest (agent-ac92135ac0c6f818f, ab Phase 2c, App-Zeit 27.11.2026). Beide sollen vorher
   `git merge --ff-only Etse.TabloSuite.Muster` gemacht haben.
+- **Fortsetzung im NEUEN Chat (Agenten dieses Chats sind dort nicht erreichbar):** je Normaltest einen neuen Agenten starten,
+  OHNE neuen Worktree: er arbeitet im vorhandenen Worktree weiter (Pfad nennen), Auftrag: GEMEINSAM.md +
+  `%TEMP%\e2e-2111\<lauf>\STAND-TEST.md` lesen (genauer Wiedereinstieg steht dort), höchstens 2 Agenten, sparsam.
+  - eNOTE normal: Worktree `.claude/worktrees/agent-aec3a483b371b147d`, Commit **407cb83** (Kassenkopf am Handy, « Changer » verdeckt)
+    noch prüfen + übernehmen. Wiedereinstieg: veröffentlichen, App starten, `node alltag.mjs 2029-01-02` (App-Zeit ~14.08.2027).
+    Lücke: Läden A, C, D Feb–Aug 2027 ohne Alltag (Skriptfehler: Admin nach Zeitsprung abgemeldet → Zahlungen unbestätigt → Kassen
+    korrekt gesperrt). Offen niedrig: Deadlocks beim gleichzeitigen Kassenöffnen am Monatsanfang (werden wiederholt).
+  - SKOULOU normal: Worktree `.claude/worktrees/agent-ac92135ac0c6f818f` (auf 714bc70), T1 2026-27 komplett ok (150 Schüler, Bulletins
+    + PDF nachgerechnet, Rechnung T1 150.000 F). Weiter mit `p6-rechnung.mjs`. Offen: Ligaturen in PDFs (« ti » beim Kopieren falsch,
+    Fix vorbereitet, nicht committet), Suche Schulname in `/admin/facturation`.
 - **Danach:** Fixes übernehmen, alle Tests + `SKOULOU_SQL_TESTS=1` + beide Simulationen, `git fetch` + master in den Branch, pushen,
   master (OK liegt vor), STAND, Aufräumen (Worktrees, Test-DBs nach Rückfrage, DataProtection-Schlüssel mit Zukunftsdatum).
 - **Offene Fachfragen an den Nutzer (im Chat 22.11. gestellt):** SKOULOU 1–8 (zurückgezogenes Bulletin, Jahr nie gestartet,
   Folgeklasse im Assistenten, Lehrkraft ohne Lehrauftrag, Messagerie Responsable, Sperre abgerechneter Periode, Verbindungsaufbau,
   deaktivierte Klasse beim Jahreswechsel); eNOTE: gleichnamige Mitarbeiter, Bon für Admin ohne Kunde, Remise nach UTC-Tag (Kamerun),
-  gleichnamige Prestations/Remises, negativer Lagerbestand/Bruchteile, Telefon-Dublette.
+  gleichnamige Prestations/Remises, negativer Lagerbestand/Bruchteile, Telefon-Dublette, « Remettre en stock » standardmäßig an?,
+  Admin-Liste Établissements selbst aktualisieren?, Emoji 📅 in der Datumsauswahl ersetzen?; SKOULOU zusätzlich: « / » im Lückentext
+  (Brüche wie 6/7), Eltern sehen Fortschritt bei Übungen/Examen?
 
 ## 0a. Stand 21.11.2026 nachmittags
 
