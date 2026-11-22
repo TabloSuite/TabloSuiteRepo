@@ -142,6 +142,7 @@ internal static class NotenDb
 public static class NotenAudit
 {
     public const string BulletinZurueckgezogen = "bulletin.retire";
+    public const string BulletinWiederAusgegeben = "bulletin.reemis";
     public const string RectificationGeoeffnet = "bulletin.rectification-ouverte";
     public const string RectificationAbgebrochen = "bulletin.rectification-abandonnee";
 }

@@ -212,9 +212,14 @@ public sealed class BulletinService(IDbContextFactory<SkoulouDbContext> dbFactor
             var ids = b.Kohorte.Select(s => s.EinschreibungId).ToList();
             var gueltige = await db.Bulletins.AsNoTracking().Where(x => x.PeriodeId == p.Id && ids.Contains(x.EinschreibungId) && x.Status == BulletinStatus.Publie)
                 .ToDictionaryAsync(x => x.EinschreibungId, ct);
+            // Zurückgezogen bleibt zurückgezogen (Fehlersuche 21.11.2026 Z1, Nutzerentscheidung 22.11.): keine stille Neuausgabe in
+            // der Rectification – dafür gibt es « Réémettre ».
+            var zurueckgezogen = (await db.Bulletins.AsNoTracking().Where(x => x.PeriodeId == p.Id && ids.Contains(x.EinschreibungId) && x.Status == BulletinStatus.Retire)
+                .Select(x => x.EinschreibungId).ToListAsync(ct)).ToHashSet();
             foreach (var (s, inhalt, hash) in b.AlleInhalte().Liste)
             {
                 gueltige.TryGetValue(s.EinschreibungId, out var alt);
+                if (alt is null && zurueckgezogen.Contains(s.EinschreibungId)) continue;
                 if (alt is not null && alt.Hash == hash) continue;
                 var altInhalt = alt is null ? null : BulletinSnapshot.AusJson(alt.SnapshotJson).Inhalt;
                 if (altInhalt is not null && BulletinVergleich.FachlichGleich(altInhalt, inhalt)) continue;
@@ -248,6 +253,43 @@ public sealed class BulletinService(IDbContextFactory<SkoulouDbContext> dbFactor
             audit.Erfasse(db, a.Id, a.SchuleId, NotenAudit.BulletinZurueckgezogen, nameof(Bulletin), b.Id, $"Bulletin n° {b.Nummer} retiré. Motif : {text}");
             await db.SaveChangesAsync(ct);
         }, ct);
+    }
+
+    /// <summary>
+    /// « Réémettre » (Fehlersuche 21.11.2026 Z1, Nutzerentscheidung 22.11.): ein zurückgezogenes Bulletin gibt die Direktion
+    /// ausdrücklich neu aus (z. B. nach dem Begleichen der Frais) – mit dem aktuellen Stand der Noten, neuer Nummer und neuem
+    /// Prüfcode; das zurückgezogene gilt danach als ersetzt, die Familie bekommt die Mail wie bei einer Veröffentlichung.
+    /// </summary>
+    public async Task<Guid> WiederAusgebenAsync(Guid akteurId, Guid bulletinId, string? grund, CancellationToken ct = default)
+    {
+        var a = await zugriff.SchuleAsync(akteurId, Faehigkeit.BulletinsVeroeffentlichen, ct: ct);
+        var text = NotenFormat.Text(grund, 300, "Le motif") ?? throw new FachFehler("Indiquez le motif de la réémission.", "grund");
+        var (id, info, empfaenger) = await dbFactory.TransaktionAsync(async db =>
+        {
+            var alt = await db.Bulletins.FirstOrDefaultAsync(x => x.Id == bulletinId, ct) ?? throw new FachFehler("Ce bulletin est introuvable.");
+            a.PruefeSchule(alt.SchuleId);
+            if (alt.Status != BulletinStatus.Retire) throw new FachFehler("Seul un bulletin retiré peut être réémis.");
+            var klasseId = await db.Einschreibungen.Where(e => e.Id == alt.EinschreibungId).Select(e => e.KlasseId).FirstAsync(ct);
+            var (klasse, periode, jahr) = await KlassePeriodeAsync(db, a, klasseId, alt.PeriodeId, ct);
+            var v = await db.KlassenVeroeffentlichungen.AsNoTracking().FirstOrDefaultAsync(x => x.KlasseId == klasse.Id && x.PeriodeId == periode.Id, ct);
+            if (v?.Status == VeroeffentlichungsStatus.EnRectification)
+                throw new FachFehler("Une rectification est ouverte pour cette classe : publiez-la ou abandonnez-la d'abord.");
+            var b = await BulletinBerechnung.LadeAsync(db, klasse, periode, ct);
+            var eintrag = b.AlleInhalte().Liste.FirstOrDefault(x => x.Schueler.EinschreibungId == alt.EinschreibungId);
+            if (eintrag.Schueler is null) throw new FachFehler("Cet élève ne fait plus partie de la classe pour cette période : le bulletin ne peut pas être réémis.");
+            alt.Status = BulletinStatus.Remplace;
+            await db.SaveChangesAsync(ct);
+            var neuId = await NeuesBulletinAsync(db, b, eintrag.Schueler, eintrag.Inhalt, eintrag.Hash, alt, text, ct);
+            await db.SaveChangesAsync(ct);
+            var nummer = await db.Bulletins.Where(x => x.Id == neuId).Select(x => x.Nummer).FirstAsync(ct);
+            audit.Erfasse(db, a.Id, a.SchuleId, NotenAudit.BulletinWiederAusgegeben, nameof(Bulletin), neuId,
+                $"Bulletin n° {nummer} réémis (remplace le n° {alt.Nummer} retiré) : {eintrag.Schueler.Name}, {klasse.Name}, {periode.Titel}. Motif : {text}");
+            await db.SaveChangesAsync(ct);
+            var empf = await ProtokolliereBenachrichtigungAsync(db, a, [neuId], ct);
+            return (neuId, new Neu(klasse.Id, periode.Titel, jahr.Bezeichnung, b.Schule.OffizielleBezeichnung ?? b.Schule.Name, true), empf);
+        }, ct);
+        await mails.BulletinVerfuegbarAsync(empfaenger, info.Periode, info.Jahr, info.Schule, true, ct);
+        return id;
     }
 
     public async Task UebergabeErfassenAsync(Guid akteurId, Guid bulletinId, UebergabeArt art, string? vermerk, CancellationToken ct = default)

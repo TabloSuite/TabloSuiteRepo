@@ -73,6 +73,7 @@ public static class OrgAudit
         AuditAktionen.Jahreswechsel => "Passage d'année",
         // Codes aus Noten (E5) und Finanzen (E6)
         "bulletin.retire" => "Bulletin retiré",
+        "bulletin.reemis" => "Bulletin réémis",
         "bulletin.rectification-ouverte" => "Rectification ouverte",
         "bulletin.rectification-abandonnee" => "Rectification abandonnée",
         "finanzen.ecriture-annulee" => "Écriture annulée",

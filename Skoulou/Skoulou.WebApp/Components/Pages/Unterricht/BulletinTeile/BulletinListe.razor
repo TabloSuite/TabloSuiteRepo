@@ -35,6 +35,11 @@
                     {
                         <button type="button" class="sk-icon-knopf klein" title="Retirer ce bulletin" @onclick="() => (rueckzug, grund) = (b, null)"><Icon Name="trash" Groesse="16" /></button>
                     }
+                    else if (b.Status == BulletinStatus.Retire)
+                    {
+                        <button type="button" class="sk-icon-knopf klein" title="Réémettre ce bulletin" aria-label="@($"Réémettre le bulletin de {b.Schueler}")"
+                                @onclick="() => (neuAusgabe, grund, Fehlermeldung) = (b, null, null)"><Icon Name="refresh" Groesse="16" /></button>
+                    }
                 }
             </td>
         </Zeile>
@@ -66,8 +71,14 @@
 
 <BestaetigungsDialog Open="rueckzug is not null" Titel="Retirer ce bulletin ?" Gefahr="true" BestaetigenText="Retirer" Fehler="@Fehlermeldung"
                      Gesperrt="@(!Feld.Ausgefuellt(grund))" OnAbbrechen="() => rueckzug = null" OnBestaetigen="ZurueckziehenAsync">
-    <p>Le bulletin n° <strong>@rueckzug?.Nummer</strong> de <strong>@rueckzug?.Schueler</strong> ne sera plus valable ; son QR code l'indiquera. Une rectification de la classe permet d'en publier un nouveau.</p>
+    <p>Le bulletin n° <strong>@rueckzug?.Nummer</strong> de <strong>@rueckzug?.Schueler</strong> ne sera plus valable ; son QR code l'indiquera. Il reste retiré, même lors d'une rectification de la classe. Le bouton « Réémettre » en publie un nouveau quand vous le souhaitez (par exemple après le règlement des frais).</p>
     <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="300" Pflicht="true" Sofort="true" />
+</BestaetigungsDialog>
+
+<BestaetigungsDialog Open="neuAusgabe is not null" Titel="Réémettre ce bulletin ?" BestaetigenText="Réémettre" Fehler="@Fehlermeldung"
+                     Gesperrt="@(!Feld.Ausgefuellt(grund))" OnAbbrechen="() => neuAusgabe = null" OnBestaetigen="WiederAusgebenAsync">
+    <p>Un nouveau bulletin est publié pour <strong>@neuAusgabe?.Schueler</strong> avec les notes actuelles, un nouveau numéro et un nouveau QR code. Il remplace le n° <strong>@neuAusgabe?.Nummer</strong> ; la famille est prévenue par e-mail.</p>
+    <TextFeld Label="Motif" @bind-Wert="grund" MaxLaenge="300" Pflicht="true" Sofort="true" Platzhalter="Frais réglés le…" />
 </BestaetigungsDialog>
 
 @code {
@@ -84,7 +95,7 @@
 
     private Liste<BulletinZeile>? liste;
     private Guid? klasseId, periodeId;
-    private BulletinZeile? uebergabe, rueckzug;
+    private BulletinZeile? uebergabe, rueckzug, neuAusgabe;
     private IReadOnlyList<UebergabeZeile>? protokoll;
     private UebergabeArt art = UebergabeArt.Remise;
     private string? vermerk, grund;
@@ -118,6 +129,16 @@
         if (await AusfuehrenAsync(() => Bulletins.UebergabeErfassenAsync(Ich.KontoId, uebergabe.Id, art, vermerk), "C'est consigné."))
         {
             uebergabe = null;
+            if (liste is not null) await liste.NeuLadenAsync();
+        }
+    }
+
+    private async Task WiederAusgebenAsync()
+    {
+        if (neuAusgabe is null) return;
+        if (await AusfuehrenAsync(() => Bulletins.WiederAusgebenAsync(Ich.KontoId, neuAusgabe.Id, grund), "Le bulletin est réémis."))
+        {
+            neuAusgabe = null;
             if (liste is not null) await liste.NeuLadenAsync();
         }
     }

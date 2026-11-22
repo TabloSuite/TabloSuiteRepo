@@ -236,6 +236,46 @@ public class BulletinTests
     }
 
     [Fact]
+    public async Task Zurueckgezogenes_Bulletin_bleibt_bei_Rectification_zurueckgezogen_und_wird_nur_per_Reemettre_neu_ausgegeben()
+    {
+        // Fehlersuche 21.11.2026 (Z1): das zurückgezogene Bulletin (Frais non réglés) gab jede Rectification der Klasse still
+        // neu aus, mit Mail an die Familie, und « Abandonner » war blockiert. Nutzerentscheidung 22.11.: Retirer gilt dauerhaft,
+        // Neuausgabe nur ausdrücklich über « Réémettre ».
+        var w = await NotenWelt.ErstelleAsync();
+        var (math, _) = await w.VollstaendigAsync();
+        await w.VeroeffentlichenAsync();
+        var zurueck = await w.MitDbAsync(db => db.Bulletins.SingleAsync(b => b.EinschreibungId == w.E1));
+        await w.Bulletins.ZurueckziehenAsync(w.D, zurueck.Id, "Frais non réglés");
+        await Assert.ThrowsAsync<FachFehler>(() => w.Bulletins.WiederAusgebenAsync(w.D, w.MitDbAsync(db => db.Bulletins.SingleAsync(b => b.EinschreibungId == w.E2)).Result.Id, "x"));
+
+        // Rectification ohne Änderung: nichts betroffen, Abbrechen erlaubt
+        await w.Bulletins.RectificationOeffnenAsync(w.D, w.O.Klasse6A, w.O.P1, "Contrôle");
+        Assert.Empty((await w.Bulletins.RectificationVorschauAsync(w.D, w.O.Klasse6A, w.O.P1)).Aenderungen);
+        // Während der Rectification kein « Réémettre »
+        await Assert.ThrowsAsync<FachFehler>(() => w.Bulletins.WiederAusgebenAsync(w.D, zurueck.Id, "Frais réglés"));
+        await w.Bulletins.RectificationAbbrechenAsync(w.D, w.O.Klasse6A, w.O.P1);
+
+        // Rectification mit Änderung bei der Mitschülerin: das zurückgezogene bleibt zurückgezogen
+        await w.Bulletins.RectificationOeffnenAsync(w.D, w.O.Klasse6A, w.O.P1, "Erreur de report");
+        await w.NoteAsync(math, w.E2, "19");
+        var vorschau = await w.Bulletins.RectificationVorschauAsync(w.D, w.O.Klasse6A, w.O.P1);
+        Assert.DoesNotContain(vorschau.Aenderungen, x => x.EinschreibungId == w.E1);
+        await w.Bulletins.RectificationVeroeffentlichenAsync(w.D, w.O.Klasse6A, w.O.P1, vorschau.Hash);
+        Assert.False(await w.MitDbAsync(db => db.Bulletins.AnyAsync(b => b.EinschreibungId == w.E1 && b.Status == BulletinStatus.Publie)));
+
+        // « Réémettre »: Lehrkraft nicht, Direktion mit Motif; neues Bulletin mit aktuellem Stand, altes ersetzt, Familie sieht es wieder
+        await Assert.ThrowsAsync<KeinZugriffFehler>(() => w.Bulletins.WiederAusgebenAsync(w.O.Lehrer, zurueck.Id, "x"));
+        await Assert.ThrowsAsync<FachFehler>(() => w.Bulletins.WiederAusgebenAsync(w.D, zurueck.Id, " "));
+        var neuId = await w.Bulletins.WiederAusgebenAsync(w.D, zurueck.Id, "Frais réglés");
+        var neu = await w.MitDbAsync(db => db.Bulletins.SingleAsync(b => b.Id == neuId));
+        Assert.Equal((BulletinStatus.Publie, zurueck.Id, w.E1), (neu.Status, neu.ErsetztId, neu.EinschreibungId));
+        Assert.Equal(BulletinStatus.Remplace, (await w.Lesen.PruefenAsync(zurueck.PruefToken))!.Status);
+        Assert.Equal("2e", BulletinSnapshot.AusJson(neu.SnapshotJson).Inhalt.Rang);
+        Assert.Single(await w.Lesen.EigeneAsync(w.O.Schueler, w.O.Schueler));
+        await Assert.ThrowsAsync<FachFehler>(() => w.Bulletins.WiederAusgebenAsync(w.D, zurueck.Id, "encore"));
+    }
+
+    [Fact]
     public async Task Pruefseite_zeigt_nur_die_vorgesehenen_Felder()
     {
         var w = await NotenWelt.ErstelleAsync();
