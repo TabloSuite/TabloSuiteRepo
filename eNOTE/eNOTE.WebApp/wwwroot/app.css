@@ -1831,6 +1831,11 @@ button.enote-laedt { cursor: progress; }
 @media (max-width: 640px) {
     .enote-kassen-modus .enote-main { padding: .6rem; }
     .kx-kopf { padding: .45rem; gap: .5rem; }
+    /* Normaltest 21.11.2026: bei 390 px brauchen die sieben Aktionen fast die ganze Breite – Ladenname, Person und
+       « Changer » liefen darunter und « Changer » war in der Mitte überdeckt. Am Handy: Info oben, Aktionen darunter. */
+    .kx-kopf { flex-wrap: wrap; }
+    .kx-kopf-info { flex: 1 1 100%; }
+    .kx-kopf-aktionen { flex: 1 1 100%; justify-content: space-between; }
     .kx-kopf-info .enote-brand-icon { display: none; }
     .kx-aktion { min-width: 2.75rem; padding: .3rem; }
     .kx-kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); }
