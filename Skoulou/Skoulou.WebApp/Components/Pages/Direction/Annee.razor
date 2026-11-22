@@ -45,7 +45,7 @@ else
     <div class="org-jahre">
         @foreach (var j in jahre)
         {
-            <JahrKarte @key="j.Id" Jahr="j" IstDirektor="@(Ich.Rolle == Rollen.Direktor)" OnGeaendert="NeuLadenAsync"
+            <JahrKarte @key="j.Id" Jahr="j" IstDirektor="@(Ich.Rolle == Rollen.Direktor)" AktuellerMonatspreis="monatspreis" OnGeaendert="NeuLadenAsync"
                        OnBearbeiten="m => Bearbeiten(j, m)" OnPeriode="p => PeriodeOeffnen(j, p)" />
         }
     </div>

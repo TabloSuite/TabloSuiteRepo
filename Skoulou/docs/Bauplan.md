@@ -349,6 +349,9 @@ Von mir entschieden (änderbar):
 41. **Suche in den Rechnungslisten** (Admin « Facturation », auch Schule/Responsable) gilt immer für alle Rechnungen: beim Beginn
     einer Suche springt der Chip sichtbar auf « Toutes », darunter « Recherche dans toutes les factures, quel que soit leur statut. »
     (`Liste.SucheUeberAlleFilter`); ein danach gewählter Chip filtert die Treffer weiter.
+42. **Rückfrage « Démarrer l'année ? »** nennt den Preis: ohne Rechnung den Preis, der jetzt eingefroren wird; hat eine Rechnung
+    den Preis schon festgehalten (Nr. 27), diesen Preis – mit dem Hinweis, dass der inzwischen andere Schulpreis für dieses Jahr
+    nicht gilt (`SchuljahrService.StartFrage`). Die Jahreskarte schreibt vor dem Start « Prix SKOULOU déjà figé par la première facture ».
 
 ---
 

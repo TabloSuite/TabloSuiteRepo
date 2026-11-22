@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Skoulou.Core.Entitaeten;
 using Skoulou.Core.Fehler;
 using Skoulou.WebApp.Services.Finanzen;
+using Skoulou.WebApp.Services.Organisation;
 
 namespace Skoulou.Tests.Finanzen;
 
@@ -167,6 +168,12 @@ public class PlattformRechnungTests
             (await db.Schulen.SingleAsync(s => s.Id == w.Org.SchuleA)).MonatspreisOverride = 900;
             return await db.SaveChangesAsync();
         });
+        // Nutzer 22.11.2026: die Start-Rückfrage nennt den eingefrorenen Preis (700), nicht den neuen Schulpreis (900).
+        var frage = SchuljahrService.StartFrage(
+            await w.MitDbAsync(db => db.Schuljahre.Where(j => j.Id == w.Org.Jahr).Select(j => j.PlattformMonatspreis).SingleAsync()),
+            await w.Org.D.Jahre.MonatspreisAsync(w.D));
+        Assert.Contains("Le prix SKOULOU de 700 FCFA par élève et par mois, déjà figé par la première facture de cette année", frage);
+        Assert.Contains("le prix actuel de l'établissement, 900 FCFA, ne s'applique pas à cette année", frage);
         await w.Org.D.Jahre.JahrStartenAsync(w.D, w.Org.Jahr);
         Assert.Equal((SchuljahrStatus.Laufend, (long?)700), await w.MitDbAsync(db => db.Schuljahre.Where(j => j.Id == w.Org.Jahr)
             .Select(j => ValueTuple.Create(j.Status, j.PlattformMonatspreis)).SingleAsync()));

@@ -9,6 +9,18 @@ namespace Skoulou.Tests.Organisation;
 /// <summary>Schuljahr und Perioden: keine Überlappung, eindeutige Bezeichnung, ein laufendes Jahr, eingefrorener Preis, Abschluss/Wiedereröffnung.</summary>
 public class SchuljahrRegelnTests
 {
+    [Fact]
+    public void Start_Rueckfrage_nennt_den_Preis()
+    {
+        // Nutzer 22.11.2026: ohne Rechnung den Preis, der jetzt eingefroren wird; nach einer Rechnung den festgehaltenen Preis.
+        Assert.Contains("Le prix SKOULOU par élève et par mois (450 FCFA) est figé pour toute l'année", SchuljahrService.StartFrage(null, 450));
+        var nachRechnung = SchuljahrService.StartFrage(500, 450);
+        Assert.Contains("Le prix SKOULOU de 500 FCFA par élève et par mois, déjà figé par la première facture", nachRechnung);
+        Assert.Contains("450 FCFA, ne s'applique pas", nachRechnung);
+        Assert.DoesNotContain("ne s'applique pas", SchuljahrService.StartFrage(500, 500));
+        Assert.EndsWith("ne pourront plus être ajoutées ni supprimées.", nachRechnung);
+    }
+
     [Theory]
     [InlineData(PeriodenArt.Trimestre, 7, 3)]
     [InlineData(PeriodenArt.Semestre, 5, 2)]

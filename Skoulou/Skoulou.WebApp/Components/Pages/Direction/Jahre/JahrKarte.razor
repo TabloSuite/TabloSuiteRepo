@@ -14,7 +14,7 @@
             {
                 @* 19.11.2026: Preis je Schüler und Monat; die Orientierung zählt die Monate der Perioden, die abgerechnet werden. *@
                 var monate = Jahr.Perioden.Where(p => p.ZaehltFuerJahr).Sum(p => Skoulou.Core.Finanzen.PlattformAnteil.Monate(p.Beginn, p.Ende));
-                <p class="sk-leise">Prix SKOULOU figé au démarrage : <strong>@SkoulouKultur.Fcfa(preis)</strong> par élève et par mois de cours, facturé à la fin de chaque période (cette année ≈ @monate mois : environ @SkoulouKultur.Fcfa(preis * monate) par élève). Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année démarrée, il ne change plus.</p>
+                <p class="sk-leise">@(Jahr.Status == SchuljahrStatus.Vorbereitung ? "Prix SKOULOU déjà figé par la première facture de l'année" : "Prix SKOULOU figé au démarrage") : <strong>@SkoulouKultur.Fcfa(preis)</strong> par élève et par mois de cours, facturé à la fin de chaque période (cette année ≈ @monate mois : environ @SkoulouKultur.Fcfa(preis * monate) par élève). Ce prix peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année démarrée, il ne change plus.</p>
             }
             @if (Jahr.WiedereroeffnetGrund is { } grund)
             {
@@ -97,6 +97,9 @@
 @code {
     [Parameter, EditorRequired] public SchuljahrZeile Jahr { get; set; } = default!;
     [Parameter] public bool IstDirektor { get; set; }
+
+    /// <summary>Preis je Schüler und Monat, der beim Start eingefroren würde (Schulpreis, sonst Plattformpreis) – für die Rückfrage.</summary>
+    [Parameter] public long? AktuellerMonatspreis { get; set; }
     [Parameter] public EventCallback<JahrDialogModus> OnBearbeiten { get; set; }
     /// <summary>Periode bearbeiten (null = neue Periode).</summary>
     [Parameter] public EventCallback<PeriodeZeile?> OnPeriode { get; set; }
@@ -129,7 +132,7 @@
 
     private string FrageText => frage switch
     {
-        Frage.Starten => "L'année devient l'année en cours. Le prix SKOULOU par élève et par mois est figé pour toute l'année ; les périodes qui comptent pour l'année ne pourront plus être ajoutées ni supprimées.",
+        Frage.Starten => SchuljahrService.StartFrage(Jahr.PlattformMonatspreis, AktuellerMonatspreis),
         Frage.Abschliessen => "Toutes les périodes seront fermées et plus rien ne pourra être modifié (classes, inscriptions, présences). Seul le directeur peut rouvrir l'année, avec un motif. Pour passer à l'année suivante, utilisez de préférence le passage d'année.",
         Frage.Loeschen => "L'année et ses périodes sont supprimées. Possible seulement tant qu'elle ne contient ni classe ni inscription.",
         _ => "La période est supprimée définitivement."

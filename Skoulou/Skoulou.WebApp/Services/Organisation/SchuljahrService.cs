@@ -273,6 +273,22 @@ public sealed class SchuljahrService(IDbContextFactory<SkoulouDbContext> dbFacto
         await db.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Text der Rückfrage « Démarrer l'année ? » (Nutzer 22.11.2026, Nachtest: nach einer Rechnung vor dem Start nannte sie den
+    /// eingefrorenen Preis nicht, obwohl der Schulpreis inzwischen anders war). <paramref name="eingefroren"/> = schon von der
+    /// ersten Rechnung festgehaltener Preis, <paramref name="aktuell"/> = Preis, der jetzt eingefroren würde.
+    /// </summary>
+    public static string StartFrage(long? eingefroren, long? aktuell)
+    {
+        const string perioden = " ; les périodes qui comptent pour l'année ne pourront plus être ajoutées ni supprimées.";
+        if (eingefroren is { } preis)
+            return $"L'année devient l'année en cours. Le prix SKOULOU de {SkoulouKultur.Fcfa(preis)} par élève et par mois, déjà figé par la première facture de cette année, reste valable pour toute l'année"
+                + (aktuell is { } a && a != preis ? $" (le prix actuel de l'établissement, {SkoulouKultur.Fcfa(a)}, ne s'applique pas à cette année)" : string.Empty)
+                + perioden;
+        return "L'année devient l'année en cours. Le prix SKOULOU par élève et par mois"
+            + (aktuell is { } p ? $" ({SkoulouKultur.Fcfa(p)})" : string.Empty) + " est figé pour toute l'année" + perioden;
+    }
+
     /// <summary>Jahr starten: höchstens ein laufendes Jahr; der Preis je Schüler und Monat wird eingefroren.</summary>
     public async Task JahrStartenAsync(Guid akteurId, Guid jahrId, CancellationToken ct = default)
     {

@@ -131,7 +131,7 @@ public static partial class FormationKatalog
                     "Une seule année peut être « En cours » à la fois ; les années passées restent lisibles."),
                 L("Démarrer l'année",
                     "Après « Démarrer l'année », on ne peut plus ajouter ni supprimer de période qui compte (un examen blanc reste possible) ; les dates restent modifiables.",
-                    "C'est à ce moment que le prix SKOULOU par élève et par mois est figé pour toute l'année.",
+                    "C'est à ce moment que le prix SKOULOU par élève et par mois est figé pour toute l'année ; si une facture l'a déjà figé (année utilisée avant d'être démarrée), ce prix reste, et la question « Démarrer l'année ? » l'indique.",
                     "Il faut au moins une période qui compte, et l'année précédente doit être clôturée."),
                 L("Classes, matières, affectations",
                     "Une classe appartient à une seule année ; elle a un niveau, une salle, une capacité et un professeur principal.",
