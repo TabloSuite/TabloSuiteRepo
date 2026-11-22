@@ -188,7 +188,7 @@ Alle Entitäten: `Id` (Guid, sequenziell erzeugt), `ErstelltAmUtc`, `GeaendertAm
    - « Compte comme une matière normale »: wie ein Pflichtfach mit Koeffizient ((64 + 32) / 7 = 13,71).
    - « Ne compte pas (information seulement) »: steht auf dem Bulletin, zählt nie (auch unvollständig nicht).
    Ein unvollständiges Wahlfach, das zählt (Bonus oder « normale »), macht die Moyenne unvollständig. Jahresmittel und Rang wirken über die Periodenmoyennes (Regeln 3 und 5). Bulletin: Zeile « TOTAUX » = Σ Koeff. (ohne Bonus-Koeffizienten) und Σ Punkte inkl. Bonus (`NotenRechner.Beitrag`); Bereich « MATIÈRES FACULTATIVES » mit kurzer Regel nur, wenn der Schüler mindestens ein Wahlfach gewählt hat; Gruppenköpfe (« MATIÈRES LITTÉRAIRES » …) und Gruppen-Bilan nur mit der Vorlage « ZeigeFachGruppen » und nur über Pflichtfächer. Ohne Wahlfächer bleiben Inhalt und Hash eines Bulletins wie bisher.
-3. **Jahresmittel** = Σ(Periodenmittel·Jahresgewicht)/ΣJahresgewicht über Perioden mit `ZaehltFuerJahr`; fehlt eine → `null`.
+3. **Jahresmittel** = Σ(Periodenmittel·Jahresgewicht)/ΣJahresgewicht über Perioden mit `ZaehltFuerJahr`; fehlt eine → `null`. **Seit 22.11.2026 (Nutzer):** Perioden, in denen der Schüler in keiner Klasse der Schule eingeschrieben war (Neuzugang im Lauf des Jahres, Lücke zwischen Abgang und Rückkehr), zählen für ihn nicht – Jahresmittel und Jahresrang nur aus seinen Perioden; im Bilan steht die Periode als « — (non inscrit(e)) ». Fehlt in einer eingeschriebenen Periode eine Note, bleibt er « Notes incomplètes »; ein Klassenwechsel innerhalb der Schule zählt als eingeschrieben.
 4. **Rundung:** intern ungerundet; Anzeige und **Schwellen** auf `Round(x, 2, AwayFromZero)` (gleicher Wert für Anzeige, Rang, Distinktion, Appréciation).
 5. **Rang (eine Regel überall):** Wettbewerbsrang über die gerundeten Werte der **klassierten** Schüler (vollständige Werte); Gleichstand gleicher Rang mit « ex » (« 3e ex »), nächster übersprungen; Unvollständige « Non classé ». Effectif = aktive Einschreibungen der Klasse am Periodenende.
 6. **Appréciation/Distinktion-Schwellen** wie Alt-App (Fachkonzept 04 §3.10).
@@ -323,6 +323,11 @@ Von mir entschieden (änderbar):
     bleiben änderbar.
 32. **Texte à trous:** mehrere akzeptierte Antworten einer Lücke mit « | » trennen (Brüche wie « 6/7 » sind Antworten).
 33. Später (nicht gebaut): schnellerer Verbindungsaufbau bei sehr langsamem Netz; Eltern sehen Fortschritt bei Übungen/Examen.
+
+**Vom Nutzer entschieden 22.11.2026 (Fragen aus dem Normaltest über drei Schuljahre, Bericht « skoulou-normal »):**
+34. **Menüeintrag der offenen Seite** (auch Reiter/Logo mit derselben Adresse) lädt die Seite neu: das Hauptlayout erzeugt sie
+    über einen neuen Schlüssel samt Unterkomponenten neu. Navigation aus dem Code (Filter in der Adresse) und Sprungmarken nicht.
+35. **Jahresmittel bei Neuzugängen** nur aus den Perioden mit Einschreibung, normaler Jahresrang (§5 Regel 3).
 
 ---
 

@@ -57,17 +57,22 @@ public static class KlassenRechner
     /// « Bilan de fin d'année »: Jahresmittel (Regel 3) und Fach-Jahresmittel je Schüler aus den Periodenergebnissen,
     /// Jahresrang über die Kohorte. Perioden: (Ergebnis, Jahresgewicht, zählt fürs Jahr). Die Wahlfach-Regeln wirken über
     /// die Periodenmoyennes; ein in keiner Periode gewähltes Wahlfach bleibt « non choisi ».
+    /// <paramref name="eingeschrieben"/> (Schüler, Index der Periode): Perioden, in denen der Schüler nicht in der Schule
+    /// eingeschrieben war (Neuzugang im Lauf des Jahres), zählen für ihn nicht (Nutzer 22.11.2026); fehlende Noten in einer
+    /// eingeschriebenen Periode bleiben unvollständig. Ohne Angabe zählen alle Perioden.
     /// </summary>
     public static IReadOnlyDictionary<Guid, JahresErgebnis> Bilan(IReadOnlyList<Guid> kohorte, IReadOnlyList<Guid> fachIds,
-        IReadOnlyList<(KlassenErgebnis Ergebnis, decimal Gewicht, bool ZaehltFuerJahr)> perioden)
+        IReadOnlyList<(KlassenErgebnis Ergebnis, decimal Gewicht, bool ZaehltFuerJahr)> perioden, Func<Guid, int, bool>? eingeschrieben = null)
     {
-        var jahr = kohorte.ToDictionary(id => id, id => NotenRechner.Jahresmittel(perioden.Select(p =>
+        IEnumerable<(KlassenErgebnis Ergebnis, decimal Gewicht, bool ZaehltFuerJahr)> Eigene(Guid id)
+            => perioden.Where((_, i) => eingeschrieben?.Invoke(id, i) ?? true);
+        var jahr = kohorte.ToDictionary(id => id, id => NotenRechner.Jahresmittel(Eigene(id).Select(p =>
             (p.Ergebnis.Fuer(id)?.Moyenne ?? Mittel.NonEvalue, p.Gewicht, p.ZaehltFuerJahr))));
         var raenge = RangRechner.AusMitteln(jahr.Select(j => (j.Key, j.Value)));
         return kohorte.ToDictionary(id => id, id => new JahresErgebnis(id, jahr[id], raenge[id],
             fachIds.ToDictionary(f => f, f =>
             {
-                var je = perioden.Select(p => (p.Ergebnis.Fuer(id)?.Faecher.GetValueOrDefault(f)?.Mittel ?? Mittel.NonEvalue, p.Gewicht, p.ZaehltFuerJahr)).ToList();
+                var je = Eigene(id).Select(p => (p.Ergebnis.Fuer(id)?.Faecher.GetValueOrDefault(f)?.Mittel ?? Mittel.NonEvalue, p.Gewicht, p.ZaehltFuerJahr)).ToList();
                 return je.Count > 0 && je.All(x => x.Item1.Status == MittelStatus.NonChoisi) ? Mittel.NonChoisi : NotenRechner.FachJahresmittel(je);
             })));
     }

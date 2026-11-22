@@ -381,4 +381,40 @@ public class BulletinTests
         Assert.Equal("1er ex", d.Snapshot.Inhalt.Bilan.Rang);
         Assert.True(d.Snapshot.Dokument!.Entwurf);
     }
+
+    [Fact]
+    public async Task Jahresbilanz_eines_Neuzugangs_nur_aus_den_Perioden_mit_Einschreibung()
+    {
+        // Nutzer 22.11.2026 (Klicktest: Eintritt im Januar → « Notes incomplètes », kein Jahresrang).
+        var w = await NotenWelt.ErstelleAsync();
+        var neu = Guid.NewGuid();
+        await w.AendernAsync(db =>
+        {
+            db.Einschreibungen.Add(new Einschreibung
+            {
+                Id = neu, SchuleId = w.O.SchuleA, SchuelerId = w.O.SchuelerOhne, SchuljahrId = w.O.Jahr, KlasseId = w.O.Klasse6A,
+                Von = new DateOnly(2027, 1, 5), Status = EinschreibungsStatus.Active
+            });
+            return Task.CompletedTask;
+        });
+        foreach (var p in new[] { w.O.P1, w.O.P2, w.O.P3 })
+        {
+            var b = await w.BewertungAsync(w.O.Kf6AMath, p, "Composition");
+            await w.NoteAsync(b, w.E1, p == w.O.P3 ? "16" : "10");
+            await w.NoteAsync(b, w.E2, "12");
+            if (p != w.O.P1) await w.NoteAsync(b, neu, "14");
+        }
+
+        var d = await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P3, neu);
+        var bilan = d.Snapshot.Inhalt.Bilan!;
+        Assert.Equal("14,00", bilan.Moyenne);
+        Assert.Equal("1er", bilan.Rang);
+        Assert.Equal(("1er trimestre", "—", "non inscrit(e)"), (bilan.Perioden[0].Titel, bilan.Perioden[0].Moyenne, bilan.Perioden[0].Rang));
+        Assert.Equal("14,00", bilan.Perioden[1].Moyenne);
+
+        // Die anderen unverändert: Jahresmittel aus allen drei Perioden, Rang hinter dem Neuzugang.
+        var alt = (await w.Lesen.EntwurfAsync(w.D, w.O.Klasse6A, w.O.P3, w.E1)).Snapshot.Inhalt.Bilan!;
+        Assert.Equal(("12,00", "2e ex"), (alt.Moyenne, alt.Rang));
+        Assert.DoesNotContain(alt.Perioden, p => p.Rang == "non inscrit(e)");
+    }
 }

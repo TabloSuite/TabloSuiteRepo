@@ -57,6 +57,9 @@ public static class NotenTexte
     };
 
     /// <summary>Kurzform für Tabellen: Wert oder « — » / « disp. » / « incomplet ».</summary>
+    /// <summary>Periode, in der der Schüler noch nicht (oder nicht mehr) eingeschrieben war – zählt nicht fürs Jahresmittel.</summary>
+    public const string NichtEingeschrieben = "non inscrit(e)";
+
     public static string MittelKurz(Mittel m) => m.Status switch
     {
         MittelStatus.Wert when m.Wert is { } w => Zahl(w),

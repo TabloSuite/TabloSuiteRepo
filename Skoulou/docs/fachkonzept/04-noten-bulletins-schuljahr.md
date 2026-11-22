@@ -153,6 +153,8 @@ SuperAdmin/ProduktOwner haben ohne `UserSchool` zur Schule keinen Zugriff auf No
 - **Gesamtmittel (Moyenne générale)** (NB:15-21): über alle Fächer (`FachBewertung`) der Klasse; ein `null`-Fach → `null`.
   `Moy = Σ(Moy_Fach · Coef) / Σ Coef`
 - **Jahresmittel** (NB:23-29): Perioden mit `IstTest` oder Gewicht 0 werden ignoriert; fehlt eine Periodenmoyenne → `null`.
+  **Neubau (Nutzer 22.11.2026):** Perioden, in denen der Schüler nicht in der Schule eingeschrieben war (Eintritt im Lauf des
+  Jahres), zählen für ihn nicht; Jahresmittel und Jahresrang aus seinen übrigen Perioden (Bauplan §5 Regel 3).
   `Moy_an = Σ(Moy_Periode · JahresGewicht) / Σ JahresGewicht`; analog je Fach (Fach-Jahresmittel, KR:66-67).
 - **Teilnote** auf /20 umgerechnet: `Punkte · 20 / Barème` (KR:30-32).
 - Fehlende Noten zählen **nie** als 0 (Test `NotenBerechnungTests`).

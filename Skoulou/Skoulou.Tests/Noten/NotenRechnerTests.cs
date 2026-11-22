@@ -211,6 +211,38 @@ public class NotenRechnerTests
     }
 
     [Fact]
+    public void Bilan_zaehlt_fuer_Neuzugaenge_nur_die_Perioden_mit_Einschreibung()
+    {
+        // Nutzer 22.11.2026: Eintritt im Januar → Jahresmittel aus T2/T3 und normaler Jahresrang statt « Notes incomplètes ».
+        var math = Guid.NewGuid();
+        Guid alt = Guid.NewGuid(), neu = Guid.NewGuid(), luecke = Guid.NewGuid();
+        var faecher = new List<FachSpalte> { new(math, 1) };
+        SchuelerWertungen S(Guid id, Wertung? w)
+        {
+            var jeFach = new Dictionary<Guid, IReadOnlyList<Wertung>>();
+            if (w is { } wert) jeFach[math] = [wert];
+            return new(id, jeFach);
+        }
+        var t1 = KlassenRechner.Berechne(faecher, [S(alt, Wertung.Note(10)), S(neu, null), S(luecke, Wertung.Fehlt())], false);
+        var t2 = KlassenRechner.Berechne(faecher, [S(alt, Wertung.Note(12)), S(neu, Wertung.Note(15)), S(luecke, Wertung.Note(18))], false);
+        var t3 = KlassenRechner.Berechne(faecher, [S(alt, Wertung.Note(14)), S(neu, Wertung.Note(13)), S(luecke, Wertung.Note(18))], false);
+        var perioden = new[] { (t1, 1m, true), (t2, 1m, true), (t3, 2m, true) };
+
+        // Ohne Angabe wie bisher: der Neuzugang ist unvollständig.
+        Assert.Equal(MittelStatus.Incomplet, KlassenRechner.Bilan([alt, neu, luecke], [math], perioden)[neu].Moyenne.Status);
+
+        var bilan = KlassenRechner.Bilan([alt, neu, luecke], [math], perioden, (id, i) => !(id == neu && i == 0));
+        Assert.Equal(12.5m, bilan[alt].Moyenne.Wert);                         // (10 + 12 + 14·2) / 4
+        Assert.Equal(13.67m, NotenRechner.Runde(bilan[neu].Moyenne.Wert!.Value)); // (15 + 13·2) / 3
+        Assert.Equal(new RangInfo(1, false), bilan[neu].Rang);
+        Assert.Equal(new RangInfo(2, false), bilan[alt].Rang);
+        Assert.Equal(13.67m, NotenRechner.Runde(bilan[neu].JeFach[math].Wert!.Value));
+        // Eingeschrieben, aber Note fehlt: bleibt unvollständig und « Non classé ».
+        Assert.Equal(MittelStatus.Incomplet, bilan[luecke].Moyenne.Status);
+        Assert.False(bilan[luecke].Rang.Klassiert);
+    }
+
+    [Fact]
     public void Letzte_Periode_ist_die_letzte_zaehlende()
     {
         Guid p1 = Guid.NewGuid(), p2 = Guid.NewGuid(), blanc = Guid.NewGuid();
