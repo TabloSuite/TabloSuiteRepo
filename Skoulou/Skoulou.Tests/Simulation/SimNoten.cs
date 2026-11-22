@@ -401,6 +401,12 @@ internal sealed partial class Simulation
             Zaehle("Passage: Admis ohne Folgeklasse bestätigt", vorschau.AdmisOhneKlasse);
             plan.AbgaengeBestaetigt = true;
         }
+        // Passage vor dem Jahresende: Warnung sehen und bestätigen (22.11.2026).
+        if (vorschau.VorJahresende)
+        {
+            Zaehle("Passage: vor dem Jahresende bestätigt");
+            plan.VorJahresendeBestaetigt = true;
+        }
         var ergebnis = await SollAsync($"Passage {s.P.Name}", () => wechsel.AusfuehrenAsync(s.KoordMit, alt.Id, plan));
         if (ergebnis is null) return;
         Zaehle("Passagen");

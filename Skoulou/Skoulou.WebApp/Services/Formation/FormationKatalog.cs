@@ -124,7 +124,7 @@ public static partial class FormationKatalog
                     "Démarrer : l'année passe « En cours ».",
                     "Au quotidien : l'appel et les notes.",
                     "Fin de période : conseil de classe et bulletins.",
-                    "Passage d'année : chaque élève est admis, redouble ou part – et l'année est clôturée dans la même étape (réouverture par la direction, avec un motif). Par défaut, les comptes des élèves qui partent sont archivés : ils ne se connectent plus, leurs bulletins restent, et la direction peut les réintégrer."),
+                    "Passage d'année : chaque élève est admis, redouble ou part – et l'année est clôturée dans la même étape (réouverture par la direction, avec un motif). Par défaut, les comptes des élèves qui partent sont archivés : ils ne se connectent plus, leurs bulletins restent, et la direction peut les réintégrer. Avant la date de fin de l'année, SKOULOU avertit et demande une confirmation."),
                 L("Les périodes",
                     "« Combien de périodes / trimestres ? » : 1 période (un seul bulletin à la fin de l'année), 2 semestres, 3 trimestres, des sessions (4 par défaut, pour les écoles de langues et formations courtes) ou un autre nombre de périodes – 12 au plus.",
                     "Chaque période a ses dates et un poids dans la moyenne annuelle ; un examen blanc peut ne pas compter.",

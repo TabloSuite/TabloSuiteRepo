@@ -335,6 +335,9 @@ Von mir entschieden (änderbar):
     archiviert (Status `Archive`, Sitzung beendet, Journal). Anmeldung danach mit eigener Meldung (« compte archivé … demandez à la
     direction de le réactiver »); Noten/Bulletins bleiben für die Schule; « Réintégrer » macht das Konto wieder aktiv (Einschreiben
     verlangt das zuerst). Eltern-Konten bleiben unberührt. Keine Migration.
+38. **Passage vor dem Jahresende** (heute in der Zeitzone der Schule vor « Fin » des Schuljahres): Warnung « L'année … n'est pas
+    terminée : elle se termine le JJ/MM/AAAA » oben auf der Seite und im Dialog; « Effectuer » erst nach ausdrücklicher Bestätigung,
+    auch serverseitig (`PassagePlan.VorJahresendeBestaetigt`).
 
 ---
 

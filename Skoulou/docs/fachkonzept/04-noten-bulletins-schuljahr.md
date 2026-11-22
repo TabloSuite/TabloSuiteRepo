@@ -380,7 +380,8 @@ Lehrer/Direktion: `/notes` → Jahr → Periode → « Classe et matière » →
 2. **Décision ohne Wirkung:** « Admis » / « Redouble » / « Exclu » setzt weder nächste Klasse noch `IstWiederholer` noch Archivierung. → Assistent „Passage en classe supérieure“: Vorschlag aus Décision, Zielklasse aus Klassenstufen-Folge, Redoublant automatisch, Exclus archivieren, alles in einer Transaktion mit Vorschau.
    **Neubau (Nutzer 22.11.2026):** die Vorschau warnt mit Zahlen, wenn eine Zielklasse über ihre Kapazität käme (Bestand im neuen
    Jahr + Zugänge), sperrt aber nicht. Die Konten der Abgänger werden standardmäßig archiviert (Schalter; Eltern unberührt,
-   « Réintégrer » möglich).
+   « Réintégrer » möglich). Vor dem Ende des Schuljahres warnt die Vorschau (« l'année n'est pas terminée », mit Datum) und
+   verlangt eine ausdrückliche Bestätigung.
 3. **Uneinheitliche Rangregeln:** Moyenne-Rang `null`, sobald ein Mitschüler unvollständig ist (BUS:111), Fach-/Jahres-/Conseil-Rang ignorieren Unvollständige (KR:70). → Eine Regel (z. B. „Non classé“ für Unvollständige, Rang über Klassifizierte), ex-aequo explizit („ex“).
 4. **Berichtigung lässt Werte veralten:** nur Fächer, Moyenne, Rang, Vorperioden, Jahresnote werden übernommen (BAS:153-154); Klassenmittel/Min/Max, Jahresrang, Fach-Jahresränge, vorgeschlagene Distinction bleiben alt. → Snapshot vollständig neu berechnen, nur Layout/Identität beibehalten.
 5. **Berichtigung umgeht Sperren:** Entwurfsnoten dürfen aus beliebigen Perioden kommen (auch offene/nicht veröffentlichte), ignorieren geschlossene Perioden/Jahre; betroffene vorläufige Ausgaben anderer Perioden werden als `IstEndgueltig` ersetzt, ohne `BulletinAbschluss`. → Berichtigung auf endgültig veröffentlichte Perioden beschränken.

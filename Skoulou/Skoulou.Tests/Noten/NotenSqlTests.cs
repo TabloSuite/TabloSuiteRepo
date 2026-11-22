@@ -81,6 +81,7 @@ public class NotenSqlTests(SqlDatenbank datenbank) : IClassFixture<SqlDatenbank>
         await w.Conseil.EntscheidungSpeichernAsync(w.D, w.O.P3, w.E1, new EntscheidungEingabe(JahresEntscheidungsArt.Admis, null, null));
         await w.Conseil.EntscheidungSpeichernAsync(w.D, w.O.P3, w.E2, new EntscheidungEingabe(JahresEntscheidungsArt.Redouble, null, null));
         var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        plan.VorJahresendeBestaetigt = true;   // Testuhr 13.11.2026, vor dem Jahresende (22.11.2026)
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
         Assert.Equal(2, ergebnis.Einschreibungen);
     }

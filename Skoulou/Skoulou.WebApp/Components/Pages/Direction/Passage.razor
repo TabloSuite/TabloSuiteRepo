@@ -133,9 +133,15 @@ else
 }
 
 <BestaetigungsDialog Open="bestaetigen" Titel="Effectuer le passage ?" BestaetigenText="Effectuer le passage" Fehler="@Fehlermeldung"
-                     Gesperrt="@(v?.AdmisOhneKlasse > 0 && plan?.AbgaengeBestaetigt != true)"
+                     Gesperrt="@((v?.AdmisOhneKlasse > 0 && plan?.AbgaengeBestaetigt != true) || (v?.VorJahresende == true && plan?.VorJahresendeBestaetigt != true))"
                      OnAbbrechen="() => bestaetigen = false" OnBestaetigen="PassageAsync">
     <p>@v?.Eingeschrieben élève(s) seront inscrits en @v?.NeuesJahr et @v?.Sortants quitteront l'établissement@(plan?.AbgaengerArchivieren == true && v?.Sortants > 0 ? " (leurs comptes seront archivés)" : null). L'année @v?.AltesJahr sera ensuite clôturée (le directeur peut la rouvrir avec un motif).</p>
+    @if (v?.JahrLaeuftBis is { } jahresende && plan is not null)
+    {
+        <Hinweis Art="warn">Attention : l'année @v.AltesJahr <strong>n'est pas terminée</strong> (fin le @SkoulouKultur.Datum(jahresende)). Le passage la clôture dès maintenant.</Hinweis>
+        <Schalter Wert="plan.VorJahresendeBestaetigt" WertChanged="b => plan.VorJahresendeBestaetigt = b"
+                  Label="@($"Je confirme effectuer le passage avant la fin de l'année ({SkoulouKultur.Datum(jahresende)})")" />
+    }
     @foreach (var u in v?.Ueberbelegt ?? [])
     {
         <Hinweis Art="warn">Capacité dépassée : « @u.Klasse » aura <strong>@u.Gesamt élèves</strong> pour @u.Kapazitaet places (@(u.Gesamt - u.Kapazitaet) de trop).</Hinweis>
@@ -185,7 +191,7 @@ else
 
     private void PassageFragen()
     {
-        if (plan is not null) plan.AbgaengeBestaetigt = false;
+        if (plan is not null) (plan.AbgaengeBestaetigt, plan.VorJahresendeBestaetigt) = (false, false);
         bestaetigen = true;
     }
 

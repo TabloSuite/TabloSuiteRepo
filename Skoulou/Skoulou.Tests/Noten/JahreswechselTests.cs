@@ -15,11 +15,19 @@ public class JahreswechselTests
     private static Task EntscheidenAsync(NotenWelt w, Guid einschreibung, JahresEntscheidungsArt art)
         => w.Conseil.EntscheidungSpeichernAsync(w.D, w.O.P3, einschreibung, new EntscheidungEingabe(art, null, null));
 
+    /// <summary>Plan des Assistenten; die Testuhr (13.11.2026) liegt vor dem Jahresende → Bestätigung gesetzt (22.11.2026).</summary>
+    private static async Task<PassagePlan> PlanAsync(NotenWelt w)
+    {
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        plan.VorJahresendeBestaetigt = true;
+        return plan;
+    }
+
     [Fact]
     public async Task Vorschlag_Folgestufe_mit_gleichem_Suffix()
     {
         var w = await NotenWelt.ErstelleAsync();
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         Assert.Equal("2027-2028", plan.Bezeichnung);
         Assert.Equal(w.O.Klasse5A, plan.ZielAdmis[w.O.Klasse6A]);
         Assert.Equal(w.O.Klasse5A, plan.ZielAdmis[w.O.Klasse6B]);
@@ -35,7 +43,7 @@ public class JahreswechselTests
     public async Task Offene_Entscheidungen_blockieren_bis_sie_gesetzt_sind()
     {
         var w = await NotenWelt.ErstelleAsync();
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         Assert.Contains("décision", (await Assert.ThrowsAsync<FachFehler>(() => w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan))).Message);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
         Assert.Equal(1, await w.Wechsel.OffeneEntscheidenAsync(w.D, w.O.Klasse6A, JahresEntscheidungsArt.Admis));
@@ -51,7 +59,7 @@ public class JahreswechselTests
         var w = await NotenWelt.ErstelleAsync();
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         plan.Namen[w.O.Klasse5A] = " 5e  A ";
         plan.Namen[w.O.Klasse6A] = "6e A  ";
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
@@ -67,7 +75,7 @@ public class JahreswechselTests
         var w = await NotenWelt.ErstelleAsync();
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         plan.Namen[w.O.Klasse6B] = "6e B bis";
         await Assert.ThrowsAsync<KeinZugriffFehler>(() => w.Wechsel.AusfuehrenAsync(w.O.Lehrer, w.O.Jahr, plan));
         await Assert.ThrowsAsync<KeinZugriffFehler>(() => w.Wechsel.AusfuehrenAsync(w.O.DirektorB, w.O.Jahr, plan));
@@ -117,7 +125,7 @@ public class JahreswechselTests
         await w.Bewertungen.KomponenteAnlegenAsync(w.D, w.O.P1, new KomponenteEingabe("Interrogation", BewertungsArt.Interrogation, 1, 20));
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Exclu);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Admis);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         Assert.Equal(new DateOnly(2027, 9, 1), plan.Beginn);
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
         Assert.Equal((1, 1), (ergebnis.Einschreibungen, ergebnis.Sortants));
@@ -138,7 +146,7 @@ public class JahreswechselTests
         var w = await NotenWelt.ErstelleAsync();
         await w.AendernAsync(async db => (await db.Klassen.SingleAsync(k => k.Id == w.O.Klasse6B)).PeriodeId = w.O.P2);
         await w.Wechsel.OffeneEntscheidenAsync(w.D, w.O.Klasse6A, JahresEntscheidungsArt.Admis);
-        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, await w.Wechsel.PlanAsync(w.D, w.O.Jahr));
+        var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, await PlanAsync(w));
 
         var klassen = await w.MitDbAsync(db => db.Klassen.Where(k => k.SchuljahrId == ergebnis.NeuesJahrId).ToDictionaryAsync(k => k.Name, k => k.PeriodeId));
         Assert.Equal(w.O.PV2, klassen["6e B"]);
@@ -157,7 +165,7 @@ public class JahreswechselTests
             (await db.Einschreibungen.SingleAsync(e => e.Id == w.E2)).KlasseId = w.O.Klasse6B;
         });
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
         Assert.True(v.Bereit);
         Assert.DoesNotContain(v.Klassen.SelectMany(k => k.Schueler), s => s.EinschreibungId == w.E2);
@@ -178,7 +186,7 @@ public class JahreswechselTests
         var w = await NotenWelt.ErstelleAsync();
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         plan.ZielAdmis[w.O.Klasse6A] = null;
 
         var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
@@ -203,7 +211,7 @@ public class JahreswechselTests
         await w.AendernAsync(async db => (await db.Klassen.SingleAsync(k => k.Id == w.O.Klasse5A)).Kapazitaet = 1);
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Admis);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
 
         var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
         var u = Assert.Single(v.Ueberbelegt);
@@ -241,7 +249,7 @@ public class JahreswechselTests
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Exclu);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Admis);
         var vorher = await w.MitDbAsync(db => db.Users.Where(k => k.Rolle == Rollen.Eltern).ToDictionaryAsync(k => k.Id, k => k.Status));
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         Assert.True(plan.AbgaengerArchivieren);
 
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
@@ -261,12 +269,48 @@ public class JahreswechselTests
     }
 
     [Fact]
+    public async Task Passage_vor_dem_Jahresende_wird_gewarnt_und_muss_bestaetigt_werden()
+    {
+        // Nutzer 22.11.2026 (Nachtest: Schule D schloss ihr Jahr am 20.03. – vor Beginn des 3. Trimesters).
+        var w = await NotenWelt.ErstelleAsync();
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        Assert.False(plan.VorJahresendeBestaetigt);
+
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        Assert.Equal(new DateOnly(2027, 6, 30), v.JahrLaeuftBis);
+        Assert.StartsWith("L'année 2026-2027 n'est pas terminée : elle se termine le 30/06/2027.", v.Warnungen[0]);
+        Assert.True(v.Bereit);   // nur Warnung + Bestätigung, keine Sperre der Seite
+        var f = await Assert.ThrowsAsync<FachFehler>(() => w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan));
+        Assert.Contains("n'est pas terminée (fin le 30/06/2027)", f.Message);
+        Assert.Equal(0, await w.MitDbAsync(db => db.Einschreibungen.CountAsync(e => e.SchuljahrId == w.O.JahrVorb)));
+
+        plan.VorJahresendeBestaetigt = true;
+        Assert.Equal(2, (await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan)).Einschreibungen);
+    }
+
+    [Fact]
+    public async Task Nach_dem_Jahresende_ohne_Warnung_und_ohne_Bestaetigung()
+    {
+        var w = await NotenWelt.ErstelleAsync();
+        await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
+        await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Admis);
+        w.Zeit.Jetzt = new DateTimeOffset(2027, 7, 1, 8, 0, 0, TimeSpan.Zero);   // 01/07/2027 in Lomé
+        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
+        Assert.Null(v.JahrLaeuftBis);
+        Assert.DoesNotContain(v.Warnungen, x => x.Contains("n'est pas terminée"));
+        Assert.Equal(2, (await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan)).Einschreibungen);
+    }
+
+    [Fact]
     public async Task Ohne_Schalter_bleiben_die_Konten_der_Abgaenger_aktiv()
     {
         var w = await NotenWelt.ErstelleAsync();
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Partie);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
         plan.AbgaengerArchivieren = false;
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
         Assert.Equal((1, 0), (ergebnis.Sortants, ergebnis.Archiviert));
@@ -294,7 +338,7 @@ public class JahreswechselTests
         });
         await EntscheidenAsync(w, w.E1, JahresEntscheidungsArt.Admis);
         await EntscheidenAsync(w, w.E2, JahresEntscheidungsArt.Redouble);
-        var plan = await w.Wechsel.PlanAsync(w.D, w.O.Jahr);
+        var plan = await PlanAsync(w);
 
         var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
         Assert.Contains(v.Warnungen, x => x.Contains("« 5e A »") && x.Contains("désactivée"));
