@@ -368,6 +368,40 @@ public class KatalogService(
         => string.IsNullOrWhiteSpace(name) ? "Veuillez saisir un nom."
             : name.Trim().Length > KategorieNameMax ? $"Nom de catégorie : {KategorieNameMax} caractères au maximum." : null;
 
+    /// <summary>Name für den Vergleich: ohne Ränder, mehrfache Leerzeichen zusammengefasst, Groß-/Kleinschreibung egal.</summary>
+    internal static string NameFuerVergleich(string? name)
+        => string.Join(' ', (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .ToLowerInvariant();
+
+    /// <summary>Kommt <paramref name="name"/> unter den Namen der Abfrage schon vor? Vergleich im Speicher (Kataloge sind klein,
+    /// so gilt dieselbe Regel unabhängig von der Sortierfolge der Datenbank).</summary>
+    private static async Task<bool> GleichnamigAsync(IQueryable<string> namen, string? name, CancellationToken ct)
+    {
+        var gesucht = NameFuerVergleich(name);
+        return (await namen.ToListAsync(ct)).Any(n => NameFuerVergleich(n) == gesucht);
+    }
+
+    /// <summary>
+    /// 22.11.2026 (Nutzerentscheidung): zwei aktive Remises gleichen Namens, deren Zeiträume sich überschneiden, wären an der
+    /// Kasse nicht zu unterscheiden. « Soldes » im Januar und « Soldes » im Juli bleiben möglich.
+    /// </summary>
+    private static async Task PruefeRabattNameFreiAsync(ApplicationDbContext db, Rabatt rabatt, CancellationToken ct)
+    {
+        var gesucht = NameFuerVergleich(rabatt.Name);
+        var andere = await db.Rabatte.AsNoTracking()
+            .Where(r => r.SalonId == rabatt.SalonId && r.IstAktiv && r.Id != rabatt.Id)
+            .Select(r => new { r.Name, r.GueltigVonUtc, r.GueltigBisUtc })
+            .ToListAsync(ct);
+        var vonNeu = rabatt.GueltigVonUtc?.Date ?? DateTime.MinValue;
+        var bisNeu = rabatt.GueltigBisUtc?.Date ?? DateTime.MaxValue;
+        if (andere.Any(r => NameFuerVergleich(r.Name) == gesucht
+                && (r.GueltigVonUtc?.Date ?? DateTime.MinValue) <= bisNeu
+                && (r.GueltigBisUtc?.Date ?? DateTime.MaxValue) >= vonNeu))
+        {
+            throw new ArgumentException("Une remise active porte déjà ce nom sur la même période.");
+        }
+    }
+
     // ---------------- Geprüfte Varianten für die Seiten (Recht bei jedem Speichern, LadenZugriff.PruefeRechtAsync) ----------------
 
     private async Task PruefeRechtAsync(Guid benutzerId, Guid salonId, LadenZugriff.Recht recht, CancellationToken ct)
@@ -464,7 +498,26 @@ public class KatalogService(
             throw new InvalidOperationException(eingabeFehler);
         }
 
+        // 22.11.2026 (Nutzerentscheidung): Einen negativen Bestand tippt man nicht ein. Ein durch Verkäufe schon negativer
+        // Bestand bleibt beim Bearbeiten erlaubt, solange das Feld unverändert bleibt. Bruchteile (2,5 m, 1,5 l) sind erlaubt.
+        if (leistung.HatStueckzahl && leistung.Stueckzahl < 0
+            && (leistung.Id == Guid.Empty || stueckzahlBeimOeffnen is not decimal beimOeffnenAlt || leistung.Stueckzahl != beimOeffnenAlt))
+        {
+            throw new InvalidOperationException("Le stock ne peut pas être négatif.");
+        }
+
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        // 22.11.2026 (Nutzerentscheidung): zwei aktive Artikel gleichen Typs mit demselben Namen (« Coupe »/« coupe ») sind an
+        // der Kasse nicht zu unterscheiden. Deaktivierte zählen nicht (alte Prestation mit Verkäufen bleibt im Archiv).
+        if (leistung.IstAktiv && await GleichnamigAsync(
+                db.Leistungen.AsNoTracking().Where(l => l.SalonId == leistung.SalonId && l.IstAktiv && l.Typ == leistung.Typ && l.Id != leistung.Id)
+                    .Select(l => l.Name), leistung.Name, cancellationToken))
+        {
+            throw new InvalidOperationException(leistung.Typ == LeistungsTyp.Prestation
+                ? "Une prestation active porte déjà ce nom."
+                : "Un article actif porte déjà ce nom.");
+        }
 
         // Barcode: eingegebenen Code prüfen (Format, eindeutig pro Laden); leer → automatisch erzeugen
         // (auch beim Bearbeiten, damit jeder Artikel scanbar bleibt).
@@ -758,6 +811,7 @@ public class KatalogService(
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var rabatt = await db.Rabatte.FirstOrDefaultAsync(r => r.Id == id && r.SalonId == salonId, cancellationToken);
         if (rabatt is null) return false;
+        if (aktiv && !rabatt.IstAktiv) await PruefeRabattNameFreiAsync(db, rabatt, cancellationToken);
         rabatt.IstAktiv = aktiv;
         await db.SaveChangesAsync(cancellationToken);
         return true;
@@ -770,6 +824,7 @@ public class KatalogService(
         rabatt.Name = rabatt.Name.Trim();
         rabatt.Bedingung = string.IsNullOrWhiteSpace(rabatt.Bedingung) ? null : rabatt.Bedingung.Trim();
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        if (rabatt.IstAktiv) await PruefeRabattNameFreiAsync(db, rabatt, cancellationToken);
 
         if (rabatt.Id == Guid.Empty)
         {

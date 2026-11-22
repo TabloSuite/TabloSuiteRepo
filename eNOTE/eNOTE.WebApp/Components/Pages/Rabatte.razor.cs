@@ -197,7 +197,16 @@ public partial class Rabatte(KatalogService katalogService, AktiverSalonState ak
     private async Task SetzeAktivAsync(Rabatt rabatt, bool aktiv)
     {
         if (!darfVerwalten) return;
-        if (!await katalogService.SetzeRabattAktivAsync(benutzerId, rabatt.Id, rabatt.SalonId, aktiv)) return;
+        try
+        {
+            if (!await katalogService.SetzeRabattAktivAsync(benutzerId, rabatt.Id, rabatt.SalonId, aktiv)) return;
+        }
+        catch (Exception ex) when (ex is ArgumentException or UnauthorizedAccessException)
+        {
+            toast.ZeigeFehler(ex.Message);
+            await LadeAsync();
+            return;
+        }
         rabatt.IstAktiv = aktiv;
         toast.ZeigeInfo(aktiv ? $"« {rabatt.Name} » est active en caisse." : $"« {rabatt.Name} » est désactivée.");
     }
