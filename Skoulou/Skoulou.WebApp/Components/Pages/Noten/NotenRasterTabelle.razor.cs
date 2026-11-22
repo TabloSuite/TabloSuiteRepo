@@ -12,6 +12,8 @@ internal sealed class ZellZustand(RasterZelle z)
 {
     public string Text { get; set; } = z.Text;
     public NotenStatus? Status { get; set; } = z.Status;
+    /// <summary>Zuletzt vom Server bekannter Text (Prüfung « inzwischen geändert »).</summary>
+    public string Bekannt { get; set; } = z.Text;
     public bool Erwartet { get; } = z.Erwartet;
     public string? Fehler { get; set; }
     public bool Gespeichert { get; set; }
@@ -97,9 +99,15 @@ public partial class NotenRasterTabelle : IAsyncDisposable
         zelle.Laeuft = true;
         try
         {
-            var stand = await Noten.NoteSpeichernAsync(Ich.KontoId, spalte.BewertungId, zeile.EinschreibungId, text);
+            var stand = await Noten.NoteSpeichernAsync(Ich.KontoId, spalte.BewertungId, zeile.EinschreibungId, text, bekannt: zelle.Bekannt);
             zelle.Status = stand.Zelle.Status;
             zelle.Text = stand.Zelle.Text;
+            zelle.Bekannt = stand.Zelle.Text;
+            if (stand.Konflikt is { } konflikt)
+            {
+                zelle.Fehler = konflikt;
+                Toast.ZeigeFehler(konflikt);
+            }
             zelle.Gespeichert = stand.Geaendert;
             mittel[zeile.EinschreibungId] = stand.Mittel;
             await OnFortschritt.InvokeAsync(Erfasst);

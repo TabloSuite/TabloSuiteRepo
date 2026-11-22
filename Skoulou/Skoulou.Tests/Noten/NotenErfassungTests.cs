@@ -121,6 +121,25 @@ public class NotenErfassungTests
     }
 
     [Fact]
+    public async Task Gleichzeitige_Eingabe_ueberschreibt_nicht_still()
+    {
+        // Klicktest 21.11.2026: Lehrer tippt 14, Direktorin gleichzeitig 16 → still 14, die Direktorin sah weiter 16.
+        var w = await NotenWelt.ErstelleAsync();
+        var b = await w.BewertungAsync(w.O.Kf6AMath);
+        var e1 = await w.Noten.NoteSpeichernAsync(w.D, b, w.E1, "16", bekannt: "");
+        Assert.Null(e1.Konflikt);
+        var e2 = await w.Noten.NoteSpeichernAsync(w.O.Lehrer, b, w.E1, "14", bekannt: "");   // Lehrer kennt noch die leere Zelle
+        Assert.NotNull(e2.Konflikt);
+        Assert.False(e2.Geaendert);
+        Assert.Equal("16", e2.Zelle.Text);
+        var e3 = await w.Noten.NoteSpeichernAsync(w.O.Lehrer, b, w.E1, "14", bekannt: e2.Zelle.Text);   // bewusst erneut
+        Assert.Null(e3.Konflikt);
+        Assert.Equal("14", e3.Zelle.Text);
+        Assert.Null((await w.Noten.NoteSpeichernAsync(w.D, b, w.E1, "14", bekannt: "16")).Konflikt);   // gleicher Wert: kein Konflikt
+        Assert.Null((await w.Noten.NoteSpeichernAsync(w.D, b, w.E1, "12")).Konflikt);                  // ohne Angabe wie bisher
+    }
+
+    [Fact]
     public async Task Gleicher_Titel_am_gleichen_Datum_ist_doppelt()
     {
         // Klicktest 21.11.2026: zweimal « Interro 1 » ohne Datum → zwei gleiche Spalten im Notenraster.

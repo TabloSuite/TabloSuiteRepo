@@ -39,7 +39,8 @@ public sealed record NotenRaster(Guid KlassenfachId, Guid PeriodeId, string Klas
 }
 
 /// <summary>Ergebnis einer gespeicherten Zelle: neue Zelle und neues Fachmittel der Zeile.</summary>
-public sealed record ZellStand(RasterZelle Zelle, Mittel Mittel, bool Geaendert);
+/// <summary>Ergebnis einer Zelle; <see cref="Konflikt"/> = nicht gespeichert, weil die Note inzwischen jemand anders geändert hat.</summary>
+public sealed record ZellStand(RasterZelle Zelle, Mittel Mittel, bool Geaendert, string? Konflikt = null);
 
 public sealed record NotenHistorie(DateTime ZeitUtc, string Von, string Alt, string Neu);
 
@@ -171,7 +172,10 @@ public sealed class NotenService(IDbContextFactory<SkoulouDbContext> dbFactory, 
     }
 
     /// <summary>Speichert eine Zelle (Autosave): Zahl, « abs », « aj », « disp » oder leer (Note entfernen). Gleiches Speichern = nichts.</summary>
-    public async Task<ZellStand> NoteSpeichernAsync(Guid akteurId, Guid bewertungId, Guid einschreibungId, string? eingabe, CancellationToken ct = default)
+    /// <param name="bekannt">Text der Zelle, wie das Gerät sie zuletzt vom Server bekam (null = ohne Prüfung). Weicht die Note inzwischen
+    /// ab (zweite Lehrkraft, Direktion, zweites Gerät), wird nicht still überschrieben (Klicktest 21.11.2026: Lehrer 14 / Direktorin 16).</param>
+    public async Task<ZellStand> NoteSpeichernAsync(Guid akteurId, Guid bewertungId, Guid einschreibungId, string? eingabe, CancellationToken ct = default,
+        string? bekannt = null)
     {
         return await dbFactory.TransaktionAsync(async db =>
         {
@@ -188,6 +192,13 @@ public sealed class NotenService(IDbContextFactory<SkoulouDbContext> dbFactory, 
             var note = await db.Noten.FirstOrDefaultAsync(n => n.BewertungId == bewertung.Id && n.EinschreibungId == einschreibungId, ct);
             var neuerStatus = neu.Leer ? NotenStatus.Leer : neu.Status;
             var geaendert = note is null ? !neu.Leer : note.Status != neuerStatus || note.Punkte != neu.Punkte;
+            if (geaendert && bekannt is not null && NotenTexte.Note(note?.Status, note?.Punkte) is var aktuell && aktuell != bekannt)
+            {
+                var jetzt = string.IsNullOrEmpty(aktuell) ? "retirée" : aktuell;
+                return new ZellStand(new RasterZelle(bewertung.Id, note?.Status, note?.Punkte, Erwartet(bewertung.Datum, einschreibung.Von, einschreibung.Bis)),
+                    await FachmittelAsync(db, bewertung.KlassenfachId, periode.Id, einschreibung, ct), false,
+                    $"Cette note vient d'être modifiée par une autre personne (maintenant : {jetzt}). Votre saisie n'est pas enregistrée : saisissez-la de nouveau pour la remplacer.");
+            }
             if (geaendert)
             {
                 var jetzt = zeit.GetUtcNow().UtcDateTime;
