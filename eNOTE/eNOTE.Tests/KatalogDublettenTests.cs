@@ -39,11 +39,10 @@ public class KatalogDublettenTests
     }
 
     [Fact]
-    public async Task Gleicher_Name_Erlaubt_Bei_Anderem_Typ_Oder_Wenn_Der_Alte_Deaktiviert_Ist()
+    public async Task Gleicher_Name_Erlaubt_Wenn_Der_Alte_Deaktiviert_Ist()
     {
         var (dienst, salonId) = await WeltAsync();
         var alt = await dienst.SpeichereLeistungAsync(Neu(salonId, "Shampoing"));
-        await dienst.SpeichereLeistungAsync(Neu(salonId, "Shampoing", LeistungsTyp.Produit));
 
         alt.IstAktiv = false;
         await dienst.SpeichereLeistungAsync(alt);
@@ -52,6 +51,72 @@ public class KatalogDublettenTests
         // Den alten wieder aktivieren: jetzt gibt es zwei aktive « Shampoing » gleichen Typs → abgelehnt
         alt.IstAktiv = true;
         await Assert.ThrowsAsync<InvalidOperationException>(() => dienst.SpeichereLeistungAsync(alt));
+    }
+
+    /// <summary>
+    /// Nutzerentscheidung 22.11.2026 (Frage 10 des Nachtests): Prestation und Produit gleichen Namens wären an der Kasse zwei
+    /// gleiche Kacheln. Abgelehnt beim Anlegen, Umbenennen und Reaktivieren, mit Hinweis auf eine Präzisierung.
+    /// </summary>
+    [Fact]
+    public async Task Prestation_Und_Produit_Gleichen_Namens_Werden_Abgelehnt()
+    {
+        var (dienst, salonId) = await WeltAsync();
+        await dienst.SpeichereLeistungAsync(Neu(salonId, "Shampoing"));
+
+        // Anlegen
+        var fehler = await Assert.ThrowsAsync<InvalidOperationException>(() => dienst.SpeichereLeistungAsync(Neu(salonId, " SHAMPOING ", LeistungsTyp.Produit)));
+        Assert.Equal("Une prestation active porte déjà ce nom. Ajoutez une précision, par ex. « Shampoing (flacon) ».", fehler.Message);
+        var flacon = await dienst.SpeichereLeistungAsync(Neu(salonId, "Shampoing (flacon)", LeistungsTyp.Produit));
+
+        // Umbenennen
+        await dienst.SpeichereLeistungAsync(Neu(salonId, "Gel coiffant", LeistungsTyp.Produit));
+        var coupe = await dienst.SpeichereLeistungAsync(Neu(salonId, "Coupe"));
+        coupe.Name = "gel  coiffant";
+        fehler = await Assert.ThrowsAsync<InvalidOperationException>(() => dienst.SpeichereLeistungAsync(coupe));
+        Assert.StartsWith("Un produit actif porte déjà ce nom.", fehler.Message);
+        Assert.Contains("Ajoutez une précision", fehler.Message);
+
+        // Reaktivieren: inaktiver Produit « Shampoing » darf gleich heißen, reaktiviert nicht
+        flacon.IstAktiv = false;
+        await dienst.SpeichereLeistungAsync(flacon);
+        flacon.Name = "Shampoing";
+        var inaktiv = await dienst.SpeichereLeistungAsync(flacon);
+        Assert.False(inaktiv.IstAktiv);
+        inaktiv.IstAktiv = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => dienst.SpeichereLeistungAsync(inaktiv));
+    }
+
+    /// <summary>
+    /// Altbestand (vor der Regel angelegt, z. B. Prestation « Shampoing » und Produit « Shampoing », beide aktiv): andere
+    /// Änderungen wie der Preis bleiben möglich – geprüft wird nur, wenn sich der Name ändert oder reaktiviert wird.
+    /// </summary>
+    [Fact]
+    public async Task Altbestand_Gleichen_Namens_Blockiert_Andere_Aenderungen_Nicht()
+    {
+        var factory = TestDbContextFactory.Create();
+        var salonId = Guid.NewGuid();
+        var soin = new Leistung { SalonId = salonId, Name = "Shampoing", Typ = LeistungsTyp.Prestation, Preis = 1500, IstAktiv = true, StrichCode = "200000000001" };
+        var flacon = new Leistung { SalonId = salonId, Name = "shampoing", Typ = LeistungsTyp.Produit, Preis = 2500, IstAktiv = true, StrichCode = "200000000002" };
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            db.Salons.Add(new Salon { Id = salonId, Name = "Altbestand" });
+            db.Leistungen.AddRange(soin, flacon);
+            await db.SaveChangesAsync();
+        }
+        var dienst = new KatalogService(factory, null!, null!);
+
+        var geaendert = await dienst.SpeichereLeistungAsync(new Leistung
+        {
+            Id = flacon.Id, SalonId = salonId, Name = "Shampoing", Typ = LeistungsTyp.Produit, Preis = 2700, IstAktiv = true, StrichCode = flacon.StrichCode
+        });
+        Assert.Equal(2700, geaendert.Preis);
+        // Umbenennen in einen anderen, freien Namen geht; zurück auf den gleichen Namen nicht mehr.
+        var umbenannt = await dienst.SpeichereLeistungAsync(new Leistung
+        {
+            Id = flacon.Id, SalonId = salonId, Name = "Shampoing (flacon)", Typ = LeistungsTyp.Produit, Preis = 2700, IstAktiv = true, StrichCode = flacon.StrichCode
+        });
+        umbenannt.Name = "Shampoing";
+        await Assert.ThrowsAsync<InvalidOperationException>(() => dienst.SpeichereLeistungAsync(umbenannt));
     }
 
     [Fact]

@@ -373,12 +373,36 @@ public class KatalogService(
         => string.Join(' ', (name ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             .ToLowerInvariant();
 
-    /// <summary>Kommt <paramref name="name"/> unter den Namen der Abfrage schon vor? Vergleich im Speicher (Kataloge sind klein,
-    /// so gilt dieselbe Regel unabhängig von der Sortierfolge der Datenbank).</summary>
-    private static async Task<bool> GleichnamigAsync(IQueryable<string> namen, string? name, CancellationToken ct)
+    /// <summary>Hinweis in der Meldung bei gleichem Namen (Nutzerentscheidung 22.11.2026).</summary>
+    internal const string NamensHinweis = "Ajoutez une précision, par ex. « Shampoing (flacon) ».";
+
+    /// <summary>
+    /// 22.11.2026 (Nutzerentscheidungen): Zwei aktive Artikel mit demselben Namen (« Coupe »/« coupe ») sind an der Kasse nicht zu
+    /// unterscheiden – auch nicht eine Prestation und ein Produit (« Shampoing » als Soin und als Flacon). Deaktivierte zählen nicht
+    /// (alte Prestation mit Verkäufen bleibt im Archiv). Geprüft wird nur beim Anlegen, beim Umbenennen und beim Reaktivieren:
+    /// vorhandene Altbestände blockieren andere Änderungen (Preis, Bestand, Bild) nicht. Vergleich im Speicher (Kataloge sind klein,
+    /// so gilt dieselbe Regel unabhängig von der Sortierfolge der Datenbank).
+    /// </summary>
+    private static async Task PruefeLeistungNameFreiAsync(ApplicationDbContext db, Leistung leistung, CancellationToken ct)
     {
-        var gesucht = NameFuerVergleich(name);
-        return (await namen.ToListAsync(ct)).Any(n => NameFuerVergleich(n) == gesucht);
+        if (!leistung.IstAktiv) return;
+        var gesucht = NameFuerVergleich(leistung.Name);
+        if (leistung.Id != Guid.Empty)
+        {
+            var bisher = await db.Leistungen.AsNoTracking().Where(l => l.Id == leistung.Id)
+                .Select(l => new { l.Name, l.IstAktiv }).FirstOrDefaultAsync(ct);
+            if (bisher is not null && bisher.IstAktiv && NameFuerVergleich(bisher.Name) == gesucht) return;
+        }
+        var andere = await db.Leistungen.AsNoTracking()
+            .Where(l => l.SalonId == leistung.SalonId && l.IstAktiv && l.Id != leistung.Id)
+            .Select(l => new { l.Name, l.Typ })
+            .ToListAsync(ct);
+        if (andere.FirstOrDefault(l => NameFuerVergleich(l.Name) == gesucht) is { } treffer)
+        {
+            throw new InvalidOperationException((treffer.Typ == LeistungsTyp.Prestation
+                ? "Une prestation active porte déjà ce nom. "
+                : "Un produit actif porte déjà ce nom. ") + NamensHinweis);
+        }
     }
 
     /// <summary>
@@ -508,16 +532,8 @@ public class KatalogService(
 
         await using var db = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        // 22.11.2026 (Nutzerentscheidung): zwei aktive Artikel gleichen Typs mit demselben Namen (« Coupe »/« coupe ») sind an
-        // der Kasse nicht zu unterscheiden. Deaktivierte zählen nicht (alte Prestation mit Verkäufen bleibt im Archiv).
-        if (leistung.IstAktiv && await GleichnamigAsync(
-                db.Leistungen.AsNoTracking().Where(l => l.SalonId == leistung.SalonId && l.IstAktiv && l.Typ == leistung.Typ && l.Id != leistung.Id)
-                    .Select(l => l.Name), leistung.Name, cancellationToken))
-        {
-            throw new InvalidOperationException(leistung.Typ == LeistungsTyp.Prestation
-                ? "Une prestation active porte déjà ce nom."
-                : "Un article actif porte déjà ce nom.");
-        }
+        // Kein zweiter aktiver Artikel gleichen Namens – über Prestation und Produit hinweg (nur bei Anlegen, Umbenennen, Reaktivieren).
+        await PruefeLeistungNameFreiAsync(db, leistung, cancellationToken);
 
         // Barcode: eingegebenen Code prüfen (Format, eindeutig pro Laden); leer → automatisch erzeugen
         // (auch beim Bearbeiten, damit jeder Artikel scanbar bleibt).
