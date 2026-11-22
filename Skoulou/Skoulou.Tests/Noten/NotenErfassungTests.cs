@@ -121,6 +121,20 @@ public class NotenErfassungTests
     }
 
     [Fact]
+    public async Task Gleicher_Titel_am_gleichen_Datum_ist_doppelt()
+    {
+        // Klicktest 21.11.2026: zweimal « Interro 1 » ohne Datum → zwei gleiche Spalten im Notenraster.
+        var w = await NotenWelt.ErstelleAsync();
+        await w.BewertungAsync(w.O.Kf6AMath, titel: "Interro 1");
+        Assert.Contains("existe déjà", (await Assert.ThrowsAsync<FachFehler>(() => w.BewertungAsync(w.O.Kf6AMath, titel: " interro 1 "))).Message);
+        var datiert = await w.BewertungAsync(w.O.Kf6AMath, titel: "Interro 1", datum: new DateOnly(2026, 10, 5));   // anderes Datum: erlaubt
+        await Assert.ThrowsAsync<FachFehler>(() => w.BewertungAsync(w.O.Kf6AMath, titel: "Interro 1", datum: new DateOnly(2026, 10, 5)));
+        await w.BewertungAsync(w.O.Kf6AFr, titel: "Interro 1");   // andere Matière: erlaubt
+        await Assert.ThrowsAsync<FachFehler>(() => w.Bewertungen.AendernAsync(w.D, datiert, new BewertungEingabe("Interro 1", BewertungsArt.Interrogation, null, 20, 1)));
+        await w.Bewertungen.AendernAsync(w.D, datiert, new BewertungEingabe("Interro 1", BewertungsArt.Devoir, new DateOnly(2026, 10, 5), 20, 1));   // sich selbst nicht
+    }
+
+    [Fact]
     public async Task Bewertungen_aendern_loeschen_und_aus_Komponenten()
     {
         var w = await NotenWelt.ErstelleAsync();

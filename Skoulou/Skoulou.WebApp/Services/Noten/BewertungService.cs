@@ -35,6 +35,7 @@ public sealed class BewertungService(IDbContextFactory<SkoulouDbContext> dbFacto
             var periode = await StrukturOffenAsync(db, k, periodeId, ct);
             PruefeDatum(e.Datum, periode);
             var komponente = await KomponenteAsync(db, e.KomponenteId, periode.Id, ct);
+            await PruefeDoppeltAsync(db, k.Kf.Id, periode.Id, null, titel, e.Datum, ct);
             var b = new Bewertung
             {
                 SchuleId = a.SchuleId, KlassenfachId = k.Kf.Id, PeriodeId = periode.Id, KomponenteId = komponente, Titel = titel, Art = e.Art,
@@ -44,6 +45,18 @@ public sealed class BewertungService(IDbContextFactory<SkoulouDbContext> dbFacto
             await db.SaveChangesAsync(ct);
             return b.Id;
         }, ct);
+    }
+
+    /// <summary>
+    /// Zwei Spalten mit gleichem Titel und gleichem Datum (oder beide ohne Datum) in derselben Matière und Periode sind im
+    /// Notenraster und auf dem Bulletin nicht zu unterscheiden (Klicktest 21.11.2026: zweimal « Interro 1 »).
+    /// </summary>
+    private static async Task PruefeDoppeltAsync(SkoulouDbContext db, Guid klassenfachId, Guid periodeId, Guid? ausser, string titel, DateOnly? datum, CancellationToken ct)
+    {
+        var gleiche = await db.Bewertungen.Where(x => x.KlassenfachId == klassenfachId && x.PeriodeId == periodeId && x.Id != ausser && x.Datum == datum)
+            .Select(x => x.Titel).ToListAsync(ct);
+        if (gleiche.Any(t => string.Equals(t.Trim(), titel, StringComparison.OrdinalIgnoreCase)))
+            throw new FachFehler($"L'évaluation « {titel} » existe déjà pour cette matière et cette période{(datum is null ? "" : " à cette date")}. Choisissez un autre titre.", "titel");
     }
 
     public async Task AendernAsync(Guid akteurId, Guid bewertungId, BewertungEingabe e, CancellationToken ct = default)
@@ -57,6 +70,7 @@ public sealed class BewertungService(IDbContextFactory<SkoulouDbContext> dbFacto
             PruefeDatum(e.Datum, periode);
             if ((b.Bareme != bareme || b.Gewicht != gewicht) && await db.Noten.AnyAsync(n => n.BewertungId == b.Id, ct))
                 throw new FachFehler("Des notes sont déjà saisies : le barème et le poids ne peuvent plus changer (le titre, le type et la date oui).");
+            await PruefeDoppeltAsync(db, b.KlassenfachId, b.PeriodeId, b.Id, titel, e.Datum, ct);
             b.Titel = titel;
             b.Art = e.Art;
             b.Datum = e.Datum;
