@@ -25,16 +25,16 @@
 <div class="lp">
     <section class="lp-hero" id="haut">
         <div class="lp-hero-text">
-            <span class="lp-etikett"><Icon Name="school" Groesse="14" /> Plateforme de gestion scolaire</span>
-            <h1>Votre établissement, <span class="lp-verlauf">simplement organisé.</span></h1>
-            <p>Élèves, classes, enseignants, emplois du temps, notes, bulletins et frais de scolarité : SKOULOU réunit la gestion de votre école, de votre collège, de votre lycée ou de votre centre de formation dans un seul espace, sur ordinateur, tablette et téléphone.</p>
-            <div class="lp-knoepfe">
+            <span class="lp-etikett lp-reveal"><Icon Name="school" Groesse="14" /> Plateforme de gestion scolaire</span>
+            <h1 class="lp-reveal" style="--lp-verz: 80ms">Votre établissement, <span class="lp-verlauf">simplement organisé.</span></h1>
+            <p class="lp-reveal" style="--lp-verz: 160ms">Élèves, classes, enseignants, emplois du temps, notes, bulletins et frais de scolarité : SKOULOU réunit la gestion de votre école, de votre collège, de votre lycée ou de votre centre de formation dans un seul espace, sur ordinateur, tablette et téléphone.</p>
+            <div class="lp-knoepfe lp-reveal" style="--lp-verz: 240ms">
                 <a class="sk-btn sk-btn-primaer sk-btn-gross" href="/auth/inscription"><Icon Name="user-plus" Groesse="18" /> Inscrire mon établissement</a>
                 <a class="sk-btn sk-btn-ghost sk-btn-gross" href="/auth/connexion">Se connecter</a>
             </div>
             @if (zahlen is { Schulen: > 0 } z)
             {
-                <p class="lp-zahlen">
+                <p class="lp-zahlen lp-reveal" style="--lp-verz: 320ms">
                     <span><Icon Name="school" Groesse="16" /><strong>@SkoulouKultur.Zahl(z.Schulen)</strong> établissement@(z.Schulen > 1 ? "s" : null) actif@(z.Schulen > 1 ? "s" : null)</span>
                     <span><Icon Name="graduation" Groesse="16" /><strong>@SkoulouKultur.Zahl(z.Schueler)</strong> élève@(z.Schueler > 1 ? "s" : null) inscrit@(z.Schueler > 1 ? "s" : null)</span>
                 </p>
@@ -45,7 +45,7 @@
 
     @if (HatVideo)
     {
-        <section class="lp-video" id="video" aria-label="Vidéo de présentation">
+        <section class="lp-video lp-reveal" id="video" aria-label="Vidéo de présentation">
             <div class="lp-video-text">
                 <span class="lp-etikett"><Icon Name="video" Groesse="14" /> En un peu plus de trois minutes</span>
                 <h2>SKOULOU en action</h2>
@@ -58,15 +58,15 @@
     }
 
     <section class="lp-abschnitt" id="fonctions">
-        <div class="lp-abschnitt-kopf">
+        <div class="lp-abschnitt-kopf lp-reveal">
             <p class="sk-oberzeile">Fonctionnalités</p>
             <h2>Tout ce dont votre établissement a besoin</h2>
             <p>Pour les écoles, collèges, lycées et centres de formation. Chaque établissement gère ses propres données, en toute séparation.</p>
         </div>
         <div class="lp-funktionen">
-            @foreach (var (icon, titel, text) in Funktionen)
+            @foreach (var ((icon, titel, text), i) in Funktionen.Select((f, i) => (f, i)))
             {
-                <article class="lp-funktion">
+                <article class="lp-funktion lp-reveal" style="--lp-verz: @(i % 3 * 100)ms">
                     <span class="lp-funktion-icon"><Icon Name="@icon" Groesse="22" /></span>
                     <h3>@titel</h3>
                     <p>@text</p>
@@ -76,14 +76,14 @@
     </section>
 
     <section class="lp-abschnitt" id="roles">
-        <div class="lp-abschnitt-kopf">
+        <div class="lp-abschnitt-kopf lp-reveal">
             <p class="sk-oberzeile">Pour chacun</p>
             <h2>Un espace clair pour chaque rôle</h2>
         </div>
         <div class="lp-rollen">
-            @foreach (var (icon, rolle, punkte) in RollenKarten)
+            @foreach (var ((icon, rolle, punkte), i) in RollenKarten.Select((r, i) => (r, i)))
             {
-                <article class="lp-rolle">
+                <article class="lp-rolle lp-reveal" style="--lp-verz: @(i * 100)ms">
                     <div class="lp-rolle-kopf"><span><Icon Name="@icon" Groesse="20" /></span><h3>@rolle</h3></div>
                     <ul>
                         @foreach (var punkt in punkte)
@@ -99,47 +99,47 @@
     @if (monatspreis is { } preis)
     {
         <section class="lp-abschnitt" id="tarifs">
-            <div class="lp-abschnitt-kopf">
+            <div class="lp-abschnitt-kopf lp-reveal">
                 <p class="sk-oberzeile">Tarifs</p>
                 <h2>Un prix simple, par élève</h2>
                 <p>Vous payez uniquement pour les élèves inscrits et pour les mois de cours, à la fin de chaque période. Les comptes de la direction, des enseignants et des parents ne coûtent rien de plus.</p>
             </div>
             <div class="lp-preise">
-                <article class="lp-preis haupt">
+                <article class="lp-preis haupt lp-reveal">
                     <span class="lp-preis-titel">Par élève et par mois</span>
                     <strong>@SkoulouKultur.Zahl(preis) <small>FCFA</small></strong>
                     <span>facturé à la fin de chaque période, selon ses mois</span>
                 </article>
-                @foreach (var (titel, monate, text) in Beispiele)
+                @foreach (var ((titel, monate, text), i) in Beispiele.Select((b, i) => (b, i)))
                 {
-                    <article class="lp-preis">
+                    <article class="lp-preis lp-reveal" style="--lp-verz: @((i + 1) * 100)ms">
                         <span class="lp-preis-titel">@titel</span>
                         <strong>@(monate == JahrMonate ? "≈ " : null)@SkoulouKultur.Zahl(monate * preis) <small>FCFA</small></strong>
                         <span>@text</span>
                     </article>
                 }
             </div>
-            <div class="lp-preis-inklusive">
+            <div class="lp-preis-inklusive lp-reveal">
                 <span><Icon Name="check" Groesse="16" Strich="2.5" /> Facturé seulement pour les élèves inscrits</span>
                 <span><Icon Name="check" Groesse="16" Strich="2.5" /> Enseignants et parents sans supplément</span>
                 <span><Icon Name="check" Groesse="16" Strich="2.5" /> Période d'essai possible pour un nouvel établissement</span>
                 <span><Icon Name="check" Groesse="16" Strich="2.5" /> Mises à jour comprises</span>
             </div>
-            <p class="lp-preis-hinweis">
+            <p class="lp-preis-hinweis lp-reveal">
                 <Icon Name="info" Groesse="16" />
                 <span>Ce prix vaut pour la plupart des établissements : environ @SkoulouKultur.Zahl(JahrMonate * preis) FCFA par élève pour une année scolaire complète. Il peut être adapté de façon juste à chaque établissement (par exemple selon sa taille) ; une fois l'année scolaire démarrée, il ne change plus jusqu'à sa fin.</span>
             </p>
         </section>
     }
 
-    <section class="lp-schritte" id="etapes">
+    <section class="lp-schritte lp-reveal" id="etapes">
         <div>
             <p class="sk-oberzeile">Démarrer</p>
             <h2>Votre établissement en ligne en trois étapes</h2>
             <ol>
                 @foreach (var (nr, schritt, text) in Schritte)
                 {
-                    <li><span class="lp-schritt-nr">@nr</span><strong>@schritt</strong><span>@text</span></li>
+                    <li class="lp-reveal" style="--lp-verz: @(150 + (nr - 1) * 120)ms"><span class="lp-schritt-nr">@nr</span><strong>@schritt</strong><span>@text</span></li>
                 }
             </ol>
         </div>
@@ -150,9 +150,9 @@
     </section>
 
     <section class="lp-vertrauen">
-        <div><span><Icon Name="lock" Groesse="18" /></span><div><strong>Données séparées</strong><p>Chaque établissement ne voit que ses propres élèves, notes et paiements.</p></div></div>
-        <div><span><Icon Name="phone" Groesse="18" /></span><div><strong>Partout</strong><p>Sur ordinateur, tablette et téléphone, sans installation, même avec une connexion lente.</p></div></div>
-        <div><span><Icon Name="mail" Groesse="18" /></span><div><strong>Une question ?</strong><p><a href="/contact">Contactez-nous</a> — nous vous aidons à démarrer.</p></div></div>
+        <div class="lp-reveal"><span><Icon Name="lock" Groesse="18" /></span><div><strong>Données séparées</strong><p>Chaque établissement ne voit que ses propres élèves, notes et paiements.</p></div></div>
+        <div class="lp-reveal" style="--lp-verz: 100ms"><span><Icon Name="phone" Groesse="18" /></span><div><strong>Partout</strong><p>Sur ordinateur, tablette et téléphone, sans installation, même avec une connexion lente.</p></div></div>
+        <div class="lp-reveal" style="--lp-verz: 200ms"><span><Icon Name="mail" Groesse="18" /></span><div><strong>Une question ?</strong><p><a href="/contact">Contactez-nous</a> — nous vous aidons à démarrer.</p></div></div>
     </section>
 </div>
 

@@ -26,31 +26,54 @@
             new MutationObserver(anwenden).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
             document.addEventListener('DOMContentLoaded', anwenden);
         })();
-        // Startseite (21.11.2026): Das Bild im Einstieg (.lp-hero-bild) blendet erst ein, wenn es sichtbar ist (am Handy weiter
-        // unten), und nur einmal: ersetzt Blazor beim Verbinden das vorgerenderte HTML, läuft die Animation an derselben Stelle
-        // weiter (--lp-schon = vergangene Zeit, negative CSS-Verzögerung). Ohne IntersectionObserver: sofort, wie früher.
+        // Startseite: Einblenden beim Scrollen wie bei eNOTE (23.11.2026 alle Abschnitte, vorher nur das Bild im Einstieg).
+        // .lp-reveal-Elemente bekommen « sichtbar », sobald sie ins Bild kommen (CSS-Übergang, --lp-verz staffelt). Das Bild im
+        // Einstieg (.lp-hero-bild, eigene CSS-Animationen lp-ein) spielt erst, wenn es sichtbar ist (lp-los; am Handy weiter unten).
+        // Hier im Kopf statt in skoulou.js: läuft schon beim Aufbau der vorgerenderten Seite – bei langsamem Netz ist der Einstieg
+        // sofort da (eNOTE 21.11.2026). Blazor ersetzt beim Verbinden das vorgerenderte HTML: schon gezeigte Elemente (gleiche
+        // Nummer auf derselben Seite) setzen ihr Einblenden an derselben Stelle fort (negative Verzögerung --lp-verz bzw. --lp-schon)
+        // oder stehen sofort da – kein zweites Einblenden. Ohne JavaScript, ohne IntersectionObserver oder bei « Bewegung
+        // reduzieren »: kein lp-js, alles sofort sichtbar (der Inhalt steht immer im HTML).
         (function () {
-            if (!('IntersectionObserver' in window)) return;
-            var html = document.documentElement, start = null, bekannt = null;
-            function markiere() { if (!html.classList.contains('lp-js')) html.classList.add('lp-js'); }
-            function los(el) {
-                if (start === null) start = performance.now();
-                el.style.setProperty('--lp-schon', Math.round(performance.now() - start) + 'ms');
+            if (!('IntersectionObserver' in window) || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+            var html = document.documentElement, gezeigt = {}, bildStart = null, bild = null;
+            function bildLos(el) {
+                if (bildStart === null) bildStart = performance.now();
+                el.style.setProperty('--lp-schon', Math.round(performance.now() - bildStart) + 'ms');
                 el.classList.add('lp-los');
             }
             var io = new IntersectionObserver(function (eintraege) {
-                eintraege.forEach(function (e) { if (e.isIntersecting) { io.unobserve(e.target); los(e.target); } });
-            }, { threshold: 0.15 });
+                eintraege.forEach(function (e) {
+                    if (!e.isIntersecting) return;
+                    io.unobserve(e.target);
+                    if (e.target.classList.contains('lp-hero-bild')) { bildLos(e.target); return; }
+                    e.target.classList.add('sichtbar');
+                    gezeigt[e.target.lpSchluessel] = performance.now();
+                });
+            }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
             function erfasse() {
-                var el = document.querySelector('.lp-hero-bild');
-                if (!el || el === bekannt) return;
-                bekannt = el;
-                if (start !== null) los(el); else io.observe(el);
+                var neuesBild = document.querySelector('.lp-hero-bild');
+                if (neuesBild && neuesBild !== bild) { bild = neuesBild; if (bildStart !== null) bildLos(bild); else io.observe(bild); }
+                var liste = document.querySelectorAll('.lp-reveal');
+                for (var i = 0; i < liste.length; i++) {
+                    var el = liste[i];
+                    if (el.lpSchluessel) continue;
+                    el.lpSchluessel = location.pathname + '#' + i;
+                    var seit = gezeigt[el.lpSchluessel];
+                    if (seit === undefined) { if (!el.classList.contains('sichtbar')) io.observe(el); continue; }
+                    var vergangen = performance.now() - seit;
+                    if (vergangen < 1800) {
+                        var verz = parseFloat(getComputedStyle(el).getPropertyValue('--lp-verz')) || 0;   // Stil jetzt berechnen (unsichtbar)
+                        el.style.setProperty('--lp-verz', Math.round(verz - vergangen) + 'ms');
+                    }
+                    el.classList.add('sichtbar');
+                }
             }
+            new MutationObserver(erfasse).observe(html, { childList: true, subtree: true });
+            function markiere() { if (!html.classList.contains('lp-js')) html.classList.add('lp-js'); }
             markiere();
             // Blazor gleicht <html>-Attribute nach Navigation ab – Markierung dann wieder setzen.
             new MutationObserver(markiere).observe(html, { attributes: true, attributeFilter: ['class'] });
-            new MutationObserver(erfasse).observe(html, { childList: true, subtree: true });
         })();
     </script>
     <link rel="stylesheet" href="@Assets["app.css"]" />
