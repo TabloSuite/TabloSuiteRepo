@@ -169,8 +169,9 @@ public class JahreswechselTests
         var v = await w.Wechsel.VorschauAsync(w.D, w.O.Jahr, plan);
         Assert.True(v.Bereit);
         Assert.DoesNotContain(v.Klassen.SelectMany(k => k.Schueler), s => s.EinschreibungId == w.E2);
-        // « Bulletins non publiés » zählt die Klasse der früheren Session nicht mit (es bleiben 6e A und 5e A).
-        Assert.Contains(v.Warnungen, x => x.StartsWith("2 classe(s)", StringComparison.Ordinal));
+        // « Bulletins non publiés » zählt die Klasse der früheren Session nicht mit und – seit 23.11.2026 – auch keine Klasse ohne
+        // Schüler am Ende der letzten Periode (5e A ist hier leer und könnte nie veröffentlichen): es bleibt nur 6e A.
+        Assert.Contains(v.Warnungen, x => x.StartsWith("1 classe(s)", StringComparison.Ordinal));
 
         var ergebnis = await w.Wechsel.AusfuehrenAsync(w.D, w.O.Jahr, plan);
         Assert.Equal(1, ergebnis.Einschreibungen);

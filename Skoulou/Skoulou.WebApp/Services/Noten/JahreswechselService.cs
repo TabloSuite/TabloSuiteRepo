@@ -171,7 +171,10 @@ public sealed class JahreswechselService(IDbContextFactory<SkoulouDbContext> dbF
             var veroeffentlicht = await db.KlassenVeroeffentlichungen.Where(v => v.PeriodeId == letzte.Id).Select(v => v.KlasseId).ToListAsync(ct);
             // Klassen einer früheren Session haben für die letzte Periode nie Bulletins: nicht mitzählen.
             var andereSession = await db.Klassen.Where(k => k.SchuljahrId == alt.Id && k.PeriodeId != null && k.PeriodeId != letzte.Id).Select(k => k.Id).ToListAsync(ct);
-            var ohne = klassen.Count(k => !veroeffentlicht.Contains(k.Id) && !andereSession.Contains(k.Id));
+            // Nur Klassen mit Schülern am Ende der letzten Periode: eine leere Klasse kann nie veröffentlichen, die Warnung bliebe
+            // sonst für immer stehen (Videoaufnahme 23.11.2026).
+            var mitSchuelern = schueler.Select(s => s.KlasseId).ToHashSet();
+            var ohne = klassen.Count(k => mitSchuelern.Contains(k.Id) && !veroeffentlicht.Contains(k.Id) && !andereSession.Contains(k.Id));
             if (ohne > 0) warnungen.Add($"{ohne} classe(s) n'ont pas encore de bulletins publiés pour « {letzte.Titel} ».");
         }
         var bereits = alt.Status == SchuljahrStatus.Abgeschlossen && schueler.Count == 0;
