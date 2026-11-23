@@ -228,7 +228,7 @@ public static partial class FormationKatalog
                 L("Les notes",
                     "Chaque période a ses composantes, par exemple interrogation (poids 1), devoir (1), composition (2), toutes sur 20.",
                     "À la saisie : « abs » absent, « aj » absence justifiée, « disp » dispensé. Chaque note est enregistrée tout de suite.",
-                    "« aj » et « disp » ne comptent pas ; « abs » compte 0 par défaut (réglage de l'école) ; une note manquante rend la moyenne incomplète (élève « Non classé »)."),
+                    "« aj » et « disp » ne comptent pas ; « abs » compte 0 par défaut (réglage de l'école) ; une note manquante rend la moyenne incomplète (élève « Non classé »). La légende sous la grille rappelle ces abréviations ; pour un élève arrivé en cours de période et absent à une évaluation, préférez « aj » ou « disp »."),
                 L("Les moyennes",
                     "Exemple : 12, 14 et une composition à 11 (poids 2) → (12 + 14 + 22) ÷ 4 = 12.",
                     "La moyenne de la période tient compte des coefficients des matières.",

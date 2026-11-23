@@ -283,4 +283,26 @@ public class NotenRechnerTests
     public void MoyenneTitel_passt_zum_Periodentitel(string periode, string erwartet)
         => Assert.Equal(erwartet, NotenTexte.MoyenneTitel(periode));
 
+    /// <summary>
+    /// Legende unter dem Notenraster (Nutzer 23.11.2026): « abs » nach der Einstellung der Schule – genau so, wie
+    /// <see cref="NotenRechner.Fachmittel"/> rechnet; « aj »/« disp » zählen nie.
+    /// </summary>
+    [Theory]
+    [InlineData(true, "absent(e) – compte 0")]
+    [InlineData(false, "absent(e) – ne compte pas")]
+    public void Legende_der_Kuerzel_folgt_der_Rechnung(bool absentNull, string absText)
+    {
+        var legende = NotenTexte.Kuerzel(absentNull);
+        Assert.Equal(["abs", "aj", "disp"], legende.Select(k => k.Kuerzel));
+        Assert.Equal(absText, legende[0].Text);
+        Assert.All(legende.Skip(1), k => Assert.EndsWith("ne compte pas", k.Text));
+
+        // Gegenprobe mit der Rechnung: 12/20 und ein « abs » → 6 (zählt 0) bzw. 12 (zählt nicht); « aj »/« disp » nie.
+        var abs = Fach(absentNull, new Wertung(20, 1, NotenStatus.Notee, 12, true), new Wertung(20, 1, NotenStatus.Absent, null, true));
+        Assert.Equal(absentNull ? 6m : 12m, abs.Wert);
+        foreach (var status in new[] { NotenStatus.AbsentJustifie, NotenStatus.Dispense })
+            Assert.Equal(12m, Fach(absentNull, new Wertung(20, 1, NotenStatus.Notee, 12, true), new Wertung(20, 1, status, null, true)).Wert);
+        Assert.Contains("« aj » ou « disp »", NotenTexte.TippNeuzugang);
+    }
+
 }

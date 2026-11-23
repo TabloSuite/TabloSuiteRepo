@@ -379,6 +379,11 @@ Von mir entschieden (änderbar):
     Vergleich über den Pfad ohne Query und Anker (Groß-/Kleinschreibung egal, `SeitenRahmen.IstNeuLaden`). Unverändert nicht:
     Sprungmarken (#…), Navigation aus dem Code (Seiten schreiben ihre Filter per `NavigateTo` in die Adresse), Vor/Zurück des
     Browsers. Keine Seite verlinkt sich selbst nur mit anderen Parametern (Test prüft die Seiten); Reiter haben eigene Pfade.
+49. **Legende der Notenkürzel** (Nutzer 23.11.2026, zu Nr. 45): unter dem Notenraster immer sichtbar – auch am Handy/Tablet, wo
+    Hinweistexte beim Überfahren fehlen: « abs » absent(e) – compte 0 bzw. ne compte pas (nach `AbsenzOhneEntschuldigungZaehltNull`
+    der Schule), « aj » absence justifiée und « disp » dispensé(e) – ne comptent pas (`NotenTexte.Kuerzel`). Zählt « abs » als 0, folgt
+    der Tipp: für ein Élève, das im Lauf der Periode kommt und eine Bewertung verpasst, lieber « aj »/« disp » statt « abs »
+    (`NotenTexte.TippNeuzugang`). Guide (Direction, Enseignant) und Formation « Les moyennes » nennen die Bedeutung ebenso.
 
 ---
 

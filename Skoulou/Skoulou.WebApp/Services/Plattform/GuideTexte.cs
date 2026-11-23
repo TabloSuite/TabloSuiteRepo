@@ -95,7 +95,7 @@ public static class GuideTexte
         [
             new("Emplois du temps", "Construisez l'emploi du temps de chaque classe ; les conflits d'enseignant, de salle ou de classe sont signalés.", "/direction/emplois-du-temps"),
             new("Présences", "Faites l'appel par classe : tout le monde est présent par défaut, signalez seulement les absents et les retards.", "/presences"),
-            new("Notes", "Choisissez la classe, la matière et la période, puis saisissez au clavier : « abs » absent, « aj » absence justifiée, « disp » dispensé. Chaque note est enregistrée aussitôt.", "/notes"),
+            new("Notes", "Choisissez la classe, la matière et la période, puis saisissez au clavier : « abs » absent (compte 0 si l'établissement l'a choisi), « aj » absence justifiée et « disp » dispensé (ne comptent pas) – la légende sous la grille le rappelle. Chaque note est enregistrée aussitôt.", "/notes"),
             new("Bulletins", "Préparez le conseil de classe, puis publiez les bulletins (PDF avec code QR). Une erreur après publication se corrige par un bulletin rectifié.", "/bulletins"),
             new("Contenus", "Toutes les leçons et tous les examens de l'établissement ; saisissez un contenu pour un enseignant qui n'a pas d'appareil.", "/direction/contenus"),
             new("Si vous enseignez", "Vos cours, leçons, examens et corrections se trouvent sous « Mon enseignement ».", "/enseignant")
@@ -131,7 +131,7 @@ public static class GuideTexte
         new("classe", "Ma classe", "users",
         [
             new("Appel", "Faites l'appel de vos classes : tout le monde est présent par défaut, signalez seulement les absents et les retards.", "/presences"),
-            new("Notes", "Saisissez les notes dans la grille : « abs » absent, « aj » absence justifiée, « disp » dispensé. Dans une matière facultative, seuls les élèves qui l'ont choisie apparaissent.", "/notes"),
+            new("Notes", "Saisissez les notes dans la grille : « abs » absent (compte 0 si l'établissement l'a choisi), « aj » absence justifiée et « disp » dispensé (ne comptent pas) – la légende sous la grille le rappelle. Pour un élève arrivé en cours de période, préférez « aj » ou « disp ». Dans une matière facultative, seuls les élèves qui l'ont choisie apparaissent.", "/notes"),
             new("Bulletins", "Professeur principal : préparez le conseil de classe et consultez les bulletins de votre classe.", "/bulletins"),
             new("Emploi du temps", "Votre semaine, classe par classe.", "/enseignant/emploi-du-temps")
         ])

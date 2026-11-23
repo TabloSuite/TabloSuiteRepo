@@ -58,12 +58,24 @@
     </table>
 </div>
 
+@* Legende der Kürzel, immer sichtbar – am Handy/Tablet gibt es keine Hinweistexte beim Überfahren (Nutzer 23.11.2026). *@
+<div class="nt-legende" aria-label="Signification des abréviations">
+    @foreach (var (kuerzel, text) in NotenTexte.Kuerzel(Raster.AbsentZaehltNull))
+    {
+        <span><strong>@kuerzel</strong> @text</span>
+    }
+    @if (Raster.AbsentZaehltNull && Raster.Bearbeitbar)
+    {
+        <p class="nt-legende-tipp"><Icon Name="info" Groesse="14" /> @NotenTexte.TippNeuzugang</p>
+    }
+</div>
+
 @if (Raster.Bearbeitbar && aktiv is { } a && a.Zeile < Raster.Zeilen.Count && a.Spalte < Raster.Spalten.Count)
 {
     <div class="nt-statusleiste" role="toolbar" aria-label="Statut de la note">
         <span class="nt-statusleiste-text"><strong>@Raster.Zeilen[a.Zeile].Name</strong> · @Raster.Spalten[a.Spalte].Titel</span>
         <div class="nt-statusleiste-knoepfe">
-            <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("abs")' title="Absent(e) – compte 0 si l'établissement l'a choisi">abs</button>
+            <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("abs")' title="@(Raster.AbsentZaehltNull ? "Absent(e) – compte 0" : "Absent(e) – ne compte pas")">abs</button>
             <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("aj")' title="Absence justifiée – ne compte pas">aj</button>
             <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("disp")' title="Dispensé(e) – ne compte pas">disp</button>
             <button type="button" class="sk-btn sk-btn-klein" @onmousedown:preventDefault @onclick='() => StatusAsync("")' title="Retirer la note" aria-label="Effacer la note"><Icon Name="x" Groesse="14" /> <span class="nt-nur-breit">Effacer</span></button>

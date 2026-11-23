@@ -65,6 +65,24 @@ public static class NotenTexte
     /// <summary>Kennzeichnung einer Periode im Bilan, die für den Schüler nicht zählt (Bauplan §5 Regel 3).</summary>
     public static string Teilnahme(PeriodenTeilnahme t) => t == PeriodenTeilnahme.EintrittOhneNote ? EintrittOhneNote : NichtEingeschrieben;
 
+    /// <summary>
+    /// Legende der Status-Kürzel unter dem Notenraster – immer sichtbar, auch am Handy/Tablet, wo Hinweistexte beim Überfahren
+    /// fehlen (Nutzer 23.11.2026). « abs » nach der Einstellung der Schule (<c>AbsenzOhneEntschuldigungZaehltNull</c>, Standard an).
+    /// </summary>
+    public static IReadOnlyList<(string Kuerzel, string Text)> Kuerzel(bool absentZaehltNull) =>
+    [
+        ("abs", absentZaehltNull ? "absent(e) – compte 0" : "absent(e) – ne compte pas"),
+        ("aj", "absence justifiée – ne compte pas"),
+        ("disp", "dispensé(e) – ne compte pas")
+    ];
+
+    /// <summary>
+    /// Tipp für Neuzugänge unter der Legende – nur wenn « abs » als 0 zählt (sonst wirkt « abs » wie « aj »). Mit « aj »/« disp »
+    /// belastet eine verpasste Bewertung das Mittel nicht (Nutzer 23.11.2026, zu Bauplan §5 Regel 3).
+    /// </summary>
+    public const string TippNeuzugang = "Élève arrivé en cours de période et absent à une évaluation : saisissez plutôt « aj » ou « disp », "
+        + "qui ne comptent pas, au lieu de « abs », qui compte 0 dans sa moyenne.";
+
     /// <summary>Kurzform für Tabellen: Wert oder « — » / « disp. » / « incomplet ».</summary>
     public static string MittelKurz(Mittel m) => m.Status switch
     {

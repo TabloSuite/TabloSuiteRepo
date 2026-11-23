@@ -54,6 +54,11 @@
 @media (max-width: 640px) { .nt-statusleiste { bottom: calc(4.35rem + env(safe-area-inset-bottom)); } } /* über der unteren Navigation */
 .nt-statusleiste-text { font-size: .86rem; color: var(--sk-text-leise); }
 .nt-statusleiste-knoepfe { display: flex; gap: .35rem; flex-wrap: wrap; }
+/* Legende der Kürzel abs/aj/disp unter dem Raster – immer sichtbar (23.11.2026). */
+.nt-legende { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin-top: .55rem; font-size: .8rem; color: var(--sk-text-leise); }
+.nt-legende strong { margin-right: .25rem; color: var(--sk-text); font-weight: 700; }
+.nt-legende-tipp { flex-basis: 100%; display: flex; align-items: flex-start; gap: .35rem; margin: .15rem 0 0; padding: .4rem .55rem; border-radius: var(--sk-radius-klein); background: var(--sk-warn-zart); color: var(--sk-warn-text); }
+.nt-legende-tipp svg { flex-shrink: 0; margin-top: .1rem; }
 .nt-historie { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
 .nt-historie li { display: grid; gap: .1rem; padding: .55rem .7rem; border: 1px solid var(--sk-rand); border-radius: var(--sk-radius-klein); }
 .nt-historie-wert { display: inline-flex; align-items: center; gap: .4rem; font-variant-numeric: tabular-nums; }
