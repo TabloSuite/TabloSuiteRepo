@@ -94,6 +94,26 @@ public class InfrastrukturTests
     }
 
     [Fact]
+    public void Notenvideos_stehen_bei_Direktion_und_Lehrkraeften()
+    {
+        // 23.11.2026: « Saisir les notes, pas à pas » und der Folgeteil gelten für beide Rollen – ein Video, zwei Rubriken.
+        var lehrer = Nutzer(Rollen.Lehrer);
+        var direktor = Nutzer(Rollen.Direktor);
+        foreach (var datei in new[] { "skoulou-direction-notes.mp4", "skoulou-direction-notes-cas.mp4" })
+        {
+            Assert.True(VideoKatalog.DarfAbrufen(datei, lehrer), datei);
+            Assert.Contains(VideoKatalog.FuerNutzer(lehrer).Single(g => g.Fuer == VideoKatalog.Enseignant).Videos, v => v.Datei == datei);
+            Assert.Contains(VideoKatalog.FuerNutzer(direktor).Single(g => g.Fuer == VideoKatalog.Direction).Videos, v => v.Datei == datei);
+        }
+        Assert.False(VideoKatalog.DarfAbrufen("skoulou-direction-conseil.mp4", lehrer));
+        Assert.False(VideoKatalog.DarfAbrufen("skoulou-direction-notes.mp4", Nutzer(Rollen.Schueler)));
+        // Lehrkräfte sehen die Rubrik « Direction » nicht – die Notenvideos erscheinen bei ihnen nur unter « Enseignant ».
+        Assert.DoesNotContain(VideoKatalog.FuerNutzer(lehrer), g => g.Fuer == VideoKatalog.Direction);
+        // Jede Datei genau einmal im Katalog
+        Assert.Equal(VideoKatalog.Videos.Count, VideoKatalog.Videos.Select(v => v.Datei).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+    }
+
+    [Fact]
     public void Medienpfad_Schema_und_Schutz()
     {
         var schule = Guid.Parse("11111111-2222-3333-4444-555555555555");

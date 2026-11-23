@@ -11,8 +11,10 @@ namespace Skoulou.WebApp.Services.Infrastruktur;
 /// </summary>
 public static partial class VideoKatalog
 {
-    public sealed record LernVideo(string Datei, string Titel, string Beschreibung, string Fuer, IReadOnlyList<string> Rollen, string Dauer)
+    /// <param name="AuchFuer">Weitere Rubrik, in der dasselbe Video erscheint (23.11.2026: die Notenvideos – Hauptrubrik « Enseignant » – stehen auch unter « Direction »).</param>
+    public sealed record LernVideo(string Datei, string Titel, string Beschreibung, string Fuer, IReadOnlyList<string> Rollen, string Dauer, string? AuchFuer = null)
     {
+        public bool InRubrik(string fuer) => Fuer == fuer || AuchFuer == fuer;
         public string Url => "/medien/videos/" + Datei;
         public string Poster => "videos/" + Path.ChangeExtension(Datei, ".jpg");
         public bool DarfSehen(ClaimsPrincipal user) => Rollen.Any(user.IsInRole);
@@ -71,18 +73,27 @@ public static partial class VideoKatalog
         new("skoulou-direction-equipe.mp4", "Équipe et emplois du temps",
             "Les comptes des enseignants et des coordinateurs, les affectations, les matières et les enseignants de chaque classe, l'emploi du temps avec le contrôle des conflits, puis la publication.",
             Direction, Leitung, "4:40"),
-        new("skoulou-direction-notes.mp4", "Notes et conseil de classe",
-            "Saisir les notes, les appréciations et les absences, préparer le conseil de classe – et voir, pour chaque saisie, où elle apparaît sur le bulletin imprimé.",
-            Direction, Leitung, "5:17"),
+        new("skoulou-direction-notes.mp4", "Saisir les notes, pas à pas",
+            "Lentement : la page « Notes », une nouvelle évaluation (composante, date, barème, poids), la saisie au clavier, puis « abs », « aj » et « disp » avec leur effet sur la moyenne, calculé devant vous – la légende sous le tableau et le réglage de l'établissement.",
+            Enseignant, FuerLehrkraefte, "7:35", AuchFuer: Direction),
+        new("skoulou-direction-notes-cas.mp4", "Notes : note manquante, corrections et cas particuliers",
+            "Une note manquante (moyenne incomplète, élève « Non classé »), corriger une note et son historique, l'appréciation, puis la matière facultative, la période fermée, les bulletins publiés, la saisie au téléphone et la moyenne sur le bulletin.",
+            Enseignant, FuerLehrkraefte, "4:38", AuchFuer: Direction),
+        new("skoulou-direction-conseil.mp4", "Absences et conseil de classe",
+            "L'appel et le cadre « Assiduité » du bulletin, puis le conseil de classe : moyenne, rang, distinction, sanction et appréciation du conseil – et l'aperçu du bulletin avant la publication.",
+            Direction, Leitung, "3:11"),
         new("skoulou-direction-bulletins.mp4", "Publier les bulletins",
             "Publier les bulletins, lire le bulletin imprimé case par case, consigner la remise, vérifier le code QR, rectifier une erreur, et adapter le modèle de bulletin.",
             Direction, Leitung, "5:07"),
         new("skoulou-direction-facultatives.mp4", "Les matières facultatives",
             "Une matière que seuls certains élèves suivent, comme l'ewe ou la culture : la rendre facultative, choisir sa règle pour la moyenne, cocher les élèves, les notes, le bulletin, et ce qui est fixé après la publication.",
             Direction, Leitung, "5:37"),
-        new("skoulou-direction-passage.mp4", "Fin d'année et passage",
-            "Les décisions de fin d'année au conseil, le bilan annuel sur le dernier bulletin, puis le passage à l'année suivante : nouvelle année, classes recréées, admis au niveau suivant, redoublants, départs – en une seule étape.",
-            Direction, Leitung, "2:58"),
+        new("skoulou-direction-passage.mp4", "Fin d'année, pas à pas (1/2) : tout vérifier",
+            "Avant le passage : les notes du dernier trimestre (notes manquantes, élèves non classés), le conseil de classe (distinction, appréciation, décision de fin d'année), puis les bulletins avec le bilan de l'année – aussi pour un élève arrivé en cours d'année – et leur publication.",
+            Direction, Leitung, "6:09"),
+        new("skoulou-direction-nouvelle-annee.mp4", "Fin d'année, pas à pas (2/2) : le passage et la nouvelle année",
+            "Le passage à l'année suivante : l'aperçu et chacun de ses avertissements, l'archivage des comptes des élèves qui partent, puis la nouvelle année : ce qui est créé, ce qui reste à préparer, et son démarrage.",
+            Direction, Leitung, "6:10"),
         new("skoulou-direction-fermer.mp4", "Fermer et rouvrir",
             "Fermer une période et la rouvrir pour une note oubliée, retirer un bulletin avec un motif, modifier un emploi du temps déjà publié, clôturer l'année et la rouvrir avec un motif.",
             Direction, Leitung, "3:54"),
@@ -111,8 +122,8 @@ public static partial class VideoKatalog
             "Une image de la médiathèque et une formule dans une leçon, réutiliser une leçon par copie, l'imprimer avec ou sans corrigé, modifier une date limite, archiver une attribution ou une leçon – et le transfert par la direction.",
             Enseignant, FuerLehrkraefte, "3:02"),
         new("skoulou-enseignant-notes.mp4", "Suivre la classe : appel, notes et bulletin",
-            "Votre emploi du temps, l'appel avec les absences et les retards, le récapitulatif, une nouvelle évaluation et la saisie des notes, les appréciations, le conseil de votre classe – et ce que tout cela devient sur le bulletin imprimé.",
-            Enseignant, FuerLehrkraefte, "4:30"),
+            "Votre emploi du temps, l'appel avec les absences et les retards, le récapitulatif, une nouvelle évaluation et la saisie des notes en bref, les appréciations, le conseil de votre classe – et ce que tout cela devient sur le bulletin imprimé.",
+            Enseignant, FuerLehrkraefte, "4:48"),
         new("skoulou-eleve-apprendre.mp4", "Apprendre avec SKOULOU",
             "Votre accueil, une leçon et ses exercices, une dictée audio, un examen, vos résultats et vos bulletins.", Eleve, FuerSchueler, "3:13"),
         new("skoulou-parent-suivre.mp4", "Suivre votre enfant",
@@ -137,8 +148,8 @@ public static partial class VideoKatalog
     private static readonly (string Fuer, string Titel, string Untertitel)[] GruppenInfo =
     [
         (PourTous, "Pour bien commencer", "S'inscrire et retrouver son accès, les premiers pas, la visite guidée et pourquoi SKOULOU."),
-        (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, l'établissement, les élèves, l'équipe, les notes, les bulletins, le passage d'année, fermer et rouvrir, les frais et la facture SKOULOU."),
-        (Enseignant, "Enseignant", "Suivre la classe et noter, puis le concept et la pratique des leçons et des examens, et la gestion de vos contenus."),
+        (Direction, "Direction", "Le concept de l'année, puis la pratique : préparer l'année, l'établissement, les élèves, l'équipe, la saisie des notes, les absences et le conseil, les bulletins, la fin d'année et le passage, fermer et rouvrir, les frais et la facture SKOULOU."),
+        (Enseignant, "Enseignant", "Suivre la classe, saisir les notes pas à pas, puis le concept et la pratique des leçons et des examens, et la gestion de vos contenus."),
         (Eleve, "Élève", "Apprendre, s'exercer et passer les examens."),
         (Parent, "Parent", "Suivre la scolarité de vos enfants."),
         (Responsable, "Responsable", "Accompagner vos écoles : suivi, facturation, parts et messagerie."),
@@ -162,8 +173,9 @@ public static partial class VideoKatalog
     {
         var eigene = EigeneGruppe(user);
         return GruppenInfo
-            .Select(g => new Gruppe(g.Fuer, g.Titel, g.Untertitel, Videos.Where(v => v.Fuer == g.Fuer && v.DarfSehen(user)).ToList()))
-            .Where(g => g.Videos.Count > 0)
+            .Select(g => new Gruppe(g.Fuer, g.Titel, g.Untertitel, Videos.Where(v => v.InRubrik(g.Fuer) && v.DarfSehen(user)).ToList()))
+            // Rubrik nur, wenn ihre eigenen Videos sichtbar sind – sonst bekäme eine Lehrkraft eine Rubrik « Direction » nur mit den Notenvideos
+            .Where(g => Videos.Any(v => v.Fuer == g.Fuer && v.DarfSehen(user)))
             .OrderBy(g => g.Fuer == PourTous ? 0 : g.Fuer == eigene ? 1 : 2)
             .ToList();
     }
