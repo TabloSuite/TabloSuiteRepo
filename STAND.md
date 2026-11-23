@@ -1,4 +1,4 @@
-# TabloSuite – Arbeitsstand 22.11.2026 abends
+# TabloSuite – Arbeitsstand 23.11.2026 (bereit zum Deploy)
 
 Einstieg für ein neues Chat-Fenster: zuerst §0 lesen. Gesamtüberblick über alle Apps: [`docs/Projektuebersicht.md`](docs/Projektuebersicht.md).
 SKOULOU verbindlich: `Skoulou/docs/Bauplan.md` (§11 Entscheidungen) und `Skoulou/docs/fachkonzept/01…05`.
@@ -18,17 +18,17 @@ unverändert. TabloSuiteHome ist seit dem letzten Deploy unverändert.
 - **Test-Datenbanken löschen:** `TabloSuiteData\Infos\Test-Datenbanken-loeschen.ps1` (13 Test-DBs, fragt vorher; `ENOTEDB`, `SkoulouDB`,
   `SkoulouDB_VIDEO` geschützt).
 
-**Nächster Schritt – beim Nutzer:** kompletter Menschentest beider Apps (nicht mehr am 22.11.). Nutzer: « Solange Tests Fehler
-liefern, kann ich die Apps nicht in Produktion nehmen. » Gefundene Fehler gründlich beheben (mit Test, auch in der Oberfläche prüfen).
-Danach deployt der Nutzer **eNOTE und SKOULOU** aus Visual Studio; anschließend lesend prüfen (Startseiten, Anmeldung,
-ExceptionLogs/FehlerProtokolle).
+**Nächster Schritt – beim Nutzer (23.11.):** master übernehmen (Befehl oben), dann **eNOTE und SKOULOU** aus Visual Studio deployen
+(keine Migration, Azure-DBs unverändert). Danach lesend prüfen: Startseiten, Anmeldung, ExceptionLogs/FehlerProtokolle. Anschließend
+kompletter Menschentest des Nutzers; gefundene Fehler gründlich beheben (mit Test, auch in der Oberfläche prüfen).
 
 **Rückfragen R1–R10 entschieden (22.11. spät, alle nach Empfehlung):** R5, R7, R8, R9 umgesetzt (Bauplan §11 Nr. 45–48):
 Eintrittsperiode eines Neuzugangs ohne jede Note zählt nicht fürs Jahresmittel (« arrivé(e) en cours de période, sans note »);
 Warnung « l'année n'est pas terminée » nach dem Ende der letzten zählenden Periode; Hinweis, die Rückzahlung einer stornierten
 bezahlten Rechnung nicht doppelt zu buchen (Mail + Rechnungsdetail); Menüeintrag lädt die offene Seite auch mit anderen
 Adressparametern neu. So gelassen: R1 (kein Knopf « Nouveau lien »), R2, R3, R4, R6, R10.
-Kleine Annahmen dabei (nur bei Bedarf ändern): « abs. »/« disp. » zählen als Note; Rückkehr nach einer Lücke in der Periode gilt als
+23.11.: Legende der Notenkürzel « abs »/« aj »/« disp » unter dem Notenraster, immer sichtbar (auch am Handy), mit Tipp für Neuzugänge
+(Bauplan Nr. 49; Bilder `Bilder\SKOULOU-Notes-Legende-2026-11-23`). Annahmen zu R5 mit dem Nutzer besprochen und so gelassen: « abs. »/« disp. » zählen als Note; Rückkehr nach einer Lücke in der Periode gilt als
 Eintritt; wer wenige Tage nach Periodenbeginn eingeschrieben wird, gilt formal als eingetreten (wirkt nur ohne jede Note).
 
 **Was seit dem letzten Deploy (21.11.) dazukam – rund 90 Commits, alle mit Tests:**
@@ -52,7 +52,7 @@ Eintritt; wer wenige Tage nach Periodenbeginn eingeschrieben wird, gilt formal a
      standardmäßig an, Ladenwechsler bleibt.
 4. Beide Runden in der Oberfläche nachgetestet (eNOTE 51 Schritte, SKOULOU 36 Schritte, je ohne App-Fehler).
 
-**Tests am 22.11. abends – alles grün** (nach R5–R9 erneut: Mappe Home 11, eNOTE 684, SKOULOU 845; SKOULOU-SQL 866; SKOULOU-Simulation
+**Tests am 22.11. abends – alles grün** (nach R5–R9 und Legende 23.11. erneut: Mappe Home 11, eNOTE 684, SKOULOU 847; SKOULOU-SQL 868; SKOULOU-Simulation
 mit diesem Code grün). Erster Gesamtlauf: `dotnet test TabloSuiteMappe.slnx` (Home 11, eNOTE 684, SKOULOU 838);
 SKOULOU mit `SKOULOU_SQL_TESTS=1` + `SKOULOU_SIM=1` 861 bestanden (22 min); eNOTE mit `ENOTE_SIM=1` (SQL-Tests + Simulation)
 690 bestanden (13 min). Aufgeräumt: Worktrees der Agenten, alte Testreste in `%TEMP%` (Papierkorb).
