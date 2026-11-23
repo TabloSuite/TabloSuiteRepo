@@ -37,7 +37,7 @@
 
 <section id="applications" class="ts-abschnitt">
     <div class="ts-breite">
-        <header class="ts-abschnitt-kopf">
+        <header class="ts-abschnitt-kopf lp-reveal">
             <p class="ts-kicker dunkel">Nos applications</p>
             <h2>Une application pour chaque métier</h2>
             <p>Chaque application de TabloSuite répond à un métier précis. Choisissez la vôtre : vous la retrouvez à son adresse, avec votre compte.</p>
@@ -48,20 +48,20 @@
                 <AppKarte App="a" Gespiegelt="@(i % 2 == 1)" />
             }
         </div>
-        <p class="ts-weitere"><Zeichen Name="funken" Groesse="18" /> D'autres applications rejoindront bientôt TabloSuite.</p>
+        <p class="ts-weitere lp-reveal"><Zeichen Name="funken" Groesse="18" /> D'autres applications rejoindront bientôt TabloSuite.</p>
     </div>
 </section>
 
 <section id="pourquoi" class="ts-abschnitt ts-abschnitt-weich">
     <div class="ts-breite">
-        <header class="ts-abschnitt-kopf">
+        <header class="ts-abschnitt-kopf lp-reveal">
             <p class="ts-kicker dunkel">Pourquoi TabloSuite</p>
             <h2>Pensé pour votre quotidien</h2>
         </header>
         <div class="ts-werte">
-            @foreach (var (icon, titel, text) in Werte)
+            @foreach (var ((icon, titel, text), i) in Werte.Select((w, i) => (w, i)))
             {
-                <article class="ts-wert">
+                <article class="ts-wert lp-reveal" style="--lp-verz: @(i * 100)ms">
                     <span class="ts-wert-icon"><Zeichen Name="@icon" Groesse="24" /></span>
                     <h3>@titel</h3>
                     <p>@text</p>
@@ -73,7 +73,7 @@
 
 <section id="contact" class="ts-abschnitt">
     <div class="ts-breite">
-        <div class="ts-kontakt">
+        <div class="ts-kontakt lp-reveal">
             <div>
                 <p class="ts-kicker">Contact</p>
                 <h2>Parlons de votre activité</h2>

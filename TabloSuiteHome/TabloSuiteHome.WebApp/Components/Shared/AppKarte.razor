@@ -1,6 +1,8 @@
-@* Eine App der TabloSuiteMappe: Bild, Logo, Zielgruppe, Beschreibung, Punkte, Preis, Wege in die App. *@
+@* Eine App der TabloSuiteMappe: Bild, Logo, Zielgruppe, Beschreibung, Punkte, Preis, Wege in die App.
+   Beim Scrollen (23.11.2026): Karte blendet ein, das Bild gleitet mit ihr von seiner Seite herein (CSS über die Karte, sonst stünde
+   sie am PC kurz leer da); der Text hat einen eigenen Auslöser (am Handy liegt er weit unten). *@
 @inject TarifAbfrage Tarife
-<article id="@App.Id" class="ts-app @(Gespiegelt ? "gespiegelt" : "") @(App.IstVerfuegbar ? "" : "bald")" style="--app-farbe: @App.Farbe">
+<article id="@App.Id" class="ts-app lp-reveal @(Gespiegelt ? "gespiegelt" : "") @(App.IstVerfuegbar ? "" : "bald")" style="--app-farbe: @App.Farbe">
     <div class="ts-app-bild">
         @if (!string.IsNullOrWhiteSpace(App.Bild))
         {
@@ -10,7 +12,7 @@
             </div>
         }
     </div>
-    <div class="ts-app-text">
+    <div class="ts-app-text lp-reveal" style="--lp-verz: 250ms">
         <div class="ts-app-kopf">
             <img class="ts-app-logo" src="@Assets[App.Logo]" alt="" width="56" height="56" />
             <div>

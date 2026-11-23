@@ -109,8 +109,8 @@ p { margin: 0; }
 /* Erstes Bild: Schild rechts unten (links unten liegt das zweite Bild darüber) */
 .ts-held-bild-0 .ts-held-app { left: auto; right: .75rem; }
 
-/* Einstieg: Texte und App-Bilder erscheinen nacheinander wie auf den Startseiten von eNOTE und SKOULOU (21.11.2026). Nur CSS
-   (die Seite hat kein JavaScript); « translate »/« scale » statt « transform », damit die Drehung der Bilder bleibt.
+/* Einstieg: Texte und App-Bilder erscheinen beim Laden nacheinander wie auf den Startseiten von eNOTE und SKOULOU (21.11.2026).
+   Nur CSS, läuft sofort (auch ohne JavaScript); « translate »/« scale » statt « transform », damit die Drehung der Bilder bleibt.
    Bei « Bewegung reduzieren » schaltet die allgemeine Regel oben alle Animationen ab – alles ist sofort sichtbar. */
 .ts-ein { animation: ts-ein .8s cubic-bezier(.2, .7, .2, 1) var(--ts-verz, 0ms) both; }
 .ts-ein.ts-von-rechts { animation-name: ts-ein-rechts; animation-duration: .95s; }
@@ -118,16 +118,23 @@ p { margin: 0; }
 .ts-ein.ts-aufploppen { animation-name: ts-aufploppen; animation-duration: .55s; animation-timing-function: cubic-bezier(.3, 1.4, .5, 1); }
 @keyframes ts-ein { from { opacity: 0; translate: 0 18px; } }
 @keyframes ts-ein-rechts { from { opacity: 0; translate: 64px 0; } }
-@keyframes ts-ein-links { from { opacity: 0; translate: -64px 0; } }
 @keyframes ts-ein-unten { from { opacity: 0; translate: 0 64px; } }
 @keyframes ts-aufploppen { from { opacity: 0; scale: .6; } }
 
-/* App-Karten gleiten beim Scrollen herein (Browser mit « animation-timeline », z. B. Chrome auf Android); sonst ohne Bewegung. */
-@supports (animation-timeline: view()) {
-    .ts-app-bild { animation: ts-ein-links linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
-    .ts-app.gespiegelt .ts-app-bild { animation-name: ts-ein-rechts; }
-    .ts-app-text { animation: ts-ein linear both; animation-timeline: view(); animation-range: entry 10% entry 70%; }
-}
+/* Abschnitte blenden beim Scrollen ein wie bei eNOTE und SKOULOU (23.11.2026; vorher « animation-timeline », das Safari/iPhone und
+   Firefox nicht kennen): gleiche Bewegung (.8s, 26px nach oben), gestaffelt über --lp-verz. Das Skript im Kopf von App.razor setzt
+   lp-js und « sichtbar »; ohne Skript oder bei « Bewegung reduzieren » steht alles sofort da. « translate » statt « transform »,
+   damit eigene Transformationen bleiben. */
+.lp-reveal { --lp-verz: 0ms; transition: opacity .8s cubic-bezier(.2, .7, .2, 1) var(--lp-verz), translate .8s cubic-bezier(.2, .7, .2, 1) var(--lp-verz); }
+.lp-js .lp-reveal:not(.sichtbar) { opacity: 0; translate: 0 26px; }
+.lp-js .lp-reveal.lp-von-rechts:not(.sichtbar) { translate: 40px 0; }
+.lp-js .lp-reveal.lp-von-links:not(.sichtbar) { translate: -40px 0; }
+.lp-js .lp-reveal.lp-von-unten:not(.sichtbar) { translate: 0 48px; }
+/* App-Karten: das Bild gleitet mit der Karte von seiner Seite herein (150 ms später) – am PC liegt es mittig und käme sonst erst nach
+   der leeren Karte; der Text (.ts-app-text) blendet über seinen eigenen Auslöser ein. */
+.ts-app.lp-reveal .ts-app-bild { transition: opacity .8s cubic-bezier(.2, .7, .2, 1) .15s, translate .8s cubic-bezier(.2, .7, .2, 1) .15s; }
+.lp-js .ts-app.lp-reveal:not(.sichtbar) .ts-app-bild { opacity: 0; translate: -40px 0; }
+.lp-js .ts-app.gespiegelt.lp-reveal:not(.sichtbar) .ts-app-bild { translate: 40px 0; }
 
 @media (max-width: 960px) {
     .ts-held-innen { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; padding: 3.25rem 0 3.75rem; }
