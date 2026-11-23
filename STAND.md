@@ -12,15 +12,20 @@ Die ausführliche Fassung dieser Datei bis 22.11. nachmittags steht in der Git-H
 (`81cba64`). Seit dem letzten Deploy gibt es **keine neue Migration**: Azure `ENote-Database` und `Skoulou-Database` bleiben
 unverändert. TabloSuiteHome ist seit dem letzten Deploy unverändert.
 
-**Beim Nutzer offen (22.11. spät, Freigabe « alle A–D nach Empfehlung »; beides von der Sicherheitsprüfung für Claude gesperrt):**
-- **master:** `git push origin Etse.TabloSuite.Muster:master` im Projektordner (Fast-Forward, master hat nichts Eigenes) – oder in
-  Visual Studio zu master wechseln, `Etse.TabloSuite.Muster` hineinführen, pushen.
-- **Test-Datenbanken löschen:** `TabloSuiteData\Infos\Test-Datenbanken-loeschen.ps1` (13 Test-DBs, fragt vorher; `ENOTEDB`, `SkoulouDB`,
-  `SkoulouDB_VIDEO` geschützt).
+**Stand 23.11. mittags:** master = Branch (nach diesem Push). Nutzer hat eNOTE + SKOULOU am 23.11. mit Stand a380f58 deployt (keine
+Migration). **Jetzt beim Nutzer: SKOULOU und TabloSuiteHome erneut deployen** (eNOTE unverändert, keine Migration). Neu seitdem:
+- SKOULOU-Hilfevideos überarbeitet (56cacc8): « Saisir les notes, pas à pas » (7:35, abs/aj/disp mit Wirkung), « Notes : note manquante,
+  corrections et cas particuliers » (4:38), « Absences et conseil de classe » (3:11), « Suivre la classe … » (4:48, neu gefilmt),
+  « Fin d'année, pas à pas » 1/2 (6:09) und 2/2 « le passage et la nouvelle année » (6:10). Langsamer als früher. Stand/Fallen:
+  `TabloSuite Videos\Skoulou Videos\projekte\lernen-v3\AUFTRAG.md` §13.
+- Startseiten SKOULOU und tablosuite.com blenden beim Scrollen ein wie eNOTE (146c5b4, c7f0dbb); nach dem Deploy « Tarifs »/Zahlen
+  auf der SKOULOU-Startseite und das iPhone ansehen.
+- Fix: Passage-Warnung « bulletins non publiés » zählt keine leeren Klassen mehr.
+- Offene Frage: Direktion/Koordination sehen die zwei Notenvideos unter « Direction » und « Enseignant » (doppelt) – Empfehlung: so lassen
+  (Direktion unterrichtet oft selbst), sonst nur unter « Direction ».
+- Test-Datenbanken löscht der Nutzer per `TabloSuiteData\Infos\Test-Datenbanken-loeschen.ps1` (für Claude gesperrt).
 
-**Nächster Schritt – beim Nutzer (23.11.):** master übernehmen (Befehl oben), dann **eNOTE und SKOULOU** aus Visual Studio deployen
-(keine Migration, Azure-DBs unverändert). Danach lesend prüfen: Startseiten, Anmeldung, ExceptionLogs/FehlerProtokolle. Anschließend
-kompletter Menschentest des Nutzers; gefundene Fehler gründlich beheben (mit Test, auch in der Oberfläche prüfen).
+**Danach:** kompletter Menschentest des Nutzers; Fehler gründlich beheben (mit Test, auch in der Oberfläche prüfen).
 
 **Rückfragen R1–R10 entschieden (22.11. spät, alle nach Empfehlung):** R5, R7, R8, R9 umgesetzt (Bauplan §11 Nr. 45–48):
 Eintrittsperiode eines Neuzugangs ohne jede Note zählt nicht fürs Jahresmittel (« arrivé(e) en cours de période, sans note »);
